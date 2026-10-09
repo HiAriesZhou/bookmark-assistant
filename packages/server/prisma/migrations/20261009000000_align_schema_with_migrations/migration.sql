@@ -24,3 +24,10 @@ CREATE TABLE IF NOT EXISTS "description_cache" (
 CREATE UNIQUE INDEX IF NOT EXISTS "description_cache_url_key" ON "description_cache"("url");
 CREATE INDEX IF NOT EXISTS "description_cache_url_idx" ON "description_cache"("url");
 CREATE INDEX IF NOT EXISTS "description_cache_expiresAt_idx" ON "description_cache"("expiresAt");
+
+-- Earlier migrations created these indexes, but the schema never declared them and the
+-- production database does not have them. paddleCustomerId and paddleSubscriptionId
+-- are already covered by unique indexes.
+DROP INDEX IF EXISTS "User_paddleCustomerId_idx";
+DROP INDEX IF EXISTS "User_paddleSubscriptionId_idx";
+DROP INDEX IF EXISTS "User_purchaseType_idx";

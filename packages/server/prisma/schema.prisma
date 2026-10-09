@@ -49,10 +49,6 @@ model User {
 
   @@index([email])
   @@index([notionUserId])
-  // Created by earlier migrations; declared so the schema matches deployed databases.
-  @@index([paddleCustomerId])
-  @@index([paddleSubscriptionId])
-  @@index([purchaseType])
 }
 
 model DescriptionCache {
