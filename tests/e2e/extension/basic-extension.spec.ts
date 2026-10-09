@@ -491,6 +491,9 @@ test.describe('Bookmark Assistant Pro extension', () => {
       });
       expect(new URL((await profileRequest).url()).origin).toBe(expectedApiOrigin);
       await context.unroute('**/api/user/profile');
+      // Later tests share this context; do not leave a connected page behind.
+      await page.evaluate(() => chrome.storage.local.remove('session_token'));
+      await page.close();
       return;
     }
     await page.evaluate(() => chrome.storage.local.remove('cached_pricing'));
