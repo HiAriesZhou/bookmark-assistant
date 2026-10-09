@@ -20,14 +20,21 @@ export function brandFiles(profile) {
   });
 }
 
+/**
+ * Checks inputs needed only when packaging the extension. Asset scripts also resolve
+ * the official profile and must not require them. Community builds may run as a
+ * local-only library without Notion.
+ */
+export function assertReleaseBuildEnv(profile) {
+  if (profile.official && !profile.publicEnv.VITE_NOTION_CLIENT_ID)
+    throw new Error('Official builds require VITE_NOTION_CLIENT_ID.');
+}
+
 export function resolveBuildProfile(env = process.env) {
   const profile = env.BOOKMARK_ASSISTANT_BUILD_PROFILE || 'community';
   if (!['community', 'official'].includes(profile)) throw new Error('Unknown build profile.');
   const official = profile === 'official';
   const notionClientId = env.VITE_NOTION_CLIENT_ID?.trim() || '';
-  // Community builds may run as a local-only library; official builds must connect Notion.
-  if (official && !notionClientId)
-    throw new Error('Official builds require VITE_NOTION_CLIENT_ID.');
   const assetRoot = official
     ? resolve(env.BOOKMARK_ASSISTANT_OFFICIAL_ASSETS || resolve(ROOT, '.official-assets'))
     : ROOT;
