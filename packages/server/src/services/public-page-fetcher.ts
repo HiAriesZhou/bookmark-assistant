@@ -154,13 +154,20 @@ export async function fetchPublicHtml(
   rawUrl: string,
   { maxBytes = MAX_RESPONSE_BYTES, timeoutMs = FETCH_TIMEOUT_MS }: PublicHtmlFetchOptions = {}
 ): Promise<string> {
+  // One deadline covers DNS, every redirect hop and the body.
+  const deadline = Date.now() + timeoutMs;
+  const remainingMs = () => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new PublicPageFetchError('fetch_failed');
+    return remaining;
+  };
   let current = rawUrl;
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
-    const url = await resolvePublicUrl(current);
+    const url = await withTimeout(resolvePublicUrl(current), remainingMs());
     const response = await requestPinnedUrl(
       url,
       'text/html,application/xhtml+xml;q=0.9',
-      timeoutMs
+      remainingMs()
     );
     const statusCode = response.statusCode || 0;
 
@@ -180,7 +187,7 @@ export async function fetchPublicHtml(
       discardResponse(response);
       throw new PublicPageFetchError('unsupported_content_type');
     }
-    return readLimitedResponse(response, { maxBytes, timeoutMs, truncate: true });
+    return readLimitedResponse(response, { maxBytes, timeoutMs: remainingMs(), truncate: true });
   }
   throw new PublicPageFetchError('fetch_disallowed');
 }
@@ -358,29 +365,65 @@ async function requestPinnedUrl(
   accept = 'text/html,application/xhtml+xml,text/plain;q=0.9',
   timeoutMs = FETCH_TIMEOUT_MS
 ): Promise<import('http').IncomingMessage> {
-  const resolved = await lookup(url.hostname, { all: true, verbatim: true });
+  const resolved = await withTimeout(
+    lookup(url.hostname, { all: true, verbatim: true }),
+    timeoutMs
+  );
   const selected = resolved.find((address) => !isPrivateAddress(address.address));
   if (!selected || resolved.some((address) => isPrivateAddress(address.address))) {
     throw new PublicPageFetchError('fetch_disallowed');
   }
   const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
   return new Promise((resolve, reject) => {
-    const req = request(url, {
-      headers: {
-        accept,
-        'user-agent': 'BookmarkAssistantBot/1.0 (+https://bookmarkassistant.com)',
+    const req = request(
+      url,
+      {
+        headers: {
+          accept,
+          'user-agent': 'BookmarkAssistantBot/1.0 (+https://bookmarkassistant.com)',
+        },
+        lookup: (_hostname, _options, callback) =>
+          callback(null, selected.address, selected.family),
+        timeout: timeoutMs,
       },
-      lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
-      timeout: timeoutMs,
-    }, resolve);
+      (response) => {
+        clearTimeout(timer);
+        resolve(response);
+      }
+    );
+    // The socket timeout only fires on inactivity; this bounds the wait for headers.
+    const timer = setTimeout(() => {
+      req.destroy();
+      reject(new PublicPageFetchError('fetch_failed'));
+    }, timeoutMs);
     req.once('timeout', () => req.destroy(new Error('timeout')));
-    req.once('error', () => reject(new PublicPageFetchError('fetch_failed')));
+    req.once('error', () => {
+      clearTimeout(timer);
+      reject(new PublicPageFetchError('fetch_failed'));
+    });
     req.end();
   });
 }
 
+/** Closes a response whose body is not needed, so it is not downloaded in the background. */
 function discardResponse(response: import('http').IncomingMessage): void {
-  response.resume();
+  response.destroy();
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new PublicPageFetchError('fetch_failed')), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }
 
 function readLimitedResponse(

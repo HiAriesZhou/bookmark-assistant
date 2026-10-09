@@ -17,7 +17,17 @@ import { fetchPublicHtml, PublicPageFetchError } from './public-page-fetcher';
 
 const PUBLIC_ADDRESS = [{ address: '93.184.216.34', family: 4 }];
 
-type FakeResponse = { status: number; headers?: Record<string, string>; body?: string | Buffer };
+type FakeResponse = {
+  status: number;
+  headers?: Record<string, string>;
+  body?: string | Buffer;
+  /** Delay before response headers arrive. */
+  delayMs?: number;
+  /** Leave the body open instead of ending it. */
+  streaming?: boolean;
+};
+
+const createdResponses: PassThrough[] = [];
 
 /** Each call to http(s).request answers with the next fake response. */
 function respondWith(...responses: FakeResponse[]) {
@@ -29,15 +39,17 @@ function respondWith(...responses: FakeResponse[]) {
       statusCode: next.status,
       headers: next.headers || {},
     });
-    const request = {
+    createdResponses.push(response);
+    const respond = () => {
+      onResponse(response);
+      if (next.streaming) response.write(next.body ?? '');
+      else response.end(next.body ?? '');
+    };
+    return {
       once: vi.fn().mockReturnThis(),
       destroy: vi.fn(),
-      end: () => {
-        onResponse(response);
-        response.end(next.body ?? '');
-      },
+      end: () => (next.delayMs ? setTimeout(respond, next.delayMs) : respond()),
     };
-    return request;
   });
 }
 
@@ -49,6 +61,7 @@ async function expectCode(promise: Promise<unknown>, code: string) {
 describe('fetchPublicHtml', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    createdResponses.length = 0;
     lookupMock.mockResolvedValue(PUBLIC_ADDRESS);
   });
 
@@ -114,5 +127,47 @@ describe('fetchPublicHtml', () => {
 
     const html = await fetchPublicHtml('https://example.com/huge', { maxBytes: 1024 });
     expect(html.length).toBeLessThanOrEqual(1024);
+  });
+
+  it('gives up when DNS does not answer within the time limit', async () => {
+    lookupMock.mockReturnValue(new Promise(() => undefined));
+    const startedAt = Date.now();
+
+    await expectCode(
+      fetchPublicHtml('https://slow-dns.example/', { timeoutMs: 50 }),
+      'fetch_failed'
+    );
+    expect(Date.now() - startedAt).toBeLessThan(1_000);
+  });
+
+  it('gives up when response headers never arrive', async () => {
+    const request = { once: vi.fn().mockReturnThis(), destroy: vi.fn(), end: vi.fn() };
+    httpRequestMock.mockReturnValue(request);
+
+    await expectCode(fetchPublicHtml('https://example.com/', { timeoutMs: 50 }), 'fetch_failed');
+    expect(request.destroy).toHaveBeenCalled();
+  });
+
+  it('applies one time limit across all redirects', async () => {
+    const hop = { status: 302, headers: { location: '/next' }, delayMs: 40 };
+    respondWith(hop, hop, hop, hop, hop);
+    const startedAt = Date.now();
+
+    await expectCode(
+      fetchPublicHtml('https://example.com/start', { timeoutMs: 100 }),
+      'fetch_failed'
+    );
+    expect(Date.now() - startedAt).toBeLessThan(500);
+    expect(httpRequestMock.mock.calls.length).toBeLessThan(5);
+  });
+
+  it('closes redirect responses instead of downloading their bodies', async () => {
+    respondWith(
+      { status: 302, headers: { location: '/moved' }, body: 'x'.repeat(1024), streaming: true },
+      { status: 200, headers: { 'content-type': 'text/html' }, body: '<title>Moved</title>' }
+    );
+
+    await fetchPublicHtml('https://example.com/old');
+    expect(createdResponses[0].destroyed).toBe(true);
   });
 });
