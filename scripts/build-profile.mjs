@@ -24,6 +24,10 @@ export function resolveBuildProfile(env = process.env) {
   const profile = env.BOOKMARK_ASSISTANT_BUILD_PROFILE || 'community';
   if (!['community', 'official'].includes(profile)) throw new Error('Unknown build profile.');
   const official = profile === 'official';
+  const notionClientId = env.VITE_NOTION_CLIENT_ID?.trim() || '';
+  // Community builds may run as a local-only library; official builds must connect Notion.
+  if (official && !notionClientId)
+    throw new Error('Official builds require VITE_NOTION_CLIENT_ID.');
   const assetRoot = official
     ? resolve(env.BOOKMARK_ASSISTANT_OFFICIAL_ASSETS || resolve(ROOT, '.official-assets'))
     : ROOT;
@@ -88,7 +92,7 @@ export function resolveBuildProfile(env = process.env) {
       VITE_BUILD_PROFILE: profile,
       VITE_APP_NAME: brand.name,
       VITE_OAUTH_SERVER_URL: parsed.origin,
-      VITE_NOTION_CLIENT_ID: env.VITE_NOTION_CLIENT_ID || '',
+      VITE_NOTION_CLIENT_ID: notionClientId,
       VITE_WEBSITE_URL: websiteUrl,
       VITE_FAQ_URL: official ? `${websiteUrl}/#faq` : env.VITE_FAQ_URL || '',
       VITE_PRIVACY_URL: official ? `${websiteUrl}/privacy` : env.VITE_PRIVACY_URL || '',

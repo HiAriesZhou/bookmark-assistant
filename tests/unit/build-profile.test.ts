@@ -29,7 +29,20 @@ describe('build deployment boundaries', () => {
       resolveBuildProfile({
         BOOKMARK_ASSISTANT_BUILD_PROFILE: 'official',
         BOOKMARK_ASSISTANT_OFFICIAL_ASSETS: '/missing-official-assets',
+        VITE_NOTION_CLIENT_ID: 'official-client-id',
       })
     ).toThrow('Official assets are missing');
+  });
+  it('refuses an official build without a Notion client ID', () => {
+    expect(() =>
+      resolveBuildProfile({
+        BOOKMARK_ASSISTANT_BUILD_PROFILE: 'official',
+        BOOKMARK_ASSISTANT_OFFICIAL_ASSETS: '/missing-official-assets',
+        VITE_NOTION_CLIENT_ID: ' ',
+      })
+    ).toThrow('VITE_NOTION_CLIENT_ID');
+  });
+  it('allows community builds without Notion for local-only use', () => {
+    expect(resolveBuildProfile({}).publicEnv.VITE_NOTION_CLIENT_ID).toBe('');
   });
 });
