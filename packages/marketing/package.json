@@ -1,0 +1,29 @@
+{
+  "name": "@bookmark-assistant/marketing",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "copy:sync": "node scripts/copy.mjs --write",
+    "copy:check": "node scripts/copy.mjs --check",
+    "prerender": "node ../../scripts/sync-product-version.mjs --check && node ../../scripts/sync-brand-assets.mjs --check && node scripts/copy.mjs --check",
+    "render": "node scripts/render.mjs",
+    "validate": "node scripts/validate.mjs",
+    "contact-sheet": "node scripts/contact-sheet.mjs",
+    "package": "node ../../scripts/sync-product-version.mjs --check && node ../../scripts/sync-brand-assets.mjs --check && pnpm copy:check && pnpm validate && pnpm contact-sheet && node scripts/package.mjs",
+    "sync-website-assets": "node scripts/sync-approved-website-assets.mjs",
+    "check-website-assets": "node scripts/sync-approved-website-assets.mjs --check",
+    "approve-website-assets": "pnpm validate && node scripts/promote-website-assets.mjs && pnpm sync-website-assets",
+    "approve-store-assets": "pnpm validate && node scripts/promote-store-assets.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "build": "pnpm copy:check",
+    "lint": "pnpm copy:check",
+    "check-store-snapshot": "node scripts/check-store-snapshot.mjs"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.61.1",
+    "sharp": "^0.35.3",
+    "zod": "^4.0.0"
+  },
+  "license": "GPL-3.0-only"
+}

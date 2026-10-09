@@ -1,0 +1,196 @@
+// Prisma schema for Bookmark Notion Sync
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  // --- 1. Identity (Internal System) ---
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- 2. Payment Status (Paddle) ---
+  plan                 String    @default("free") // "free", "pro"
+  subscriptionSource   String? // "paddle", "developer", "gift", "trial"
+  expiresAt            DateTime?
+  paddleCustomerId     String?   @unique
+  paddleSubscriptionId String?   @unique // For recurring subscriptions
+  purchaseType         String? // "monthly" or "yearly"
+  licenseKey           String?
+
+  // --- 3. Notion Identity (Linked via OAuth) ---
+  notionUserId        String? @unique
+  notionAccessToken   String?
+  notionRefreshToken  String?
+  notionWorkspaceId   String?
+  notionWorkspaceName String?
+
+  // --- 4. App Configuration ---
+  databases            Json?
+  templateDatabaseId   String?
+  notionDatabaseId     String?
+  notionDataSourceId   String?
+  notionDatabaseName   String?
+  botId                String?
+  duplicatedTemplateId String?
+  lastActivity         DateTime @default(now())
+
+  aiProviderCredential AiProviderCredential?
+  aiSettings           AiSettings?
+  aiGenerationBatches  AiGenerationBatch[]
+  aiGenerationTasks    AiGenerationTask[]
+
+  @@index([email])
+  @@index([notionUserId])
+}
+
+model DescriptionCache {
+  id          String    @id @default(cuid())
+  url         String    @unique
+  description String    @db.Text
+  source      String // 'meta_description' | 'og_description' | 'title' | 'content' | 'empty'
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  hits        Int       @default(0)
+  lastHitAt   DateTime?
+
+  @@index([url])
+  @@index([expiresAt])
+  @@map("description_cache")
+}
+
+model AiProviderCredential {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  provider          String
+  encryptionScheme  String   @default("aes-256-gcm")
+  encryptionKeyVersion Int   @default(1)
+  initializationVector String
+  authenticationTag String
+  encryptedSecret   String   @db.Text
+  keyLastFour       String
+  credentialVersion Int      @default(1)
+  status            String   @default("verified")
+  verifiedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiSettings {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  singlePageEnabled     Boolean  @default(true)
+  batchEnabled          Boolean  @default(false)
+  descriptionPropertyId String?
+  tagsPropertyId        String?
+  validatedDataSourceId String?
+  schemaStatus          String   @default("not_configured")
+  schemaValidatedAt     DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiGenerationBatch {
+  id            String   @id @default(cuid())
+  userId        String
+  dataSourceId  String?
+  status        String   @default("awaiting_confirmation")
+  eligibleCount Int      @default(0)
+  confirmedAt   DateTime?
+  skippedAt     DateTime?
+  pausedAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks AiGenerationTask[]
+
+  @@index([userId, status])
+}
+
+model AiGenerationTask {
+  id                       String   @id @default(cuid())
+  userId                   String
+  batchId                  String?
+  knowledgeItemId          String
+  notionPageId             String
+  sourceUrl                String?  @db.Text
+  mode                     String
+  status                   String   @default("queued")
+  reasonCode               String?
+  provider                 String
+  model                    String
+  promptVersion            String
+  credentialVersion        Int
+  descriptionBaselineHash  String?
+  tagsBaselineHash         String?
+  expectedResultHash       String?
+  leaseToken               String?
+  leaseExpiresAt           DateTime?
+  attemptCount             Int      @default(0)
+  nextAttemptAt            DateTime?
+  createdAt                DateTime @default(now())
+  startedAt                DateTime?
+  completedAt              DateTime?
+  updatedAt                DateTime @updatedAt
+
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch       AiGenerationBatch?     @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  diagnostics AiGenerationDiagnostic[]
+
+  @@unique([userId, knowledgeItemId])
+  @@index([status, leaseExpiresAt])
+  @@index([status, nextAttemptAt])
+  @@index([batchId])
+  @@index([userId, status])
+}
+
+model AiGenerationDiagnostic {
+  id                String   @id @default(cuid())
+  taskId            String
+  providerRequestId String?
+  inputTokens       Int?
+  outputTokens      Int?
+  retryCount        Int      @default(0)
+  durationMs        Int?
+  errorCode         String?
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  task AiGenerationTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([taskId])
+}
+
+model AiProviderControl {
+  provider           String   @id
+  status             String   @default("enabled")
+  singlePageEnabled  Boolean  @default(true)
+  batchEnabled       Boolean  @default(true)
+  pausedReason       String?
+  updatedAt          DateTime @updatedAt
+}
+
+model AiFetchDomainLease {
+  domainHash     String
+  slot           Int
+  leaseToken     String?
+  leaseExpiresAt DateTime?
+  nextRequestAt  DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([domainHash, slot])
+  @@index([updatedAt])
+}

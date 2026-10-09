@@ -1,0 +1,3 @@
+dist
+node_modules
+packages/extension/_locales/*/messages.json

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html,
+      body,
+      #root {
+        width: 100%;
+        min-height: 100vh;
+        margin: 0;
+      }
+
+      /* Override the template's flex centering so the root can span full width */
+      body {
+        display: block;
+      }
+    </style>
+    <title>Bookmark Assistant Demo</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../index.css"></script>
+    <script type="module" src="./chrome-mock.ts"></script>
+    <script type="module" src="../options/index.tsx"></script>
+  </body>
+</html>

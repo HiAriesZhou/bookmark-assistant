@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_appName__",
+  "version": "1.4.3",
+  "default_locale": "en",
+  "description": "__MSG_appDesc__",
+  "permissions": [
+    "bookmarks",
+    "readingList",
+    "activeTab",
+    "scripting",
+    "storage",
+    "identity",
+    "alarms",
+    "contextMenus",
+    "favicon"
+  ],
+  "host_permissions": [],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "__MSG_extensionTitle__",
+    "default_icon": {
+      "16": "assets/favicon/favicon-16x16.png",
+      "32": "assets/favicon/favicon-32x32.png",
+      "48": "assets/favicon/favicon-48x48.png",
+      "128": "assets/favicon/android-chrome-512x512.png"
+    }
+  },
+  "icons": {
+    "16": "assets/favicon/favicon-16x16.png",
+    "32": "assets/favicon/favicon-32x32.png",
+    "48": "assets/favicon/favicon-48x48.png",
+    "128": "assets/favicon/android-chrome-512x512.png"
+  },
+  "options_page": "options.html"
+}

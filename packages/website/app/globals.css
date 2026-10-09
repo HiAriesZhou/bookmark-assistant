@@ -1,0 +1,170 @@
+@import './editorial.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --ink: #16181d;
+  --paper: #f6f7f9;
+  --surface: #ffffff;
+  --body: #344054;
+  --subtle: #667085;
+  --line: #e8eaed;
+  --line-strong: #d6dae0;
+  --amber: #f59e0b;
+  --amber-dark: #946200;
+  --amber-soft: #fff8e7;
+  --amber-border: #eed9a2;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--paper);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: "Avenir Next", Avenir, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  font-feature-settings: "kern", "liga", "calt";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #ffefbe;
+  color: #16181d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Optimized Scrollbar Styles */
+* {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Webkit-based browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: rgba(107, 114, 128, 0.7);
+}
+
+/* Dark theme scrollbars */
+@media (prefers-color-scheme: dark) {
+  * {
+    scrollbar-color: rgba(75, 85, 99, 0.6) transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.6);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.8);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background-color: rgba(107, 114, 128, 0.9);
+  }
+}
+
+/* Horizontal scrollbar */
+*::-webkit-scrollbar-horizontal {
+  height: 8px;
+}
+
+*::-webkit-scrollbar-horizontal::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Corner between horizontal and vertical scrollbars */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html, body { height: 100%; }
+
+/* The transactional and legal sections keep their existing behavior while sharing the
+   editorial palette established by the interactive product story above. */
+.editorial-pricing {
+  border-color: #d6d8cf !important;
+  background: #eeede8 !important;
+}
+.editorial-pricing h2,
+.editorial-pricing article:first-of-type,
+.editorial-pricing article:first-of-type p,
+.editorial-pricing article:first-of-type li { color: #29352e !important; }
+.editorial-pricing article { border-color: rgba(113,126,105,.22) !important; border-radius: 18px !important; }
+.editorial-pricing article:first-of-type { background: rgba(249,249,245,.78) !important; box-shadow: 0 18px 48px rgba(55,66,48,.05) !important; }
+.editorial-pricing article:nth-of-type(2) { border-color: #344a3b !important; background: #344a3b !important; box-shadow: 0 22px 60px rgba(47,65,52,.18) !important; }
+.editorial-pricing button[aria-pressed='true'] { background: #344a3b !important; }
+.editorial-pricing svg { color: #78906f; }
+.editorial-pricing article:nth-of-type(2) svg { color: #dce6d5; }
+
+.editorial-faq { background: #f9f9f5 !important; }
+.editorial-faq h2 { color: #29352e !important; }
+.editorial-faq > div > div:last-child { border-color: #dfe2d8 !important; border-radius: 16px !important; background: rgba(255,255,255,.54) !important; }
+.editorial-faq button:hover { color: #4d684d !important; }
+
+.editorial-final-cta { background: #e5e4dd !important; color: #29352e !important; }
+.editorial-final-cta > div:first-child { background: radial-gradient(circle at 50% 110%, rgba(109,132,99,.14), transparent 48%) !important; }
+.editorial-final-cta > div:last-child { color: #29352e !important; }
+.editorial-final-cta p { color: #687065 !important; }
+.editorial-final-cta a { border: 1px solid rgba(90,99,86,.2); border-radius: 12px; background: #f8f9f6 !important; color: #414a40 !important; box-shadow: 0 4px 12px rgba(48,57,42,.05); }
+
+.editorial-footer { border-color: #dce0d4 !important; background: #f9f9f5 !important; }
+.editorial-footer h4,
+.editorial-footer > div > div:first-child > div:first-child span { color: #29352e !important; }
+.editorial-footer a:hover { color: #334f40 !important; }
+.editorial-footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px; text-align: left; }
+.editorial-language { display: flex; align-items: center; gap: 9px; }
+.editorial-language > div { display: flex; gap: 2px; padding: 3px; border: 1px solid #cbd2c2; border-radius: 999px; }
+.editorial-language a { padding: 7px 11px; border-radius: 999px; color: #66715f; font-size: 11px; }
+.editorial-language a[aria-current='page'] { background: #e3e8dc; color: #334c32; }
+@media (max-width: 640px) {
+  .editorial-footer-bottom { align-items: flex-start; flex-direction: column; }
+}

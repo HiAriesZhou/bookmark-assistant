@@ -1,0 +1,18 @@
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/.vercel/
+**/coverage/
+
+# Dependencies
+**/node_modules/
+
+# Generated files
+**/*.config.js
+**/*.config.mjs
+**/*.d.ts
+
+# Large/slow files (if needed, uncomment specific files)
+# packages/server/src/routes/paddle.ts
+# packages/extension/src/lib/paddle.ts

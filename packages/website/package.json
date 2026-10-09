@@ -1,0 +1,44 @@
+{
+  "name": "@bookmark-assistant/website",
+  "version": "1.1.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "predev": "node ../../scripts/prepare-profile-assets.mjs",
+    "dev": "next dev -p 3001",
+    "prebuild": "node ../../scripts/sync-brand-assets.mjs --check && node ../marketing/scripts/copy.mjs --check",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint --dir app --dir components --dir lib",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@bookmark-assistant/shared": "workspace:*",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "liquid-glass-react": "1.1.1",
+    "lucide-react": "^0.546.0",
+    "next": "14.2.10",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "8.57.1",
+    "eslint-config-next": "14.2.10",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "typescript": "^5.9.2"
+  }
+}

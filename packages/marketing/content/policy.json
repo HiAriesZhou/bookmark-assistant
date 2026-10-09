@@ -1,0 +1,24 @@
+{
+  "runtimeLocales": ["en", "zh_CN"],
+  "marketingLocales": ["en", "zh-CN"],
+  "extensionLocaleMap": {
+    "en": "en",
+    "zh-CN": "zh_CN"
+  },
+  "requiredScreenshotIds": [
+    "local-library",
+    "optional-destination",
+    "sync-and-ai-ready",
+    "ai-summary-tags",
+    "pro-auto-sync"
+  ],
+  "forbiddenPublicClaimPatterns": [
+    "automatically organize(s|d)? your bookmarks",
+    "\\bunlimited\\b",
+    "bookmark-assistant-pro",
+    "private repository",
+    "workspace[_ -]?id",
+    "database[_ -]?id",
+    "data source[_ -]?id"
+  ]
+}

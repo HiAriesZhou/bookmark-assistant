@@ -1,0 +1,37 @@
+# Conventional Commits template
+# Docs: https://www.conventionalcommits.org/
+#
+# Format:
+#   <type>(optional scope)!: <subject>
+#
+# Types:
+#   feat, fix, docs, style, refactor, perf, test,
+#   build, ci, chore, revert
+#
+# Common scopes:
+#   extension, server, repo, ui, sync, auth, api, build, deps, release, ci, docs
+#
+# Examples:
+#   feat(extension): add typed messaging bus for content/background
+#   fix(server): handle invalid OAuth redirect edge-case
+#   refactor(ui): split options page into sections
+#   chore(repo)!: remove deprecated shared package
+#   docs: add setup instructions for Notion OAuth
+#
+# Breaking changes:
+#   Include a line starting with "BREAKING CHANGE:" in the body
+#   describing what changed and migration steps.
+#
+# Issue references:
+#   Use "Closes #123" or "Refs #123" in the footer.
+#
+# ---------------- WRITE YOUR MESSAGE BELOW THIS LINE ----------------
+
+# Body (why / how):
+# - Explain motivation, approach, and any trade-offs
+
+# BREAKING CHANGE: <describe breaking change and migration>
+
+# Footer:
+# Closes #
+# Refs #

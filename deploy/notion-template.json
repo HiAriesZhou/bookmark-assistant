@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "description": "Create these properties in your own duplicatable Notion template. This is a blueprint, not an API request.",
+  "properties": {
+    "Name": { "type": "title" },
+    "URL": { "type": "url" },
+    "Source": { "type": "select", "options": ["Bookmark", "ReadingList"] },
+    "Type": { "type": "select", "options": ["Bookmark", "Reading List"] },
+    "Folder": { "type": "rich_text" },
+    "Description": { "type": "rich_text" },
+    "Tags": { "type": "multi_select" },
+    "Date Added": { "type": "date" },
+    "Sync ID": { "type": "rich_text" },
+    "Read State": { "type": "select", "options": ["Unread", "Done"] }
+  }
+}

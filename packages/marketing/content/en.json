@@ -1,0 +1,343 @@
+{
+  "locale": "en",
+  "productName": "Link Library",
+  "extensionName": "Link Library — Local bookmarks & optional sync",
+  "extensionTitle": "Link Library",
+  "shortDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and optionally add AI summaries and tags.",
+  "longDescription": "Manage Chrome bookmarks locally. Connect your own Notion integration for optional sync and AI summaries and tags. Self-hosted deployments include scheduled sync and batch AI without an official subscription. Source code is licensed under GPL-3.0-only. Official hosted services may offer Free and Pro plans.",
+  "releasedClaims": [
+    {
+      "id": "page-metadata",
+      "text": "Search and manage Chrome bookmarks locally, including descriptions and tags.",
+      "plan": "all"
+    },
+    {
+      "id": "manual-sync",
+      "text": "Sync Chrome bookmarks and Reading List to Notion on demand.",
+      "plan": "all"
+    },
+    {
+      "id": "notion-oauth",
+      "text": "Connect securely with managed Notion OAuth.",
+      "plan": "all"
+    },
+    {
+      "id": "duplicate-handling",
+      "text": "Avoid duplicate Notion entries with stable link handling.",
+      "plan": "all"
+    },
+    {
+      "id": "ai-summary-tags",
+      "text": "Use your own AI provider key to generate a concise summary and topic tags for newly saved pages.",
+      "plan": "all"
+    },
+    {
+      "id": "auto-sync",
+      "text": "Run scheduled background sync with Pro.",
+      "plan": "pro"
+    },
+    {
+      "id": "ai-batch",
+      "text": "Run queued AI processing for newly synced pages with Pro.",
+      "plan": "pro"
+    }
+  ],
+  "featureGatedClaims": [],
+  "planLabels": {
+    "free": "Free",
+    "pro": "Pro"
+  },
+  "ctas": {
+    "primary": "Install",
+    "secondary": "View Notion template"
+  },
+  "store": {
+    "marquee": {
+      "headline": "Save the link. Keep the why.",
+      "body": "Search, edit, tag, and organize the Chrome bookmarks you already have.",
+      "meta": "Local library · Optional Notion sync",
+      "productHunt": "Featured on Product Hunt"
+    }
+  },
+  "screenshots": [
+    {
+      "id": "local-library",
+      "headline": "Find the link you know you saved",
+      "body": "Search, tag, edit, move, and clean up Chrome bookmarks in a focused local library.",
+      "status": "released"
+    },
+    {
+      "id": "optional-destination",
+      "headline": "Your library works before you connect anything",
+      "body": "Add Notion as an optional destination when you want an external copy or workflow.",
+      "status": "released"
+    },
+    {
+      "id": "sync-and-ai-ready",
+      "headline": "See what happened after every sync",
+      "body": "Review the Notion result, description checks, and any items ready for batch AI.",
+      "status": "released"
+    },
+    {
+      "id": "ai-summary-tags",
+      "headline": "Remember why a page mattered",
+      "body": "Use your own AI provider to add concise context and useful tags to eligible newly saved pages.",
+      "status": "released"
+    },
+    {
+      "id": "pro-auto-sync",
+      "headline": "Let the routine work happen quietly",
+      "body": "Pro adds scheduled background sync and batch AI for eligible items.",
+      "status": "released",
+      "plan": "pro"
+    }
+  ],
+  "website": {
+    "publication": {
+      "ai": "released"
+    },
+    "capabilities": {
+      "notion-oauth": "released",
+      "manual-sync": "released",
+      "page-metadata": "released",
+      "duplicate-handling": "released",
+      "auto-sync": "released",
+      "ai-summary-tags": "released",
+      "ai-batch": "released"
+    },
+    "metadata": {
+      "baselineTitle": "Link Library — Manage Chrome Bookmarks, Sync to Notion",
+      "baselineDescription": "Manage Chrome bookmarks locally and sync bookmarks and Reading List to Notion when you want—without moving to another bookmark service.",
+      "aiTitle": "Link Library — Manage Chrome Bookmarks, Sync to Notion",
+      "aiDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion when you want, and optionally add AI summaries and tags."
+    },
+    "navigation": {
+      "features": "Library",
+      "howItWorks": "Sync",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "language": "中文"
+    },
+    "hero": {
+      "baselineEyebrow": "LOCAL FIRST · NOTION WHEN YOU WANT",
+      "baselineTitle": "Manage the Chrome bookmarks you already have.",
+      "baselineBody": "Search and organize locally. Sync bookmarks and Reading List to Notion when you want—without moving everything into another bookmark service.",
+      "aiEyebrow": "LOCAL FIRST · NOTION WHEN YOU WANT",
+      "aiTitle": "Manage the Chrome bookmarks you already have.",
+      "aiBody": "Search and organize locally. Sync bookmarks and Reading List to Notion when you want—without moving everything into another bookmark service. AI summaries and tags stay optional.",
+      "benefitsLabel": "Key benefits",
+      "baselineBenefits": [
+        "Local library report",
+        "Secure Notion connection",
+        "Manual sync is free"
+      ],
+      "aiBenefits": ["Your own AI key", "AI won't overwrite your Notion edits"],
+      "imageAlt": "Link Library local Chrome bookmark manager showing search, folders, descriptions, and tags",
+      "imageNote": "Your bookmarks stay in Chrome.",
+      "productHunt": "Featured on Product Hunt · #8 Product of the Day",
+      "productHuntCta": "View launch"
+    },
+    "features": {
+      "eyebrow": "A clearer workflow",
+      "title": "Manage the bookmarks you already have",
+      "body": "Search and organize locally, connect Notion when it helps, and add AI only if you want it.",
+      "items": [
+        {
+          "title": "Local bookmark management",
+          "body": "Search titles, URLs, descriptions, and tags; edit details, move bookmarks between folders, and remove what you no longer need.",
+          "status": "released"
+        },
+        {
+          "title": "Bookmarks + Reading List",
+          "body": "Keep both Chrome sources in place and sync them to Notion through one manual workflow.",
+          "status": "released"
+        },
+        {
+          "title": "Save the current page",
+          "body": "Capture the page you are reading without adding it to Chrome bookmarks first.",
+          "status": "released"
+        },
+        {
+          "title": "Secure Notion connection",
+          "body": "Choose a Notion workspace through OAuth without sharing your Notion password.",
+          "status": "released"
+        },
+        {
+          "title": "Clean Notion entries",
+          "body": "Keep useful page details and avoid duplicate entries when the same link is saved again.",
+          "status": "released"
+        },
+        {
+          "title": "Optional AI summaries + tags",
+          "body": "Add your own provider key before saving to generate a short summary and useful tags.",
+          "status": "released"
+        }
+      ]
+    },
+    "ai": {
+      "eyebrow": "Optional intelligence",
+      "title": "Optionally add summaries and tags",
+      "body": "Enable AI only when you want it. For eligible newly saved public pages, Link Library sends the readable page content needed to create the result to your selected provider.",
+      "points": [
+        "OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, and MiniMax presets",
+        "Your key is encrypted and never shown in full after you save it",
+        "A short summary and 3 to 5 tags are written to Notion once, so later edits stay yours"
+      ],
+      "screenshotAlt": "Link Library enriching a saved page with an AI summary and four useful tags using the user's provider key",
+      "freeLabel": "Free · AI for newly saved pages",
+      "proLabel": "Pro · Batch AI for new sync items"
+    },
+    "how": {
+      "eyebrow": "Your path",
+      "title": "Start local. Connect when ready.",
+      "body": "Manage your Chrome bookmarks first. Connect Notion only when you want an external destination.",
+      "steps": [
+        {
+          "title": "Install the extension",
+          "body": "Add Link Library to Chrome and open the local dashboard.",
+          "status": "released"
+        },
+        {
+          "title": "Manage your library",
+          "body": "Search, edit, tag, move, and clean up Chrome bookmarks without uploading the full library for local analysis.",
+          "status": "released"
+        },
+        {
+          "title": "Connect Notion",
+          "body": "Authorize your workspace and duplicate the Link Library template.",
+          "status": "released"
+        },
+        {
+          "title": "Set up AI before saving",
+          "body": "Free generates AI content for the current page you save. Pro can also batch-process new pages created by a sync. Enable the option you need before saving or syncing.",
+          "status": "released"
+        }
+      ]
+    },
+    "pricing": {
+      "eyebrow": "Plans & pricing",
+      "title": "Start free. Upgrade inside the extension.",
+      "body": "Compare the plans here. Connect Notion and open Billing & Plan in the extension to see the current Pro price and upgrade.",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "bestValue": "Best value",
+      "freeName": "Free",
+      "freeSummary": "Manual sync and page saving",
+      "freeFeatures": [
+        {
+          "title": "Local Bookmark Library Report",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "Manual bookmark and Reading List sync",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "Save the current page",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "AI for pages saved after setup",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "Duplicate handling",
+          "body": "",
+          "status": "released"
+        }
+      ],
+      "proName": "Pro",
+      "proSummary": "Scheduled sync and batch AI",
+      "proFeatures": [
+        {
+          "title": "Everything in Free",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "Scheduled background sync",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "6-hour minimum interval",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "Batch AI for newly synced pages",
+          "body": "",
+          "status": "released"
+        }
+      ],
+      "perYear": "per year",
+      "perMonth": "per month",
+      "priceUnavailable": "Current price is available inside the extension.",
+      "viewPrice": "Install to view price",
+      "upgradeNote": "Connect Notion first, then upgrade from Billing & Plan."
+    },
+    "faq": {
+      "eyebrow": "The details",
+      "title": "Questions before you connect",
+      "items": [
+        {
+          "title": "Do I need to move my bookmarks into Link Library?",
+          "body": "No. Chrome bookmarks remain your source of truth. Link Library reads and edits them through Chrome, and calculates library counts and duplicate groups inside the extension.",
+          "status": "released"
+        },
+        {
+          "title": "Can I save a page without bookmarking it first?",
+          "body": "Yes. Save the page open in your current tab directly to your connected Notion database.",
+          "status": "released"
+        },
+        {
+          "title": "Which pages can use AI, and what is sent?",
+          "body": "AI runs only for newly saved public web pages after you enable it. Excluded, local, and private pages are skipped. For each request, Link Library sends readable page text, the title, a sanitized URL, and the current Description and Tags to your selected provider. It does not keep full page text, raw prompts, or raw responses after processing.",
+          "status": "released"
+        },
+        {
+          "title": "Will AI overwrite my Notion edits?",
+          "body": "No. Finished items are not processed again automatically. If you change the Description in Notion after saving, Link Library leaves it alone.",
+          "status": "released"
+        },
+        {
+          "title": "What happens if AI fails?",
+          "body": "Your Notion save remains complete. AI is a follow-up task and never becomes a dependency of the basic sync.",
+          "status": "released"
+        },
+        {
+          "title": "How does Pro auto-sync work?",
+          "body": "Pro users can enable scheduled background sync with a six-hour minimum interval and turn it off at any time.",
+          "status": "released"
+        },
+        {
+          "title": "What happens if I cancel Pro?",
+          "body": "Your existing Notion data remains, and the Free manual workflow continues to work. Scheduled sync and Pro batch processing pause.",
+          "status": "released"
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Organize the bookmarks you already have.",
+      "body": "Start with your local Chrome library. Connect Notion and add optional AI only when they fit your workflow."
+    },
+    "footer": {
+      "summary": "Local Chrome bookmark management, optional Notion sync, and AI enrichment when you choose it.",
+      "product": "Product",
+      "resources": "Resources",
+      "legal": "Legal",
+      "notionTemplate": "Notion template",
+      "chromeStore": "Chrome Web Store",
+      "support": "Contact support",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service",
+      "refund": "Refund policy",
+      "poweredBy": "Payments powered by",
+      "rights": "All rights reserved."
+    }
+  }
+}

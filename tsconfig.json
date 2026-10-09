@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/types"
+    },
+    {
+      "path": "packages/extension"
+    },
+    {
+      "path": "packages/server"
+    },
+    {
+      "path": "packages/website"
+    }
+  ],
+  "exclude": ["node_modules", "**/node_modules/*", "dist", "**/*.test.ts"]
+}

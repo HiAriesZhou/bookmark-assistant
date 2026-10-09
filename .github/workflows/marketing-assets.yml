@@ -1,0 +1,71 @@
+name: Marketing Assets
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'packages/extension/src/**'
+      - 'packages/extension/_locales/**'
+      - 'packages/marketing/**'
+      - 'packages/shared/**'
+      - 'scripts/sync-brand-assets.mjs'
+      - 'scripts/generate-favicons.mjs'
+      - 'scripts/sync-product-version.mjs'
+      - '.github/workflows/marketing-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Check managed resources
+        run: pnpm resources:check
+
+      - name: Test marketing pipeline
+        run: pnpm -F @bookmark-assistant/marketing test
+
+      - name: Render and validate assets
+        run: |
+          pnpm marketing:render
+          pnpm marketing:validate
+          pnpm marketing:contact-sheet
+
+      - name: Build manual review package
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm marketing:package
+
+      - name: Upload visual review artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: bookmark-assistant-marketing-review
+          path: |
+            packages/marketing/generated/review/contact-sheet.png
+            packages/marketing/generated/candidates/store/marquee.png
+            packages/marketing/generated/manifest.json
+            packages/marketing/generated/bookmark-assistant-chrome-web-store-assets.zip
+          if-no-files-found: warn
+          retention-days: 14

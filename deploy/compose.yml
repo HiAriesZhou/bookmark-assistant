@@ -1,0 +1,36 @@
+services:
+  database:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: bookmark
+      POSTGRES_DB: bookmark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a unique database password}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U bookmark -d bookmark']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - '127.0.0.1:${PORT:-3333}:3333'
+    environment:
+      NODE_ENV: production
+      SELF_HOSTED: 'true'
+      DATABASE_URL: ${DATABASE_URL:?Set the URL-encoded database connection string}
+      JWT_SECRET: ${JWT_SECRET:?Set a unique JWT secret}
+      NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:?Set your Notion OAuth client ID}
+      NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:?Set your Notion OAuth client secret}
+      ALLOWED_EXTENSION_IDS: ${ALLOWED_EXTENSION_IDS:?Set your extension ID}
+      AI_CREDENTIAL_ENCRYPTION_KEYS: ${AI_CREDENTIAL_ENCRYPTION_KEYS:-}
+      AI_CREDENTIAL_ACTIVE_KEY_VERSION: ${AI_CREDENTIAL_ACTIVE_KEY_VERSION:-1}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  database:

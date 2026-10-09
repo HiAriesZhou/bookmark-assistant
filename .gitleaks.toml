@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+# The export manifest contains SHA-256 hashes, not credentials. Both conditions
+# must match; credentials elsewhere, or non-hash values here, remain detectable.
+[[allowlists]]
+description = "Generated source manifest SHA-256 values"
+condition = "AND"
+paths = ['(^|/)source-manifest\.json$']
+regexTarget = "secret"
+regexes = ['^[a-f0-9]{64}$']

@@ -1,0 +1,75 @@
+name: Notify Profile Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Product release tag, for example v1.0.21
+        required: true
+        type: string
+      title:
+        description: Public release title
+        required: false
+        type: string
+      summary:
+        description: Public-safe release summary
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  notify-profile:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_PROFILE_RELEASE_DISPATCH == 'true' }}
+
+    steps:
+      - name: Send sanitized release summary
+        uses: actions/github-script@v7
+        env:
+          PROFILE_REPO_DISPATCH_TOKEN: ${{ secrets.PROFILE_REPO_DISPATCH_TOKEN }}
+          DISPATCH_VERSION: ${{ github.event.release.tag_name || inputs.version }}
+          DISPATCH_TITLE: ${{ github.event.release.name || inputs.title }}
+          DISPATCH_SUMMARY: ${{ inputs.summary }}
+          DISPATCH_PUBLISHED_AT: ${{ github.event.release.published_at }}
+        with:
+          github-token: ${{ secrets.PROFILE_REPO_DISPATCH_TOKEN }}
+          script: |
+            const token = process.env.PROFILE_REPO_DISPATCH_TOKEN;
+            if (!token) {
+              core.setFailed('PROFILE_REPO_DISPATCH_TOKEN is required when profile release dispatch is enabled.');
+              return;
+            }
+
+            const version = process.env.DISPATCH_VERSION;
+            if (!version) {
+              core.setFailed('Release version is required.');
+              return;
+            }
+
+            const title =
+              process.env.DISPATCH_TITLE ||
+              `Bookmark Assistant ${version}`;
+            const summary =
+              process.env.DISPATCH_SUMMARY ||
+              'Bookmark Assistant product release.';
+            const publishedAt =
+              process.env.DISPATCH_PUBLISHED_AT ||
+              new Date().toISOString();
+
+            await github.rest.repos.createDispatchEvent({
+              owner: 'HiAriesZhou',
+              repo: 'HiAriesZhou',
+              event_type: 'bookmark-assistant-release',
+              client_payload: {
+                product: 'Bookmark Assistant',
+                channel: 'open-source',
+                version,
+                title,
+                summary,
+                published_at: publishedAt
+              }
+            });

@@ -1,0 +1,58 @@
+{
+  "name": "@bookmark-assistant/server",
+  "version": "1.4.3",
+  "private": true,
+  "description": "Secure OAuth server for Bookmark Assistant Chrome extension",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "prisma generate && nodemon --exec ts-node src/index.ts",
+    "prebuild": "node ../../scripts/sync-product-version.mjs --check",
+    "build": "pnpm -F @bookmark-assistant/types build && prisma generate && tsc",
+    "start": "node dist/index.js",
+    "test": "cd ../.. && pnpm exec vitest run packages/server/src packages/server/scripts",
+    "clean": "rm -rf dist",
+    "lint": "eslint \"src/**/*.{ts,js}\"",
+    "deploy": "npm run build && node dist/index.js",
+    "vercel-build": "pnpm -F @bookmark-assistant/types build && prisma generate && tsc && node scripts/migrate-deploy.mjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "node scripts/migrate-deploy.mjs",
+    "postinstall": "prisma generate",
+    "cache": "node dist/commands/cache.js"
+  },
+  "keywords": [
+    "oauth",
+    "notion",
+    "chrome-extension",
+    "security"
+  ],
+  "author": "Aries",
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "@bookmark-assistant/types": "workspace:*",
+    "@notionhq/client": "^5.3.0",
+    "@paddle/paddle-node-sdk": "^3.4.0",
+    "@prisma/client": "^6.17.1",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "vercel": "^48.0.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.10.0",
+    "nodemon": "^3.1.10",
+    "prisma": "^6.17.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

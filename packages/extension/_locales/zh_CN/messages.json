@@ -1,0 +1,1242 @@
+{
+  "library_read_failed": {
+    "message": "无法刷新本地书签，请重新加载页面重试。"
+  },
+  "appName": {
+    "message": "Link Library — 本地书签与可选同步",
+    "description": "The name of the extension"
+  },
+  "appDesc": {
+    "message": "本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。",
+    "description": "The description of the extension"
+  },
+  "extensionTitle": {
+    "message": "书签助手",
+    "description": "Short title for the extension action"
+  },
+  "syncNow": {
+    "message": "立即同步",
+    "description": "Button to sync bookmarks"
+  },
+  "connectToNotion": {
+    "message": "连接Notion",
+    "description": "Button to connect to Notion"
+  },
+  "connected": {
+    "message": "已连接",
+    "description": "Status when connected to Notion"
+  },
+  "connecting": {
+    "message": "连接中...",
+    "description": "Status when connecting to Notion"
+  },
+  "disconnect": {
+    "message": "断开连接",
+    "description": "Button to disconnect from Notion"
+  },
+  "lastSync": {
+    "message": "上次同步：",
+    "description": "Label for last sync time"
+  },
+  "never": {
+    "message": "从未",
+    "description": "When sync never happened"
+  },
+  "bookmarks": {
+    "message": "个书签",
+    "description": "Number of bookmarks"
+  },
+  "syncing": {
+    "message": "同步中...",
+    "description": "Status when syncing"
+  },
+  "sync_enrichment_processing": {
+    "message": "正在后台补充描述…",
+    "description": "Status while optional post-sync enrichment is running"
+  },
+  "sync_enrichment_retrying": {
+    "message": "描述补充将在稍后重试",
+    "description": "Status when post-sync enrichment is waiting to retry"
+  },
+  "sync_enrichment_completed": {
+    "message": "已检查 $1 个条目的描述",
+    "description": "Completed post-sync enrichment status"
+  },
+  "sync_enrichment_ai_ready": {
+    "message": "$1 个条目已准备进行批量 AI 处理",
+    "description": "Status when batch AI tasks have been prepared"
+  },
+  "sync_status_items_synced": {
+    "message": "条目已同步到 Notion",
+    "description": "Primary status after base Notion sync completes"
+  },
+  "sync_progress_preparing_sources": {
+    "message": "正在准备书签和阅读清单",
+    "description": "Detail shown while base sync is running"
+  },
+  "sync_progress_label": {
+    "message": "同步进度",
+    "description": "Accessible label for the staged sync progress indicator"
+  },
+  "sync_progress_stage_sync": {
+    "message": "同步",
+    "description": "Base Notion sync stage label"
+  },
+  "sync_progress_stage_descriptions": {
+    "message": "补充描述",
+    "description": "Description enrichment stage label"
+  },
+  "sync_progress_stage_ai": {
+    "message": "AI",
+    "description": "Optional batch AI stage label"
+  },
+  "sync_progress_state_complete": {
+    "message": "已完成",
+    "description": "Accessible completed stage state"
+  },
+  "sync_progress_state_active": {
+    "message": "进行中",
+    "description": "Accessible active stage state"
+  },
+  "sync_progress_state_ready": {
+    "message": "已准备",
+    "description": "Accessible ready stage state"
+  },
+  "sync_progress_state_retrying": {
+    "message": "等待重试",
+    "description": "Accessible retrying stage state"
+  },
+  "sync_progress_state_error": {
+    "message": "需要处理",
+    "description": "Accessible failed stage state"
+  },
+  "sync_progress_state_waiting": {
+    "message": "等待中",
+    "description": "Accessible waiting stage state"
+  },
+  "sync_progress_run_ai": {
+    "message": "运行 AI",
+    "description": "Action that opens AI settings for ready batch work"
+  },
+  "sync_progress_run_ai_title": {
+    "message": "打开 AI 设置并运行待处理条目",
+    "description": "Tooltip for the Run AI action"
+  },
+  "error": {
+    "message": "错误",
+    "description": "Error message prefix"
+  },
+  "success": {
+    "message": "成功",
+    "description": "Success message"
+  },
+  "openOptions": {
+    "message": "打开选项",
+    "description": "Link to open options page"
+  },
+  "free": {
+    "message": "免费版",
+    "description": "Free plan label"
+  },
+  "pro": {
+    "message": "专业版",
+    "description": "Pro plan label"
+  },
+  "upgrade": {
+    "message": "升级",
+    "description": "Button to upgrade to Pro"
+  },
+  "autoSyncEnabled": {
+    "message": "自动同步已启用",
+    "description": "Status when auto-sync is on"
+  },
+  "autoSyncDisabled": {
+    "message": "自动同步已禁用",
+    "description": "Status when auto-sync is off"
+  },
+  "pro_feature_priority_processing": {
+    "message": "优先同步处理",
+    "description": "Pro plan feature"
+  },
+  "dashboard_connection_health": {
+    "message": "连接健康状态"
+  },
+  "dashboard_library_summary": {
+    "message": "内容概览"
+  },
+  "dashboard_sync_status": {
+    "message": "同步状态"
+  },
+  "dashboard_recent_activity": {
+    "message": "最近活动"
+  },
+  "dashboard_connection_checking": {
+    "message": "检查中"
+  },
+  "dashboard_connection_connected": {
+    "message": "连接正常"
+  },
+  "dashboard_connection_degraded": {
+    "message": "需要处理"
+  },
+  "dashboard_connection_disconnected": {
+    "message": "未连接"
+  },
+  "dashboard_workspace_fallback": {
+    "message": "已连接的 Notion 工作区"
+  },
+  "dashboard_database_fallback": {
+    "message": "Bookmark Assistant 数据库"
+  },
+  "dashboard_checked": {
+    "message": "检查于"
+  },
+  "dashboard_check": {
+    "message": "检查连接"
+  },
+  "dashboard_checking": {
+    "message": "检查中..."
+  },
+  "dashboard_bookmarks": {
+    "message": "书签"
+  },
+  "dashboard_reading_list": {
+    "message": "阅读列表"
+  },
+  "dashboard_saved_today": {
+    "message": "今日保存"
+  },
+  "dashboard_duplicates_skipped": {
+    "message": "跳过重复项"
+  },
+  "dashboard_result_success": {
+    "message": "同步成功"
+  },
+  "dashboard_result_no_changes": {
+    "message": "已是最新"
+  },
+  "dashboard_result_partial_failure": {
+    "message": "部分完成"
+  },
+  "dashboard_result_failed": {
+    "message": "同步失败"
+  },
+  "dashboard_result_limited": {
+    "message": "已达限额"
+  },
+  "dashboard_no_sync": {
+    "message": "尚未同步"
+  },
+  "dashboard_last_result": {
+    "message": "最近结果"
+  },
+  "dashboard_last_sync": {
+    "message": "最近同步"
+  },
+  "dashboard_next_sync": {
+    "message": "下次自动同步"
+  },
+  "dashboard_failed_count": {
+    "message": "失败项目"
+  },
+  "dashboard_event_connection_checked": {
+    "message": "已检查连接"
+  },
+  "dashboard_event_sync_started": {
+    "message": "同步已开始"
+  },
+  "dashboard_event_sync_completed": {
+    "message": "同步已完成"
+  },
+  "dashboard_event_save_completed": {
+    "message": "网页已保存"
+  },
+  "dashboard_event_error": {
+    "message": "操作失败"
+  },
+  "dashboard_no_activity": {
+    "message": "首次连接或同步后，活动记录会显示在这里。"
+  },
+  "dashboard_action_required": {
+    "message": "打开设置解决连接问题"
+  },
+  "dashboard_count_completed": {
+    "message": "已完成"
+  },
+  "dashboard_count_skipped": {
+    "message": "已跳过"
+  },
+  "dashboard_count_failed": {
+    "message": "失败"
+  },
+  "operations_workspace_label": {
+    "message": "运营工作区"
+  },
+  "settings_workspace_label": {
+    "message": "设置工作区"
+  },
+  "dashboard_connected_to_notion": {
+    "message": "已连接 Notion"
+  },
+  "dashboard_connection_attention": {
+    "message": "Notion 连接已中断"
+  },
+  "dashboard_not_connected": {
+    "message": "尚未连接 Notion"
+  },
+  "dashboard_authentication_expired": {
+    "message": "身份验证已过期"
+  },
+  "dashboard_error_network": {
+    "message": "网络错误"
+  },
+  "dashboard_error_authentication": {
+    "message": "身份验证已过期"
+  },
+  "dashboard_error_notion_access": {
+    "message": "Notion 访问失败"
+  },
+  "dashboard_error_rate_limit": {
+    "message": "请求频率受限"
+  },
+  "dashboard_error_unknown": {
+    "message": "操作失败"
+  },
+  "dashboard_action_connect": {
+    "message": "连接"
+  },
+  "dashboard_action_reconnect": {
+    "message": "重新连接"
+  },
+  "dashboard_action_retry": {
+    "message": "重试"
+  },
+  "notion_connection_label": {
+    "message": "Notion 连接"
+  },
+  "sync_interval_validation": {
+    "message": "最短同步间隔为 $1 小时。"
+  },
+  "hours_unit": {
+    "message": "小时"
+  },
+  "subscription_free_current": {
+    "message": "免费版 · 当前方案"
+  },
+  "subscription_trial_active": {
+    "message": "Pro 试用 · 使用中"
+  },
+  "subscription_pro_active": {
+    "message": "Pro 方案 · 使用中"
+  },
+  "purchase_type_label": {
+    "message": "购买类型"
+  },
+  "license_label": {
+    "message": "授权"
+  },
+  "license_developer": {
+    "message": "开发者"
+  },
+  "license_gift": {
+    "message": "赠送"
+  },
+  "expiration_label": {
+    "message": "到期时间"
+  },
+  "manage_subscription": {
+    "message": "管理订阅"
+  },
+  "portal_open_failed": {
+    "message": "无法打开订阅管理"
+  },
+  "portal_popup_blocked": {
+    "message": "请允许弹出窗口后重试。"
+  },
+  "view_plans": {
+    "message": "查看方案"
+  },
+  "feature_bookmarks_sync": {
+    "message": "同步书签与阅读列表"
+  },
+  "feature_local_library": {
+    "message": "本地书签管理"
+  },
+  "feature_manual_sync": {
+    "message": "随时手动同步"
+  },
+  "feature_pro_interval": {
+    "message": "最快每 $1 小时自动同步"
+  },
+  "feature_batch_ai": {
+    "message": "为新同步页面批量生成 AI 内容"
+  },
+  "included": {
+    "message": "已包含"
+  },
+  "plan_comparison_title": {
+    "message": "方案对比"
+  },
+  "feature_label": {
+    "message": "功能"
+  },
+  "about_app_name": {
+    "message": "Bookmark Assistant",
+    "description": "App name displayed in about section"
+  },
+  "about_desc": {
+    "message": "关于 Bookmark Assistant",
+    "description": "About section description"
+  },
+  "about_description": {
+    "message": "本地管理 Chrome 书签，并可选同步到 Notion 或使用 AI",
+    "description": "App description in about section"
+  },
+  "about_title": {
+    "message": "关于",
+    "description": "About section title"
+  },
+  "about_version": {
+    "message": "版本 $1",
+    "description": "Version label with placeholder"
+  },
+  "action_cancel": {
+    "message": "取消",
+    "description": "Cancel button"
+  },
+  "action_refresh": {
+    "message": "刷新",
+    "description": "Refresh button"
+  },
+  "action_upgrade_pro": {
+    "message": "升级到 Pro",
+    "description": "Upgrade to Pro button"
+  },
+  "auto_sync_label": {
+    "message": "自动同步",
+    "description": "Auto sync label"
+  },
+  "billing_monthly": {
+    "message": "月付",
+    "description": "Monthly billing"
+  },
+  "billing_yearly": {
+    "message": "年付",
+    "description": "Yearly billing"
+  },
+  "best_value_badge": {
+    "message": "更划算",
+    "description": "Best value badge"
+  },
+  "per_year": {
+    "message": "/ 年",
+    "description": "Per year suffix"
+  },
+  "pro_plan_desc": {
+    "message": "自动同步与批量 AI，让书签库保持有序",
+    "description": "Pro plan description"
+  },
+  "free_plan_desc": {
+    "message": "本地管理与手动同步",
+    "description": "Free plan description"
+  },
+  "confirm_disconnect_message": {
+    "message": "这将移除你的 Notion 工作区连接并清除所有本地设置。",
+    "description": "Confirm disconnect message"
+  },
+  "confirm_disconnect_title": {
+    "message": "断开与 Notion 的连接？",
+    "description": "Confirm disconnect title"
+  },
+  "connection_error_desc": {
+    "message": "连接 Notion 时发生错误。",
+    "description": "Connection error description"
+  },
+  "connection_failed_desc": {
+    "message": "连接 Notion 失败，请重试。",
+    "description": "Connection failed description"
+  },
+  "connection_failed_title": {
+    "message": "连接失败",
+    "description": "Connection failed title"
+  },
+  "connection_success_desc": {
+    "message": "你的 Notion 工作区已成功连接。",
+    "description": "Connection success description"
+  },
+  "contact_support": {
+    "message": "联系支持",
+    "description": "Footer contact support subtitle"
+  },
+  "disconnected_desc": {
+    "message": "Notion 连接已移除。",
+    "description": "Disconnected description"
+  },
+  "disconnected_title": {
+    "message": "已断开连接",
+    "description": "Disconnected title"
+  },
+  "documentation": {
+    "message": "文档",
+    "description": "Link to documentation"
+  },
+  "error_checkout_failed": {
+    "message": "无法打开结账页面",
+    "description": "Error: checkout failed"
+  },
+  "error_save_settings_failed": {
+    "message": "无法保存同步设置",
+    "description": "Error: failed to save settings"
+  },
+  "faq_guide": {
+    "message": "常见问题与指南",
+    "description": "Footer FAQ section title"
+  },
+  "header_title": {
+    "message": "Bookmark Assistant",
+    "description": "Header app title"
+  },
+  "last_updated": {
+    "message": "最后更新",
+    "description": "Last updated label"
+  },
+  "license": {
+    "message": "许可证",
+    "description": "License label"
+  },
+  "license_mit": {
+    "message": "MIT",
+    "description": "MIT license"
+  },
+  "linked_email_label": {
+    "message": "关联邮箱",
+    "description": "Linked email label"
+  },
+  "loading": {
+    "message": "加载中…",
+    "description": "Loading indicator"
+  },
+  "made_with_love": {
+    "message": "为使用 Chrome 书签的人用 $1 制作",
+    "description": "Made with love message"
+  },
+  "nav_connection": {
+    "message": "连接",
+    "description": "Navigation: Connection section"
+  },
+  "nav_sync_settings": {
+    "message": "同步",
+    "description": "Navigation: Sync settings section"
+  },
+  "next_billing_date_label": {
+    "message": "下次账单日期",
+    "description": "Next billing date label"
+  },
+  "no_email_linked": {
+    "message": "未关联邮箱",
+    "description": "No email linked"
+  },
+  "payment_activating_desc": {
+    "message": "正在激活你的 Pro 方案…",
+    "description": "Payment activating description"
+  },
+  "payment_success_title": {
+    "message": "付款成功！",
+    "description": "Payment success title"
+  },
+  "per_month": {
+    "message": "/ 月",
+    "description": "Per month suffix"
+  },
+  "popup_connect_to_notion": {
+    "message": "连接 Notion",
+    "description": "Popup connect button"
+  },
+  "popup_connecting": {
+    "message": "连接中…",
+    "description": "Popup connecting status"
+  },
+  "popup_last_sync": {
+    "message": "上次同步",
+    "description": "Popup last sync label"
+  },
+  "popup_not_connected": {
+    "message": "未连接",
+    "description": "Popup not connected status"
+  },
+  "popup_settings_billing": {
+    "message": "设置与账单",
+    "description": "Popup settings button"
+  },
+  "popup_syncing": {
+    "message": "同步中…",
+    "description": "Popup syncing status"
+  },
+  "popup_ai_generating": {
+    "message": "页面已保存，正在生成 AI 摘要和标签…",
+    "description": "基础保存成功后 AI 正在处理时的 Popup 状态"
+  },
+  "popup_ai_succeeded": {
+    "message": "页面已保存，AI 摘要和标签已写入。",
+    "description": "当前页面 AI 成功时的 Popup 状态"
+  },
+  "popup_ai_skipped": {
+    "message": "页面已保存，但可读正文过少，已跳过 AI 生成。",
+    "description": "当前页面 AI 因内容不足跳过时的 Popup 状态"
+  },
+  "popup_ai_not_started": {
+    "message": "页面已保存，但 AI 未启动；请在“选项”的最近处理中查看状态。",
+    "description": "当前页面 AI 无法启动或失败时的 Popup 状态"
+  },
+  "popup_title": {
+    "message": "Bookmark Assistant",
+    "description": "Popup header title"
+  },
+  "popup_library": {
+    "message": "书签库",
+    "description": "打开本地书签库的 Popup 入口"
+  },
+  "popup_bookmark_count": {
+    "message": "$1 个书签",
+    "description": "本地书签库中的书签数量"
+  },
+  "popup_open_settings": {
+    "message": "打开设置",
+    "description": "Popup 设置按钮的无障碍标签"
+  },
+  "popup_synced_at": {
+    "message": "$1同步",
+    "description": "Destination 最近同步的相对时间"
+  },
+  "popup_destination_unavailable": {
+    "message": "暂时不可用",
+    "description": "服务不可达时的 Destination 状态"
+  },
+  "library_more_tags": {
+    "message": "另外 $1 个标签",
+    "description": "书签列表行中未展开标签数量的无障碍说明"
+  },
+  "privacy": {
+    "message": "隐私",
+    "description": "Privacy link text"
+  },
+  "pro_activated_desc": {
+    "message": "Pro 功能已就绪",
+    "description": "Pro activated description"
+  },
+  "pro_activated_title": {
+    "message": "Pro 已激活",
+    "description": "Pro activated title"
+  },
+  "refreshing": {
+    "message": "刷新中…",
+    "description": "Refreshing indicator"
+  },
+  "report_issue": {
+    "message": "报告问题",
+    "description": "Link to report issues"
+  },
+  "saveCurrentPage": {
+    "message": "保存当前页面",
+    "description": "Button to save current page to Notion"
+  },
+  "saveSuccess": {
+    "message": "页面已保存到 Notion",
+    "description": "页面保存成功时的提示"
+  },
+  "saving": {
+    "message": "保存中…",
+    "description": "Status when saving page"
+  },
+  "subscription_management_title": {
+    "message": "订阅方案",
+    "description": "Subscription management title"
+  },
+  "support": {
+    "message": "支持",
+    "description": "Support button text"
+  },
+  "sync_interval_label": {
+    "message": "同步间隔",
+    "description": "Sync interval label"
+  },
+  "sync_interval_min": {
+    "message": "最短：$1 小时",
+    "description": "Sync interval minimum"
+  },
+  "terms": {
+    "message": "条款",
+    "description": "Terms of service link text"
+  },
+  "upgrade_requires_connection": {
+    "message": "升级前请先连接 Notion。",
+    "description": "Upgrade requires connection"
+  },
+  "version_label": {
+    "message": "版本",
+    "description": "Version label"
+  },
+  "view_on_github": {
+    "message": "在 GitHub 上查看",
+    "description": "Link to GitHub"
+  },
+  "product_website": {
+    "message": "产品官网",
+    "description": "Link to the Bookmark Assistant product website"
+  },
+  "library_report_title": {
+    "message": "一眼了解你的书签库"
+  },
+  "destination_title": {
+    "message": "目标位置"
+  },
+  "destination_target_label": {
+    "message": "目标"
+  },
+  "destination_not_configured": {
+    "message": "尚未配置"
+  },
+  "library_section_title": {
+    "message": "资料库"
+  },
+  "library_total_items": {
+    "message": "项目总数"
+  },
+  "library_local_explanation": {
+    "message": "在 Chrome 中本地计算"
+  },
+  "sync_status_connect_destination": {
+    "message": "连接目标位置以开始同步"
+  },
+  "sync_status_up_to_date": {
+    "message": "所有内容均为最新"
+  },
+  "sync_status_last_sync_completed": {
+    "message": "上次同步已完成"
+  },
+  "library_health_title": {
+    "message": "资料库健康度"
+  },
+  "library_health_duplicates_found": {
+    "message": "重复书签需要检查"
+  },
+  "library_health_duplicates_guidance": {
+    "message": "方便时在 Chrome 中移除多余副本，让后续同步保持整洁。"
+  },
+  "library_health_duplicates_clear": {
+    "message": "未发现重复链接组"
+  },
+  "library_health_duplicates_clear_detail": {
+    "message": "Chrome 书签中的网址均不重复。"
+  },
+  "library_report_intro": {
+    "message": "报告只在此设备上根据 Chrome 书签库计算，书签内容不会因这份报告离开浏览器。"
+  },
+  "library_report_local_badge": {
+    "message": "仅本地"
+  },
+  "library_report_bookmarks": {
+    "message": "书签"
+  },
+  "library_report_folders": {
+    "message": "你的文件夹"
+  },
+  "library_report_reading_list": {
+    "message": "阅读清单"
+  },
+  "library_report_duplicate_groups": {
+    "message": "重复链接组"
+  },
+  "library_report_duplicate_extra": {
+    "message": "个多余副本"
+  },
+  "library_report_uncategorized": {
+    "message": "顶层"
+  },
+  "library_report_largest_folder": {
+    "message": "最大文件夹"
+  },
+  "library_report_estimated_sync": {
+    "message": "个预计可同步的本地项目"
+  },
+  "library_report_connect_hint": {
+    "message": "准备好整理书签库时，再连接 Notion。"
+  },
+  "library_report_connected_hint": {
+    "message": "Notion 连接已准备好进行下一次同步。"
+  },
+  "library_report_loading": {
+    "message": "正在计算本地书签库报告"
+  },
+  "primary_navigation": {
+    "message": "主导航"
+  },
+  "nav_library": {
+    "message": "资料库"
+  },
+  "nav_organize": {
+    "message": "整理"
+  },
+  "nav_destinations": {
+    "message": "同步目标"
+  },
+  "nav_settings": {
+    "message": "设置"
+  },
+  "library_eyebrow": {
+    "message": "本地资料库"
+  },
+  "library_page_title": {
+    "message": "我的书签库"
+  },
+  "library_search_placeholder": {
+    "message": "搜索标题、网址、描述或标签…"
+  },
+  "library_local_ready": {
+    "message": "本地资料库已就绪"
+  },
+  "library_local_refresh_failed_short": {
+    "message": "本地刷新需要处理"
+  },
+  "library_local_sidebar_hint": {
+    "message": "书签管理无需连接账户。标签与描述保存在这台设备。"
+  },
+  "library_smart_views": {
+    "message": "智能视图"
+  },
+  "library_all": {
+    "message": "全部"
+  },
+  "library_recent": {
+    "message": "最近添加"
+  },
+  "library_untagged": {
+    "message": "待添加标签"
+  },
+  "library_duplicates": {
+    "message": "重复"
+  },
+  "library_folders": {
+    "message": "文件夹"
+  },
+  "library_frequent_tags": {
+    "message": "常用标签"
+  },
+  "library_filter": {
+    "message": "过滤"
+  },
+  "library_filter_tags": {
+    "message": "标签"
+  },
+  "library_sort": {
+    "message": "排序"
+  },
+  "library_sort_newest": {
+    "message": "最新"
+  },
+  "library_sort_oldest": {
+    "message": "最早"
+  },
+  "library_sort_az": {
+    "message": "A–Z"
+  },
+  "library_sort_za": {
+    "message": "Z–A"
+  },
+  "library_result_count": {
+    "message": "$1 项"
+  },
+  "library_refresh": {
+    "message": "刷新"
+  },
+  "library_refresh_duplicates": {
+    "message": "刷新重复书签结果"
+  },
+  "library_empty_title": {
+    "message": "没有找到匹配的书签"
+  },
+  "library_empty_hint": {
+    "message": "试试更短的关键词，或清除当前筛选条件。"
+  },
+  "library_load_more": {
+    "message": "加载更多"
+  },
+  "library_select_bookmark": {
+    "message": "选择一条书签"
+  },
+  "library_select_bookmark_hint": {
+    "message": "这里会显示 Chrome 字段和本地元信息。"
+  },
+  "library_bookmark_details": {
+    "message": "详情"
+  },
+  "library_open_bookmark": {
+    "message": "打开书签"
+  },
+  "library_delete_bookmark": {
+    "message": "删除"
+  },
+  "library_expand_folder": {
+    "message": "展开 $1"
+  },
+  "library_collapse_folder": {
+    "message": "折叠 $1"
+  },
+  "library_rename_bookmark": {
+    "message": "重命名书签"
+  },
+  "library_duplicate_removed_kept": {
+    "message": "已删除一条重复书签，保留项会继续显示，直到你刷新列表。"
+  },
+  "library_duplicate_kept_badge": {
+    "message": "保留项"
+  },
+  "library_field_title": {
+    "message": "标题"
+  },
+  "library_field_url": {
+    "message": "网址"
+  },
+  "library_field_description": {
+    "message": "描述"
+  },
+  "library_field_tags": {
+    "message": "标签"
+  },
+  "library_field_folder": {
+    "message": "文件夹"
+  },
+  "library_local_only": {
+    "message": "仅保存在本地"
+  },
+  "library_tag_separator_hint": {
+    "message": "使用逗号分隔"
+  },
+  "library_add_tag": {
+    "message": "添加标签…"
+  },
+  "library_remove_tag": {
+    "message": "移除 $1"
+  },
+  "library_tag_limit_error": {
+    "message": "最多使用 20 个标签，每个不超过 40 个字符。"
+  },
+  "library_save_changes": {
+    "message": "保存更改"
+  },
+  "library_saved_locally": {
+    "message": "更改已保存在本地"
+  },
+  "library_saved_older_changes": {
+    "message": "较早的更改已保存，之后的编辑仍未保存。"
+  },
+  "library_discard_changes_confirm": {
+    "message": "放弃尚未保存的更改吗？"
+  },
+  "library_save_failed": {
+    "message": "无法保存更改，当前草稿仍然保留。"
+  },
+  "library_delete_confirm_title": {
+    "message": "删除这条书签？"
+  },
+  "library_delete_quick_confirm": {
+    "message": "删除？"
+  },
+  "library_delete_quick_description": {
+    "message": "这会删除对应的 Chrome 书签。"
+  },
+  "library_delete_confirm": {
+    "message": "“$1”将从 Chrome 中移除，且无法恢复。"
+  },
+  "library_delete_failed": {
+    "message": "Chrome 无法删除这条书签，本地元信息没有被移除。"
+  },
+  "library_original_source": {
+    "message": "原始书签"
+  },
+  "library_external_sync": {
+    "message": "外部同步"
+  },
+  "library_destination_managed_separately": {
+    "message": "在同步目标中管理"
+  },
+  "library_view_all": {
+    "message": "查看全部 →"
+  },
+  "organize_eyebrow": {
+    "message": "资料库健康度"
+  },
+  "organize_title": {
+    "message": "让资料库保持轻盈"
+  },
+  "organize_description": {
+    "message": "从明确的小任务开始整理。所有检查都在本地进行，你决定哪些内容需要改变。"
+  },
+  "organize_review_duplicates": {
+    "message": "查看重复书签"
+  },
+  "organize_review_duplicates_hint": {
+    "message": "相同网址出现在多个位置"
+  },
+  "organize_add_tags": {
+    "message": "补充标签"
+  },
+  "organize_add_tags_hint": {
+    "message": "让跨文件夹查找更容易"
+  },
+  "organize_loose_bookmarks": {
+    "message": "整理散落书签"
+  },
+  "organize_loose_bookmarks_hint": {
+    "message": "移动到合适的 Chrome 文件夹"
+  },
+  "organize_duplicate_groups": {
+    "message": "最近发现的重复项"
+  },
+  "organize_locations": {
+    "message": "$1 个位置"
+  },
+  "destinations_eyebrow": {
+    "message": "同步目标"
+  },
+  "destinations_page_title": {
+    "message": "把书签送到你选择的地方"
+  },
+  "destinations_page_description": {
+    "message": "本地资料库始终可以独立使用。需要外部副本或工作流时，再连接同步目标。"
+  },
+  "destinations_add": {
+    "message": "添加同步目标"
+  },
+  "destination_actions": {
+    "message": "同步目标操作"
+  },
+  "destination_sync_action": {
+    "message": "同步"
+  },
+  "destinations_coming_later": {
+    "message": "更多同步目标仍在规划"
+  },
+  "destinations_local_independent": {
+    "message": "本地保存与外部同步相互独立"
+  },
+  "destinations_local_independent_hint": {
+    "message": "目标断开或同步失败不会删除 Chrome 书签、本地标签或描述。"
+  },
+  "settings_eyebrow": {
+    "message": "偏好设置"
+  },
+  "settings_page_description": {
+    "message": "管理 AI、同步频率、账户与计划。各同步目标的配置保留在对应目标页面。"
+  },
+  "ai_provider_label": {
+    "message": "服务商"
+  },
+  "ai_model_label": {
+    "message": "模型"
+  },
+  "ai_model_managed_default": {
+    "message": "默认模型"
+  },
+  "ai_api_key_label": {
+    "message": "API Key"
+  },
+  "ai_key_verified": {
+    "message": "已验证 · ••••$1"
+  },
+  "ai_key_draft": {
+    "message": "请保存并验证此 Key。"
+  },
+  "ai_key_provider_needs_new": {
+    "message": "此服务商需要新的 Key。"
+  },
+  "ai_key_replace": {
+    "message": "请替换并验证已保存的 Key。"
+  },
+  "ai_key_privacy_hint": {
+    "message": "运行 AI 时，页面内容会发送给该服务商。"
+  },
+  "ai_key_placeholder": {
+    "message": "粘贴 API Key"
+  },
+  "ai_key_placeholder_provider": {
+    "message": "粘贴此服务商的 Key"
+  },
+  "ai_key_placeholder_replace": {
+    "message": "粘贴新 Key 以替换"
+  },
+  "ai_key_remove": {
+    "message": "移除已保存的 Key"
+  },
+  "ai_key_save": {
+    "message": "保存并验证 API Key"
+  },
+  "ai_key_verifying": {
+    "message": "正在验证 API Key"
+  },
+  "ai_batch_label": {
+    "message": "批量生成"
+  },
+  "ai_batch_progress": {
+    "message": "已处理 $1 · 剩余 $2"
+  },
+  "ai_batch_checking": {
+    "message": "正在检查待处理条目"
+  },
+  "ai_batch_check_failed": {
+    "message": "无法检查任务"
+  },
+  "ai_batch_save_first": {
+    "message": "请先保存并验证更改"
+  },
+  "ai_batch_needs_key": {
+    "message": "验证 API Key 后即可生成"
+  },
+  "ai_batch_ready_retry": {
+    "message": "$1 条待生成 · $2 条待重试"
+  },
+  "ai_batch_ready_one": {
+    "message": "1 条待生成"
+  },
+  "ai_batch_ready_other": {
+    "message": "$1 条待生成"
+  },
+  "ai_batch_retry_one": {
+    "message": "1 条待重试"
+  },
+  "ai_batch_retry_other": {
+    "message": "$1 条待重试"
+  },
+  "ai_batch_scheduled_one": {
+    "message": "1 条稍后重试"
+  },
+  "ai_batch_scheduled_other": {
+    "message": "$1 条稍后重试"
+  },
+  "ai_batch_processing_one": {
+    "message": "1 条处理中"
+  },
+  "ai_batch_processing_other": {
+    "message": "$1 条处理中"
+  },
+  "ai_batch_blocked_one": {
+    "message": "1 条需要处理"
+  },
+  "ai_batch_blocked_other": {
+    "message": "$1 条需要处理"
+  },
+  "ai_batch_none": {
+    "message": "没有待处理条目"
+  },
+  "ai_batch_retry_check": {
+    "message": "重新检查任务"
+  },
+  "ai_batch_retry": {
+    "message": "重试"
+  },
+  "ai_batch_generate": {
+    "message": "生成"
+  },
+  "ai_history": {
+    "message": "记录"
+  },
+  "ai_history_empty": {
+    "message": "暂无处理记录"
+  },
+  "ai_toast_key_verified": {
+    "message": "AI Key 已验证。"
+  },
+  "ai_toast_key_removed": {
+    "message": "AI API Key 已移除。"
+  },
+  "ai_toast_generated_one": {
+    "message": "已为 1 条生成 AI 内容。"
+  },
+  "ai_toast_generated_other": {
+    "message": "已为 $1 条生成 AI 内容。"
+  },
+  "ai_toast_remaining": {
+    "message": "剩余 $1 条"
+  },
+  "ai_toast_batch_queued": {
+    "message": "批量任务已加入队列。"
+  },
+  "ai_toast_no_pending": {
+    "message": "没有待处理的 AI 条目。"
+  },
+  "ai_outcome_skipped": {
+    "message": "部分条目已跳过，详情见处理记录。"
+  },
+  "ai_outcome_needs_action": {
+    "message": "AI 需要处理后才能继续。"
+  },
+  "ai_outcome_failed": {
+    "message": "AI 服务商请求失败，请稍后重试。"
+  },
+  "ai_outcome_none": {
+    "message": "未生成 AI 内容。"
+  },
+  "ai_error_key_save": {
+    "message": "无法保存 AI Key。"
+  },
+  "ai_error_key_remove": {
+    "message": "无法移除 AI API Key。"
+  },
+  "ai_error_batch_save": {
+    "message": "无法保存批量设置。"
+  },
+  "ai_error_batch_run": {
+    "message": "无法运行批量 AI。"
+  },
+  "ai_error_history": {
+    "message": "无法加载处理记录。"
+  },
+  "ai_reason_source_unavailable": {
+    "message": "来源不可用"
+  },
+  "ai_reason_fetch_disallowed": {
+    "message": "网站禁止处理"
+  },
+  "ai_reason_unsupported_type": {
+    "message": "不支持的页面类型"
+  },
+  "ai_reason_insufficient_content": {
+    "message": "可读内容不足"
+  },
+  "ai_reason_user_modified": {
+    "message": "描述已被编辑"
+  },
+  "ai_reason_reconnect_notion": {
+    "message": "请重新连接 Notion"
+  },
+  "ai_reason_notion_schema": {
+    "message": "请恢复 Description 和 Tags 属性"
+  },
+  "ai_reason_add_key": {
+    "message": "请添加 AI Key"
+  },
+  "ai_reason_replace_key": {
+    "message": "请替换 AI Key"
+  },
+  "ai_reason_quota": {
+    "message": "AI 服务商额度已用完"
+  },
+  "ai_reason_model_access": {
+    "message": "无法访问模型"
+  },
+  "ai_reason_provider_failed": {
+    "message": "AI 服务商请求失败"
+  },
+  "ai_reason_invalid_output": {
+    "message": "AI 返回结果不可用"
+  },
+  "ai_reason_notion_write": {
+    "message": "无法更新 Notion"
+  },
+  "ai_reason_provider_paused": {
+    "message": "AI 服务商暂时停用"
+  },
+  "deployment_self_hosted": {
+    "message": "自托管 · 全部功能可用"
+  }
+}

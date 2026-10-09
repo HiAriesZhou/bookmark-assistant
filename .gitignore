@@ -1,0 +1,99 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+.pnpm-store
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+dist-ssr
+build
+out
+.next
+.next-*
+.vercel
+
+# TypeScript
+**/*.tsbuildinfo
+**/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Cache directories
+.cache
+.parcel-cache
+.turbo
+.vite
+.eslintcache
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# Environment variables
+.env
+.env.*
+!.env.example
+.env.*.local
+
+# Chrome extension
+*.crx
+*.pem
+*.zip
+
+# Temporary files
+.temp
+.tmp
+*.tmp
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Testing
+coverage
+.nyc_output
+*.lcov
+
+# Debug
+.vscode/launch.json
+
+# Husky (git hooks should be committed)
+# .husky/ is commented out - we want to commit hooks
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# Deterministic marketing renders and review packages
+packages/marketing/generated/
+.official-assets/
+.build/
+packages/website/public/product/
+packages/website/.product/
+packages/extension/dist-community/
+packages/extension/dist-official/

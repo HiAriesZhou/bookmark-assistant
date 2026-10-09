@@ -1,0 +1,339 @@
+{
+  "locale": "zh-CN",
+  "productName": "Link Library",
+  "extensionName": "Link Library — 本地书签与可选同步",
+  "extensionTitle": "书签助手",
+  "shortDescription": "本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。",
+  "longDescription": "在本地管理 Chrome 书签。连接自己的 Notion 集成，按需同步并生成 AI 摘要与标签。自托管包含自动同步和批量 AI，无需官方订阅。源代码采用 GPL-3.0-only；官方托管服务可以提供 Free 和 Pro 套餐。",
+  "releasedClaims": [
+    {
+      "id": "page-metadata",
+      "text": "在本地搜索和管理 Chrome 书签，包括描述与标签。",
+      "plan": "all"
+    },
+    {
+      "id": "manual-sync",
+      "text": "按需将 Chrome 书签和阅读清单同步到 Notion。",
+      "plan": "all"
+    },
+    {
+      "id": "notion-oauth",
+      "text": "通过托管的 Notion OAuth 安全连接。",
+      "plan": "all"
+    },
+    {
+      "id": "duplicate-handling",
+      "text": "通过稳定的链接处理避免重复的 Notion 条目。",
+      "plan": "all"
+    },
+    {
+      "id": "ai-summary-tags",
+      "text": "使用自己的 AI 服务商 Key，为新保存的页面生成简洁摘要和主题标签。",
+      "plan": "all"
+    },
+    {
+      "id": "auto-sync",
+      "text": "使用 Pro 定时在后台同步。",
+      "plan": "pro"
+    },
+    {
+      "id": "ai-batch",
+      "text": "使用 Pro 为新同步页面运行待处理的 AI 生成。",
+      "plan": "pro"
+    }
+  ],
+  "featureGatedClaims": [],
+  "planLabels": {
+    "free": "免费版",
+    "pro": "Pro"
+  },
+  "ctas": {
+    "primary": "安装",
+    "secondary": "查看 Notion 模板"
+  },
+  "store": {
+    "marquee": {
+      "headline": "让收藏，有下文。",
+      "body": "搜索、编辑、加标签，并整理你已经拥有的 Chrome 书签。",
+      "meta": "本地资料库 · 可选 Notion 同步",
+      "productHunt": "Product Hunt 推荐产品"
+    }
+  },
+  "screenshots": [
+    {
+      "id": "local-library",
+      "headline": "找回那个你明明收藏过的页面",
+      "body": "在专注的本地书签库中搜索、加标签、编辑、移动和清理 Chrome 书签。",
+      "status": "released"
+    },
+    {
+      "id": "optional-destination",
+      "headline": "不连接任何服务，也能先整理起来",
+      "body": "需要外部副本或工作流时，再把 Notion 添加为可选同步目标。",
+      "status": "released"
+    },
+    {
+      "id": "sync-and-ai-ready",
+      "headline": "每次同步之后，结果都清清楚楚",
+      "body": "查看 Notion 同步结果、描述检查，以及准备进行批量 AI 的条目。",
+      "status": "released"
+    },
+    {
+      "id": "ai-summary-tags",
+      "headline": "记住一个页面为什么值得收藏",
+      "body": "使用自己的 AI 服务商，为符合条件的新保存页面补充简洁说明和实用标签。",
+      "status": "released"
+    },
+    {
+      "id": "pro-auto-sync",
+      "headline": "让重复工作安静地自动完成",
+      "body": "Pro 提供定时后台同步，以及针对符合条件条目的批量 AI。",
+      "status": "released",
+      "plan": "pro"
+    }
+  ],
+  "website": {
+    "publication": {
+      "ai": "released"
+    },
+    "capabilities": {
+      "notion-oauth": "released",
+      "manual-sync": "released",
+      "page-metadata": "released",
+      "duplicate-handling": "released",
+      "auto-sync": "released",
+      "ai-summary-tags": "released",
+      "ai-batch": "released"
+    },
+    "metadata": {
+      "baselineTitle": "Link Library — 本地管理 Chrome 书签，按需同步到 Notion",
+      "baselineDescription": "在本地管理 Chrome 书签，需要时将书签与阅读清单同步到 Notion，无需迁移到另一套书签服务。",
+      "aiTitle": "Link Library — 本地管理 Chrome 书签，按需同步到 Notion",
+      "aiDescription": "在本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。"
+    },
+    "navigation": {
+      "features": "书签库",
+      "howItWorks": "同步",
+      "pricing": "价格",
+      "faq": "常见问题",
+      "language": "English"
+    },
+    "hero": {
+      "baselineEyebrow": "本地优先 · 按需连接 NOTION",
+      "baselineTitle": "管理已有的 Chrome 书签。",
+      "baselineBody": "在本地搜索和整理，需要时再把书签与阅读清单同步到 Notion，无需搬进另一套书签服务。",
+      "aiEyebrow": "本地优先 · 按需连接 NOTION",
+      "aiTitle": "管理已有的 Chrome 书签。",
+      "aiBody": "在本地搜索和整理，需要时再把书签与阅读清单同步到 Notion，无需搬进另一套书签服务。AI 摘要与标签保持可选。",
+      "benefitsLabel": "核心价值",
+      "baselineBenefits": ["本地书签报告", "安全连接 Notion", "手动同步免费"],
+      "aiBenefits": ["使用自己的 AI Key", "AI 不覆盖后续 Notion 修改"],
+      "imageAlt": "Link Library 本地 Chrome 书签管理界面，展示搜索、文件夹、描述与标签",
+      "imageNote": "书签仍保留在 Chrome。",
+      "productHunt": "Product Hunt 当日第 8 名",
+      "productHuntCta": "查看发布页"
+    },
+    "features": {
+      "eyebrow": "更清晰的工作流",
+      "title": "管理你已经拥有的书签",
+      "body": "先在本地搜索和整理，需要时再连接 Notion，是否使用 AI 由你决定。",
+      "items": [
+        {
+          "title": "本地书签管理",
+          "body": "搜索标题、网址、描述与标签；编辑详情、移动文件夹，并删除不再需要的书签。",
+          "status": "released"
+        },
+        {
+          "title": "书签 + 阅读清单",
+          "body": "两类 Chrome 收藏继续保留在原处，并通过同一个手动流程同步到 Notion。",
+          "status": "released"
+        },
+        {
+          "title": "保存当前页面",
+          "body": "无需先加入 Chrome 书签，直接保存正在阅读的页面。",
+          "status": "released"
+        },
+        {
+          "title": "安全连接 Notion",
+          "body": "通过 OAuth 选择 Notion 工作区，无需提供 Notion 密码。",
+          "status": "released"
+        },
+        {
+          "title": "整洁的 Notion 条目",
+          "body": "保留实用页面信息，同一个链接再次保存时也不会重复创建。",
+          "status": "released"
+        },
+        {
+          "title": "可选 AI 摘要与标签",
+          "body": "保存前添加自己的服务商 Key，即可生成简短摘要和实用标签。",
+          "status": "released"
+        }
+      ]
+    },
+    "ai": {
+      "eyebrow": "可选的智能增强",
+      "title": "按需添加摘要与标签",
+      "body": "只在需要时启用 AI。对于符合条件的新保存公开网页，Link Library 会把生成结果所需的可读内容发送给你选择的服务商。",
+      "points": [
+        "支持 OpenAI、Anthropic、Google Gemini、DeepSeek、Groq 和 MiniMax 预设",
+        "服务商 Key 会加密保存，保存后不会再次完整显示",
+        "简短摘要和 3 至 5 个标签只写入 Notion 一次，之后的修改不会被覆盖"
+      ],
+      "screenshotAlt": "Link Library 使用用户自己的服务商 Key，为保存的页面生成 AI 摘要和四个实用标签",
+      "freeLabel": "免费版 · 为新保存页面生成 AI 内容",
+      "proLabel": "Pro · 批量处理本次同步的新条目"
+    },
+    "how": {
+      "eyebrow": "使用路径",
+      "title": "从本地开始，准备好后再连接。",
+      "body": "先管理 Chrome 书签，只有需要外部目标时再连接 Notion。",
+      "steps": [
+        {
+          "title": "安装扩展",
+          "body": "把 Link Library 添加到 Chrome 并打开本地总览。",
+          "status": "released"
+        },
+        {
+          "title": "管理书签库",
+          "body": "搜索、编辑、加标签、移动和清理 Chrome 书签；本地分析无需上传完整书签库。",
+          "status": "released"
+        },
+        {
+          "title": "连接 Notion",
+          "body": "授权目标工作区，并复制 Link Library 模板。",
+          "status": "released"
+        },
+        {
+          "title": "先设置 AI，再保存",
+          "body": "免费版可为你保存的当前页面生成 AI 内容；Pro 还可批量处理同步产生的新页面。请在保存或同步前开启对应功能。",
+          "status": "released"
+        }
+      ]
+    },
+    "pricing": {
+      "eyebrow": "计划与价格",
+      "title": "免费开始，在扩展内升级。",
+      "body": "在这里比较不同计划。连接 Notion 后，请在扩展的“账单与计划”中查看当前 Pro 价格并升级。",
+      "monthly": "按月",
+      "yearly": "按年",
+      "bestValue": "更划算",
+      "freeName": "免费版",
+      "freeSummary": "手动同步与保存页面",
+      "freeFeatures": [
+        {
+          "title": "本地 Bookmark Library Report",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "手动同步书签与阅读清单",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "保存当前页面",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "为完成设置后保存的页面生成 AI 内容",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "重复项处理",
+          "body": "",
+          "status": "released"
+        }
+      ],
+      "proName": "Pro",
+      "proSummary": "定时同步与批量 AI",
+      "proFeatures": [
+        {
+          "title": "包含免费版全部功能",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "定时后台同步",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "最短 6 小时间隔",
+          "body": "",
+          "status": "released"
+        },
+        {
+          "title": "为本次同步的新页面批量生成 AI 内容",
+          "body": "",
+          "status": "released"
+        }
+      ],
+      "perYear": "每年",
+      "perMonth": "每月",
+      "priceUnavailable": "请在扩展内查看当前价格。",
+      "viewPrice": "安装后查看价格",
+      "upgradeNote": "请先连接 Notion，再从“账单与计划”中升级。"
+    },
+    "faq": {
+      "eyebrow": "详细说明",
+      "title": "连接前可能想了解的问题",
+      "items": [
+        {
+          "title": "需要把书签迁移到 Link Library 吗？",
+          "body": "不需要。Chrome 书签仍是事实来源。Link Library 通过 Chrome 读取和编辑书签，并在扩展内计算书签数量与重复链接组。",
+          "status": "released"
+        },
+        {
+          "title": "可以不先加入书签就保存网页吗？",
+          "body": "可以。你可以把当前标签页直接保存到已连接的 Notion 数据库。",
+          "status": "released"
+        },
+        {
+          "title": "哪些页面可以使用 AI，会发送什么？",
+          "body": "AI 只处理启用功能后新保存的公开网页。排除的网站、本地页面和私有地址会被跳过。每次请求会把可读正文、标题、净化后的 URL 以及当前 Description 和 Tags 发送给你选择的服务商。处理完成后，Link Library 不保留完整正文、原始提示词或原始响应。",
+          "status": "released"
+        },
+        {
+          "title": "AI 会覆盖我在 Notion 中的修改吗？",
+          "body": "不会。处理完成的条目不会自动再次生成。如果你在保存后修改了 Notion 中的 Description，Link Library 会保留你的内容。",
+          "status": "released"
+        },
+        {
+          "title": "AI 失败会怎样？",
+          "body": "Notion 保存仍然完成。AI 是后续任务，不会成为基础同步的依赖。",
+          "status": "released"
+        },
+        {
+          "title": "Pro 定时同步如何工作？",
+          "body": "Pro 用户可开启最短 6 小时间隔的定时后台同步，也可以随时关闭。",
+          "status": "released"
+        },
+        {
+          "title": "取消 Pro 后会怎样？",
+          "body": "已有 Notion 数据保持不变，免费版手动流程仍可使用；定时同步和 Pro 批量处理会暂停。",
+          "status": "released"
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "整理你已经拥有的书签。",
+      "body": "从本地 Chrome 书签库开始，只在适合你的工作流时连接 Notion 或启用可选 AI。"
+    },
+    "footer": {
+      "summary": "本地管理 Chrome 书签，按需同步到 Notion，并在你选择时使用 AI 增强。",
+      "product": "产品",
+      "resources": "资源",
+      "legal": "法律信息",
+      "notionTemplate": "Notion 模板",
+      "chromeStore": "Chrome 应用商店",
+      "support": "联系支持",
+      "privacy": "隐私政策",
+      "terms": "服务条款",
+      "refund": "退款政策",
+      "poweredBy": "支付服务由以下平台提供",
+      "rights": "保留所有权利。"
+    }
+  }
+}

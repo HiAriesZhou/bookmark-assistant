@@ -1,0 +1,21 @@
+{
+  "name": "Link Library",
+  "assets": {
+    "root": "assets/brand",
+    "logo": {
+      "application": "assets/brand/logo.png",
+      "store": "assets/brand/logo_128x128.png"
+    },
+    "favicon": {
+      "ico": "assets/brand/favicon/favicon.ico",
+      "png16": "assets/brand/favicon/favicon-16x16.png",
+      "png32": "assets/brand/favicon/favicon-32x32.png",
+      "png48": "assets/brand/favicon/favicon-48x48.png",
+      "png64": "assets/brand/favicon/favicon-64x64.png",
+      "appleTouchIcon": "assets/brand/favicon/apple-touch-icon.png",
+      "androidChrome192": "assets/brand/favicon/android-chrome-192x192.png",
+      "androidChrome512": "assets/brand/favicon/android-chrome-512x512.png",
+      "manifest": "assets/brand/favicon/site.webmanifest"
+    }
+  }
+}

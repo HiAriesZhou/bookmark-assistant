@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optimized Scrollbar Styles - Shared across all packages */
+* {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Webkit-based browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: rgba(107, 114, 128, 0.7);
+}
+
+/* Dark theme scrollbars */
+@media (prefers-color-scheme: dark) {
+  * {
+    scrollbar-color: rgba(75, 85, 99, 0.6) transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(75, 85, 99, 0.6);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(107, 114, 128, 0.8);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background-color: rgba(107, 114, 128, 0.9);
+  }
+}
+
+/* Horizontal scrollbar */
+*::-webkit-scrollbar-horizontal {
+  height: 8px;
+}
+
+*::-webkit-scrollbar-horizontal::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 8px;
+}
+
+*::-webkit-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Corner between horizontal and vertical scrollbars */
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:root {
+  font-family: 'Avenir Next', Avenir, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: #344054;
+  background-color: #f6f7f9;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* shadcn/ui CSS variables */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+  --ring-offset-background: 0 0% 100%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --ring-offset-background: 222.2 84% 4.9%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f6f7f9;
+}
+
+#root {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+::selection {
+  color: #111827;
+  background: #e5e7eb;
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #74777a;
+  outline-offset: 2px;
+}
+
+@layer components {
+  .library-input {
+    @apply h-9 w-full rounded-lg border border-library-line bg-white px-3 text-xs text-library-ink outline-none transition placeholder:text-library-faint focus:border-library-strong focus:outline-none focus:ring-2 focus:ring-library-ink/10 focus-visible:outline-none;
+  }
+
+  .library-input-frame {
+    @apply rounded-lg border border-library-line bg-white transition focus-within:border-library-strong focus-within:ring-2 focus-within:ring-library-ink/10;
+  }
+
+  .library-inline-input {
+    @apply border-0 bg-transparent text-library-ink outline-none placeholder:text-library-faint focus:outline-none focus-visible:outline-none;
+  }
+
+  .library-icon-button {
+    @apply grid h-9 w-9 place-items-center rounded-lg border border-transparent text-library-muted transition hover:bg-library-hover hover:text-library-ink;
+  }
+
+  .library-primary-button {
+    @apply inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-library-forest px-3.5 text-xs font-semibold text-white transition hover:bg-ui-control-hover disabled:cursor-not-allowed disabled:bg-ui-control-disabled disabled:text-ui-disabled;
+  }
+
+  .library-secondary-button {
+    @apply inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-library-line bg-white px-3.5 text-xs font-semibold text-library-ink transition hover:border-library-strong hover:bg-library-hover;
+  }
+
+  .library-select-button {
+    @apply flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-library-line bg-white px-3 text-left text-xs font-medium text-library-ink outline-none transition hover:border-library-strong hover:bg-library-hover focus-visible:border-library-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-library-ink/10;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
