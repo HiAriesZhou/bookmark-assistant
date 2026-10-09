@@ -39,6 +39,41 @@ jobs:
       - name: Stop disposable containers
         if: always()
         run: docker compose --env-file deploy/.env -f deploy/compose.yml down
+  migration-drift:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_PASSWORD: shadow
+          POSTGRES_DB: shadow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d shadow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail when migrations and schema.prisma diverge
+        env:
+          SHADOW_DATABASE_URL: postgresql://postgres:shadow@localhost:5432/shadow
+        run: pnpm -F @bookmark-assistant/server prisma:check-drift
+
   lint-and-test:
     runs-on: ubuntu-latest
 
