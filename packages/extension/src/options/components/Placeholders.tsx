@@ -1,4 +1,5 @@
 import { SectionCard } from './SectionCard';
+import { productConfig } from '../../product-config';
 import {
   FREE_INTERVAL_HOURS,
   PRO_MIN_INTERVAL_HOURS,
@@ -182,21 +183,25 @@ export function FAQSection() {
         </ul>
       ),
     },
-    {
-      q: 'How do I contact support?',
-      a: (
-        <p>
-          Click the "Contact Support" button below, or{' '}
-          <a
-            href="mailto:aries0331.dev@gmail.com"
-            className="text-amber-600 hover:text-amber-700 underline"
-          >
-            email
-          </a>{' '}
-          us
-        </p>
-      ),
-    },
+    ...(productConfig.supportUrl
+      ? [
+          {
+            q: 'How do I contact support?',
+            a: (
+              <p>
+                <a
+                  href={productConfig.supportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-600 hover:text-amber-700 underline"
+                >
+                  Contact support
+                </a>
+              </p>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
