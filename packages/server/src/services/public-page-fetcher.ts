@@ -139,6 +139,52 @@ export class PublicPageFetcher {
   }
 }
 
+export interface PublicHtmlFetchOptions {
+  /** Bytes kept from the response; the rest of the page is not downloaded. */
+  maxBytes?: number;
+  timeoutMs?: number;
+}
+
+/**
+ * Fetches raw HTML from a public page with the same address, port and redirect
+ * checks as PublicPageFetcher, without robots or pacing. Used for metadata such as
+ * descriptions, which only need the beginning of the document.
+ */
+export async function fetchPublicHtml(
+  rawUrl: string,
+  { maxBytes = MAX_RESPONSE_BYTES, timeoutMs = FETCH_TIMEOUT_MS }: PublicHtmlFetchOptions = {}
+): Promise<string> {
+  let current = rawUrl;
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+    const url = await resolvePublicUrl(current);
+    const response = await requestPinnedUrl(
+      url,
+      'text/html,application/xhtml+xml;q=0.9',
+      timeoutMs
+    );
+    const statusCode = response.statusCode || 0;
+
+    if ([301, 302, 303, 307, 308].includes(statusCode)) {
+      const location = response.headers.location;
+      discardResponse(response);
+      if (!location) throw new PublicPageFetchError('fetch_failed');
+      current = new URL(location, url).toString();
+      continue;
+    }
+    if (statusCode < 200 || statusCode >= 300) {
+      discardResponse(response);
+      throw new PublicPageFetchError('fetch_failed');
+    }
+    const contentType = response.headers['content-type']?.toLowerCase() || '';
+    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
+      discardResponse(response);
+      throw new PublicPageFetchError('unsupported_content_type');
+    }
+    return readLimitedResponse(response, { maxBytes, timeoutMs, truncate: true });
+  }
+  throw new PublicPageFetchError('fetch_disallowed');
+}
+
 /** Applies the longest matching rule for BookmarkAssistantBot, falling back to *. */
 export function isPathAllowedByRobots(robots: string, path: string): boolean {
   const groups: Array<{ agents: string[]; rules: Array<{ allow: boolean; path: string }> }> = [];
@@ -254,7 +300,11 @@ export function extractReadableText(rawBody: string, contentType: 'html' | 'plai
 }
 
 function isBlockedHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/\.$/, '');
+  // URL.hostname keeps the brackets around IPv6 literals, e.g. "[::1]".
+  const host = hostname
+    .toLowerCase()
+    .replace(/\.$/, '')
+    .replace(/^\[(.*)\]$/, '$1');
   return (
     !host ||
     host === 'localhost' ||
@@ -303,7 +353,11 @@ function ipv4FromMappedIpv6(address: string): string | undefined {
   return [high >> 8, high & 0xff, low >> 8, low & 0xff].join('.');
 }
 
-async function requestPinnedUrl(url: URL, accept = 'text/html,application/xhtml+xml,text/plain;q=0.9'): Promise<import('http').IncomingMessage> {
+async function requestPinnedUrl(
+  url: URL,
+  accept = 'text/html,application/xhtml+xml,text/plain;q=0.9',
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<import('http').IncomingMessage> {
   const resolved = await lookup(url.hostname, { all: true, verbatim: true });
   const selected = resolved.find((address) => !isPrivateAddress(address.address));
   if (!selected || resolved.some((address) => isPrivateAddress(address.address))) {
@@ -317,7 +371,7 @@ async function requestPinnedUrl(url: URL, accept = 'text/html,application/xhtml+
         'user-agent': 'BookmarkAssistantBot/1.0 (+https://bookmarkassistant.com)',
       },
       lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
-      timeout: FETCH_TIMEOUT_MS,
+      timeout: timeoutMs,
     }, resolve);
     req.once('timeout', () => req.destroy(new Error('timeout')));
     req.once('error', () => reject(new PublicPageFetchError('fetch_failed')));
@@ -329,7 +383,14 @@ function discardResponse(response: import('http').IncomingMessage): void {
   response.resume();
 }
 
-function readLimitedResponse(response: import('http').IncomingMessage): Promise<string> {
+function readLimitedResponse(
+  response: import('http').IncomingMessage,
+  {
+    maxBytes = MAX_RESPONSE_BYTES,
+    timeoutMs = FETCH_TIMEOUT_MS,
+    truncate = false,
+  }: { maxBytes?: number; timeoutMs?: number; truncate?: boolean } = {}
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let length = 0;
@@ -339,7 +400,7 @@ function readLimitedResponse(response: import('http').IncomingMessage): Promise<
       settled = true;
       response.destroy();
       reject(new PublicPageFetchError('fetch_failed'));
-    }, FETCH_TIMEOUT_MS);
+    }, timeoutMs);
     const finish = <T>(callback: (value: T) => void, value: T) => {
       if (settled) return;
       settled = true;
@@ -347,12 +408,17 @@ function readLimitedResponse(response: import('http').IncomingMessage): Promise<
       callback(value);
     };
     response.on('data', (chunk: Buffer) => {
-      length += chunk.length;
-      if (length > MAX_RESPONSE_BYTES) {
+      if (length + chunk.length > maxBytes) {
         response.destroy();
-        finish(reject, new PublicPageFetchError('fetch_failed'));
+        if (!truncate) {
+          finish(reject, new PublicPageFetchError('fetch_failed'));
+          return;
+        }
+        chunks.push(chunk.subarray(0, maxBytes - length));
+        finish(resolve, Buffer.concat(chunks).toString('utf8'));
         return;
       }
+      length += chunk.length;
       chunks.push(chunk);
     });
     response.once('end', () => finish(resolve, Buffer.concat(chunks).toString('utf8')));

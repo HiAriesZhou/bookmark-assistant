@@ -14,6 +14,7 @@ import {
   sanitizeDescription,
 } from '../core';
 import { descriptionCache } from './description-cache';
+import { fetchPublicHtml, PublicPageFetchError } from './public-page-fetcher';
 
 export interface ExtractionResult {
   description: string;
@@ -26,8 +27,8 @@ export interface ExtractionResult {
 
 export class DescriptionExtractor {
   private readonly timeoutMs = 5000; // 5 seconds
-  private readonly maxHtmlSize = 5 * 1024 * 1024; // 5MB
-  private readonly userAgent = 'BookmarkAssistant/1.0 (+https://bookmark-assistant.com)';
+  // Descriptions come from the document head or first paragraphs.
+  private readonly maxHtmlBytes = 512 * 1024;
 
   /**
    * Extract description from a URL
@@ -126,55 +127,21 @@ export class DescriptionExtractor {
   }
 
   /**
-   * Fetch HTML from URL
+   * Fetch HTML from a public URL. Private addresses, non-standard ports and
+   * redirects into private networks are rejected; only the first part of large
+   * pages is downloaded.
    */
   private async fetchHtml(url: string): Promise<{ html: string | null; error?: string }> {
     try {
-      // Use native fetch (Node.js 18+)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeoutMs);
-
-      try {
-        const response = await fetch(url, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': this.userAgent,
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-          },
-          redirect: 'follow',
-          // @ts-expect-error - size limit not in types but supported
-          size: this.maxHtmlSize,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          console.warn(`[DescriptionExtractor] HTTP ${response.status} while fetching description`);
-          return { html: null, error: `HTTP ${response.status}` };
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('text/html')) {
-          console.warn(`[DescriptionExtractor] Non-HTML content type: ${contentType}`);
-          return { html: null, error: `Non-HTML content type: ${contentType || 'unknown'}` };
-        }
-
-        const html = await response.text();
-        return { html };
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-          console.warn('[DescriptionExtractor] Timed out while fetching description');
-          return { html: null, error: 'Request timed out' };
-        } else {
-          console.warn('[DescriptionExtractor] Failed to fetch description');
-          return { html: null, error: error.message || 'Failed to fetch HTML' };
-        }
-      }
-    } catch {
-      console.error('[DescriptionExtractor] Failed to fetch description');
-      return { html: null, error: 'Failed to fetch HTML' };
+      const html = await fetchPublicHtml(url, {
+        maxBytes: this.maxHtmlBytes,
+        timeoutMs: this.timeoutMs,
+      });
+      return { html };
+    } catch (error) {
+      const reason = error instanceof PublicPageFetchError ? error.code : 'fetch_failed';
+      console.warn(`[DescriptionExtractor] Skipped description fetch: ${reason}`);
+      return { html: null, error: reason };
     }
   }
 

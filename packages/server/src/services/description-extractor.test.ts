@@ -5,6 +5,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const { fetchPublicHtmlMock } = vi.hoisted(() => ({ fetchPublicHtmlMock: vi.fn() }));
+
 vi.mock('./description-cache', () => ({
   descriptionCache: {
     get: vi.fn().mockResolvedValue(null),
@@ -12,7 +14,13 @@ vi.mock('./description-cache', () => ({
   },
 }));
 
+vi.mock('./public-page-fetcher', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./public-page-fetcher')>()),
+  fetchPublicHtml: fetchPublicHtmlMock,
+}));
+
 import { DescriptionExtractor } from './description-extractor';
+import { PublicPageFetchError } from './public-page-fetcher';
 
 describe('DescriptionExtractor', () => {
   let extractor: DescriptionExtractor;
@@ -24,26 +32,23 @@ describe('DescriptionExtractor', () => {
 
   describe('extractFromUrl', () => {
     it('should extract description from valid HTTP URL', async () => {
-      const mockHtml = `
+      fetchPublicHtmlMock.mockResolvedValue(`
         <html>
           <head>
             <meta name="description" content="Test description content" />
           </head>
         </html>
-      `;
-
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-type', 'text/html']]),
-        text: () => Promise.resolve(mockHtml),
-      });
+      `);
 
       const result = await extractor.extractFromUrl('https://example.com');
 
       expect(result.success).toBe(true);
       expect(result.description).toBe('Test description content');
       expect(result.source).toBe('meta_description');
+      expect(fetchPublicHtmlMock).toHaveBeenCalledWith('https://example.com/', {
+        maxBytes: 512 * 1024,
+        timeoutMs: 5000,
+      });
     });
 
     it('should return error for invalid URL', async () => {
@@ -59,55 +64,36 @@ describe('DescriptionExtractor', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('URL is not fetchable');
+      expect(fetchPublicHtmlMock).not.toHaveBeenCalled();
     });
 
-    it('should handle fetch failures gracefully', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    it('should not fetch private or internal addresses', async () => {
+      fetchPublicHtmlMock.mockRejectedValue(new PublicPageFetchError('fetch_disallowed'));
 
-      const result = await extractor.extractFromUrl('https://example.com');
+      const result = await extractor.extractFromUrl('http://169.254.169.254/latest/meta-data/');
 
       expect(result.success).toBe(false);
+      expect(result.error).toBe('fetch_disallowed');
       expect(result.description).toBe('');
     });
 
-    it('should handle timeout', async () => {
-      global.fetch = vi.fn().mockImplementation(
-        () =>
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout')), 100);
-          })
-      );
+    it('should handle fetch failures gracefully', async () => {
+      fetchPublicHtmlMock.mockRejectedValue(new Error('Network error'));
 
       const result = await extractor.extractFromUrl('https://example.com');
 
       expect(result.success).toBe(false);
+      expect(result.error).toBe('fetch_failed');
       expect(result.description).toBe('');
     });
 
     it('should return error for non-HTML content', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Map([['content-type', 'application/json']]),
-        text: () => Promise.resolve('{"error": "not html"}'),
-      });
+      fetchPublicHtmlMock.mockRejectedValue(new PublicPageFetchError('unsupported_content_type'));
 
       const result = await extractor.extractFromUrl('https://example.com');
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Non-HTML');
-    });
-
-    it('should return error for HTTP errors', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-      });
-
-      const result = await extractor.extractFromUrl('https://example.com');
-
-      expect(result.success).toBe(false);
-      expect(result.description).toBe('');
+      expect(result.error).toBe('unsupported_content_type');
     });
   });
 
