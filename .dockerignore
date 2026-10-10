@@ -1,5 +1,4 @@
 .git
-.official-assets
 .build
 **/node_modules
 **/dist*

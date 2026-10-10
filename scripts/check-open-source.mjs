@@ -1,12 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from './build-profile.mjs';
+import { ROOT } from './build-config.mjs';
 
 export function sourceFiles(root = ROOT) {
   if (!existsSync(join(root, '.git'))) {
     const excluded =
-      /^(?:\.git|\.official-assets|\.build|\.product|\.next.*|\.vercel|node_modules|dist.*|generated|test-results|playwright-report|coverage|\.cache|\.pnpm-store)$/;
+      /^(?:\.git|\.build|\.next.*|\.vercel|node_modules|dist.*|generated|test-results|playwright-report|coverage|\.cache|\.pnpm-store)$/;
     function walk(directory = '') {
       return readdirSync(join(root, directory), { withFileTypes: true }).flatMap((entry) => {
         const file = directory ? `${directory}/${entry.name}` : entry.name;
@@ -40,7 +40,7 @@ export function sourceFiles(root = ROOT) {
 export function checkSource(files = sourceFiles()) {
   const violations = [];
   const forbidden =
-    /(^|\/)(\.git|\.official-assets|\.vercel|node_modules|docs|generated|dist[^/]*|\.next[^/]*|test-results|playwright-report)(\/|$)|\.(?:pem|key|zip|log|sqlite|db)$/;
+    /(^|\/)(\.git|\.vercel|node_modules|docs|generated|dist[^/]*|\.next[^/]*|test-results|playwright-report)(\/|$)|\.(?:pem|key|zip|log|sqlite|db)$/;
   const patterns = [
     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
     /\bgh[pousr]_[A-Za-z0-9]{30,}\b/,

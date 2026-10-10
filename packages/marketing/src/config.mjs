@@ -1,8 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveBuildProfile } from '../../../scripts/build-profile.mjs';
-const profile = resolveBuildProfile();
 
 export const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const REPO_ROOT = resolve(PACKAGE_DIR, '../..');
@@ -13,9 +11,9 @@ export const WEBSITE_DIR = join(OUTPUT_DIR, 'website');
 export const REVIEW_DIR = join(OUTPUT_DIR, 'review');
 export const CANDIDATE_STORE_DIR = join(OUTPUT_DIR, 'candidates/store');
 export const PACKAGE_OUTPUT_DIR = join(OUTPUT_DIR, 'chrome-web-store-upload');
-export const APPROVED_STORE_DIR = join(profile.assetRoot, 'packages/marketing/assets/store');
-export const APPROVED_WEBSITE_DIR = join(profile.assetRoot, 'packages/marketing/assets/website');
-const sharedRoot = join(profile.assetRoot, 'packages/shared');
+export const APPROVED_STORE_DIR = join(REPO_ROOT, 'packages/marketing/assets/store');
+export const APPROVED_WEBSITE_DIR = join(REPO_ROOT, 'packages/marketing/assets/website');
+const sharedRoot = join(REPO_ROOT, 'packages/shared');
 const brand = JSON.parse(await readFile(join(sharedRoot, 'brand.json'), 'utf8'));
 const brandAsset = (asset) => join(sharedRoot, asset);
 
@@ -78,7 +76,9 @@ export const APPROVED_WEBSITE_ASSETS = {
 };
 
 export async function loadContent(locale) {
-  return JSON.parse(await readFile(join(profile.contentRoot, `${locale}.json`), 'utf8'));
+  return JSON.parse(
+    await readFile(join(REPO_ROOT, 'packages/marketing/content', `${locale}.json`), 'utf8')
+  );
 }
 
 export const logoPath = brandAsset(brand.assets.logo.store);

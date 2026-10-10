@@ -1,0 +1,33 @@
+Manage the Chrome bookmarks you already have—without moving them into another bookmark service.
+
+Bookmark Assistant adds a focused local view for your existing Chrome bookmarks. Search titles, URLs, descriptions, and tags; edit details; move bookmarks between folders; and remove what no longer matters. Chrome bookmarks remain your source of truth, and the local library works before you connect anything.
+
+MANAGE LOCALLY
+
+Browse folders, find recently saved pages, filter untagged or uncategorized items, and review duplicate groups. Library counts and duplicate analysis are calculated inside the extension, so your full bookmark library is not uploaded to create the report.
+
+ADD NOTION WHEN YOU WANT
+
+When you want an external copy or workflow, connect a workspace through Notion OAuth and duplicate the Bookmark Assistant template. Manual sync sends Chrome bookmarks and Reading List items to Notion on demand, updates changed items, and avoids duplicate entries when possible. With a destination connected, you can also save the current page directly to Notion.
+
+OPTIONAL AI ENRICHMENT
+
+Bring your own key from a supported provider. For eligible newly saved public pages, Bookmark Assistant can create a concise description and useful topic tags. AI is optional and never becomes a dependency of local bookmark management or basic Notion sync.
+
+Results stay editable. Completed items are not silently processed again, so later changes remain yours. When AI runs, the readable page text, title, sanitized URL, and current Description and Tags are sent to the provider you choose. Full page text, raw prompts, and raw provider responses are not retained after processing.
+
+FREE AND PRO
+
+Local bookmark management, optional AI for eligible pages saved after setup, and manual Notion sync are available without Pro. Pro adds scheduled background sync and batch AI for eligible newly synced pages.
+
+HOW TO START
+
+1. Install Bookmark Assistant and open the local library.
+2. Search, edit, tag, move, or clean up your Chrome bookmarks.
+3. Connect Notion only if you want an external destination.
+4. Add an AI provider key only if you want summaries and tags.
+5. Run a manual sync, or enable Pro automation when you need it.
+
+YOUR DATA, YOUR CHOICES
+
+Bookmark Assistant uses Chrome permissions to manage the bookmarks and Reading List items you choose. Notion data is sent over HTTPS only to the workspace and database you authorize. AI processing is optional and uses the provider you select.

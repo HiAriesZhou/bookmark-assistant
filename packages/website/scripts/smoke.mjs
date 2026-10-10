@@ -3,12 +3,13 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
-import { resolveBuildProfile } from '../../../scripts/build-profile.mjs';
-const profile = resolveBuildProfile();
-const canonicalSiteUrl = profile.official
-  ? profile.websiteUrl
-  : process.env.NEXT_PUBLIC_SITE_URL || profile.websiteUrl;
-const assetPrefix = profile.publicAssetsPath;
+import { resolveBuildConfig } from '../../../scripts/build-config.mjs';
+const config = resolveBuildConfig({
+  ...process.env,
+  VITE_OAUTH_SERVER_URL: process.env.NEXT_PUBLIC_API_URL || process.env.VITE_OAUTH_SERVER_URL,
+});
+const canonicalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl;
+const assetPrefix = config.publicAssetsPath;
 
 const require = createRequire(import.meta.url);
 const externalBaseUrl = process.env.WEBSITE_SMOKE_BASE_URL;
@@ -133,7 +134,7 @@ try {
     {
       path: '/success',
       lang: 'en',
-      h1: `Return to ${profile.brand.name}`,
+      h1: `Return to ${config.brand.name}`,
       canonical: canonicalSiteUrl + '/success',
       privacy: false,
       success: true,
@@ -250,7 +251,7 @@ try {
         };
       });
 
-      assert.ok(state.title.includes(profile.brand.name));
+      assert.ok(state.title.includes(config.brand.name));
       assert.equal(state.lang, routeInfo.lang);
       assert.equal(state.h1, routeInfo.h1);
       assert.equal(state.canonical, routeInfo.canonical);
@@ -277,14 +278,14 @@ try {
         assert.equal(state.jsonLd.applicationSubCategory, 'Bookmark manager');
         assert.equal(state.jsonLd.browserRequirements, 'Requires Google Chrome');
         assert.equal(state.jsonLd.isAccessibleForFree, true);
-        if (profile.official)
+        if (config.officialService)
           assert.match(state.jsonLd.installUrl, /khffaaemphidjmhokafmiilkcjpgiije/);
         else
           assert.equal(state.jsonLd.installUrl, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
         assert.equal(state.hasMetadataPanel, true);
         assert.equal(state.syncTabCount, 2);
         assert.equal(state.hasLivePriceBadge, false);
-        if (profile.official)
+        if (config.officialService)
           assert.match(state.primaryHref || '', /khffaaemphidjmhokafmiilkcjpgiije/);
         else {
           assert.equal(state.primaryHref, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
@@ -296,7 +297,7 @@ try {
     }
   }
 
-  if (profile.official) {
+  if (config.officialService) {
     const fallbackPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await fallbackPage.route('**/api/pricing', async (route) => {
       await route.fulfill({

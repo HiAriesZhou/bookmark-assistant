@@ -12,10 +12,7 @@ export const DEFAULT_LOCALE: WebsiteLocale = 'en';
 export const CHINESE_LOCALE: WebsiteLocale = 'zh-CN';
 
 export function getWebsiteCopy(locale: WebsiteLocale): WebsiteCopy {
-  const selected = process.env.NEXT_PUBLIC_MARKETING_COPY
-    ? JSON.parse(process.env.NEXT_PUBLIC_MARKETING_COPY)
-    : marketingCopy;
-  return selected[locale] as WebsiteCopy;
+  return marketingCopy[locale] as WebsiteCopy;
 }
 
 export function includePreparedWebsiteContent(): boolean {

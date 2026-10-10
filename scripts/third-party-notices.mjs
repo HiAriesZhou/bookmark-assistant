@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { ROOT } from './build-profile.mjs';
+import { ROOT } from './build-config.mjs';
 
 function findPackage(name, from) {
   let directory = from;

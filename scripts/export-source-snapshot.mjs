@@ -2,7 +2,7 @@ import { cp, mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { join, dirname, resolve } from 'node:path';
-import { ROOT } from './build-profile.mjs';
+import { ROOT } from './build-config.mjs';
 import { sourceFiles, checkSource } from './check-open-source.mjs';
 
 const files = sourceFiles().sort();
@@ -43,5 +43,5 @@ await writeFile(
   ) + '\n'
 );
 console.log(
-  `Created a history-free source candidate at ${destination}. It contains no .git directory or private asset workspace.`
+  `Created a history-free source candidate at ${destination}. It contains no .git directory.`
 );

@@ -1,10 +1,10 @@
 {
   "locale": "en",
-  "productName": "Link Library",
-  "extensionName": "Link Library — Local bookmarks & optional sync",
-  "extensionTitle": "Link Library",
+  "productName": "Bookmark Assistant",
+  "extensionName": "Bookmark Assistant — Chrome Bookmarks & Notion Sync",
+  "extensionTitle": "Bookmark Assistant",
   "shortDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and optionally add AI summaries and tags.",
-  "longDescription": "Manage Chrome bookmarks locally. Connect your own Notion integration for optional sync and AI summaries and tags. Self-hosted deployments include scheduled sync and batch AI without an official subscription. Source code is licensed under GPL-3.0-only. Official hosted services may offer Free and Pro plans.",
+  "longDescription": "Manage the Chrome bookmarks you already have—without moving them into another bookmark service.\n\nBookmark Assistant adds a focused local view for your existing Chrome bookmarks. Search titles, URLs, descriptions, and tags; edit details; move bookmarks between folders; and remove what no longer matters. Chrome bookmarks remain your source of truth, and the local library works before you connect anything.\n\nMANAGE LOCALLY\n\nBrowse folders, find recently saved pages, filter untagged or uncategorized items, and review duplicate groups. Library counts and duplicate analysis are calculated inside the extension, so your full bookmark library is not uploaded to create the report.\n\nADD NOTION WHEN YOU WANT\n\nWhen you want an external copy or workflow, connect a workspace through Notion OAuth and duplicate the Bookmark Assistant template. Manual sync sends Chrome bookmarks and Reading List items to Notion on demand, updates changed items, and avoids duplicate entries when possible. With a destination connected, you can also save the current page directly to Notion.\n\nOPTIONAL AI ENRICHMENT\n\nBring your own key from a supported provider. For eligible newly saved public pages, Bookmark Assistant can create a concise description and useful topic tags. AI is optional and never becomes a dependency of local bookmark management or basic Notion sync.\n\nResults stay editable. Completed items are not silently processed again, so later changes remain yours. When AI runs, the readable page text, title, sanitized URL, and current Description and Tags are sent to the provider you choose. Full page text, raw prompts, and raw provider responses are not retained after processing.\n\nFREE AND PRO\n\nLocal bookmark management, optional AI for eligible pages saved after setup, and manual Notion sync are available without Pro. Pro adds scheduled background sync and batch AI for eligible newly synced pages.\n\nHOW TO START\n\n1. Install Bookmark Assistant and open the local library.\n2. Search, edit, tag, move, or clean up your Chrome bookmarks.\n3. Connect Notion only if you want an external destination.\n4. Add an AI provider key only if you want summaries and tags.\n5. Run a manual sync, or enable Pro automation when you need it.\n\nYOUR DATA, YOUR CHOICES\n\nBookmark Assistant uses Chrome permissions to manage the bookmarks and Reading List items you choose. Notion data is sent over HTTPS only to the workspace and database you authorize. AI processing is optional and uses the provider you select.\n\nSOURCE AND BRANDING\n\nThe extension, server, website and official artwork are licensed under GPL-3.0-only. The Bookmark Assistant name and logo are covered by a separate trademark policy. Self-hosted deployments include all current features; official hosted services retain Free and Pro plans.",
   "releasedClaims": [
     {
       "id": "page-metadata",
@@ -16,11 +16,7 @@
       "text": "Sync Chrome bookmarks and Reading List to Notion on demand.",
       "plan": "all"
     },
-    {
-      "id": "notion-oauth",
-      "text": "Connect securely with managed Notion OAuth.",
-      "plan": "all"
-    },
+    { "id": "notion-oauth", "text": "Connect securely with managed Notion OAuth.", "plan": "all" },
     {
       "id": "duplicate-handling",
       "text": "Avoid duplicate Notion entries with stable link handling.",
@@ -31,11 +27,7 @@
       "text": "Use your own AI provider key to generate a concise summary and topic tags for newly saved pages.",
       "plan": "all"
     },
-    {
-      "id": "auto-sync",
-      "text": "Run scheduled background sync with Pro.",
-      "plan": "pro"
-    },
+    { "id": "auto-sync", "text": "Run scheduled background sync with Pro.", "plan": "pro" },
     {
       "id": "ai-batch",
       "text": "Run queued AI processing for newly synced pages with Pro.",
@@ -43,14 +35,8 @@
     }
   ],
   "featureGatedClaims": [],
-  "planLabels": {
-    "free": "Free",
-    "pro": "Pro"
-  },
-  "ctas": {
-    "primary": "Install",
-    "secondary": "View Notion template"
-  },
+  "planLabels": { "free": "Free", "pro": "Pro" },
+  "ctas": { "primary": "Install", "secondary": "View Notion template" },
   "store": {
     "marquee": {
       "headline": "Save the link. Keep the why.",
@@ -93,9 +79,7 @@
     }
   ],
   "website": {
-    "publication": {
-      "ai": "released"
-    },
+    "publication": { "ai": "released" },
     "capabilities": {
       "notion-oauth": "released",
       "manual-sync": "released",
@@ -106,9 +90,9 @@
       "ai-batch": "released"
     },
     "metadata": {
-      "baselineTitle": "Link Library — Manage Chrome Bookmarks, Sync to Notion",
+      "baselineTitle": "Bookmark Assistant — Manage Chrome Bookmarks, Sync to Notion",
       "baselineDescription": "Manage Chrome bookmarks locally and sync bookmarks and Reading List to Notion when you want—without moving to another bookmark service.",
-      "aiTitle": "Link Library — Manage Chrome Bookmarks, Sync to Notion",
+      "aiTitle": "Bookmark Assistant — Manage Chrome Bookmarks, Sync to Notion",
       "aiDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion when you want, and optionally add AI summaries and tags."
     },
     "navigation": {
@@ -132,7 +116,7 @@
         "Manual sync is free"
       ],
       "aiBenefits": ["Your own AI key", "AI won't overwrite your Notion edits"],
-      "imageAlt": "Link Library local Chrome bookmark manager showing search, folders, descriptions, and tags",
+      "imageAlt": "Bookmark Assistant local Chrome bookmark manager showing search, folders, descriptions, and tags",
       "imageNote": "Your bookmarks stay in Chrome.",
       "productHunt": "Featured on Product Hunt · #8 Product of the Day",
       "productHuntCta": "View launch"
@@ -177,13 +161,13 @@
     "ai": {
       "eyebrow": "Optional intelligence",
       "title": "Optionally add summaries and tags",
-      "body": "Enable AI only when you want it. For eligible newly saved public pages, Link Library sends the readable page content needed to create the result to your selected provider.",
+      "body": "Enable AI only when you want it. For eligible newly saved public pages, Bookmark Assistant sends the readable page content needed to create the result to your selected provider.",
       "points": [
         "OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, and MiniMax presets",
         "Your key is encrypted and never shown in full after you save it",
         "A short summary and 3 to 5 tags are written to Notion once, so later edits stay yours"
       ],
-      "screenshotAlt": "Link Library enriching a saved page with an AI summary and four useful tags using the user's provider key",
+      "screenshotAlt": "Bookmark Assistant enriching a saved page with an AI summary and four useful tags using the user's provider key",
       "freeLabel": "Free · AI for newly saved pages",
       "proLabel": "Pro · Batch AI for new sync items"
     },
@@ -194,7 +178,7 @@
       "steps": [
         {
           "title": "Install the extension",
-          "body": "Add Link Library to Chrome and open the local dashboard.",
+          "body": "Add Bookmark Assistant to Chrome and open the local dashboard.",
           "status": "released"
         },
         {
@@ -204,7 +188,7 @@
         },
         {
           "title": "Connect Notion",
-          "body": "Authorize your workspace and duplicate the Link Library template.",
+          "body": "Authorize your workspace and duplicate the Bookmark Assistant template.",
           "status": "released"
         },
         {
@@ -224,55 +208,19 @@
       "freeName": "Free",
       "freeSummary": "Manual sync and page saving",
       "freeFeatures": [
-        {
-          "title": "Local Bookmark Library Report",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "Manual bookmark and Reading List sync",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "Save the current page",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "AI for pages saved after setup",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "Duplicate handling",
-          "body": "",
-          "status": "released"
-        }
+        { "title": "Local Bookmark Library Report", "body": "", "status": "released" },
+        { "title": "Manual bookmark and Reading List sync", "body": "", "status": "released" },
+        { "title": "Save the current page", "body": "", "status": "released" },
+        { "title": "AI for pages saved after setup", "body": "", "status": "released" },
+        { "title": "Duplicate handling", "body": "", "status": "released" }
       ],
       "proName": "Pro",
       "proSummary": "Scheduled sync and batch AI",
       "proFeatures": [
-        {
-          "title": "Everything in Free",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "Scheduled background sync",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "6-hour minimum interval",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "Batch AI for newly synced pages",
-          "body": "",
-          "status": "released"
-        }
+        { "title": "Everything in Free", "body": "", "status": "released" },
+        { "title": "Scheduled background sync", "body": "", "status": "released" },
+        { "title": "6-hour minimum interval", "body": "", "status": "released" },
+        { "title": "Batch AI for newly synced pages", "body": "", "status": "released" }
       ],
       "perYear": "per year",
       "perMonth": "per month",
@@ -285,8 +233,8 @@
       "title": "Questions before you connect",
       "items": [
         {
-          "title": "Do I need to move my bookmarks into Link Library?",
-          "body": "No. Chrome bookmarks remain your source of truth. Link Library reads and edits them through Chrome, and calculates library counts and duplicate groups inside the extension.",
+          "title": "Do I need to move my bookmarks into Bookmark Assistant?",
+          "body": "No. Chrome bookmarks remain your source of truth. Bookmark Assistant reads and edits them through Chrome, and calculates library counts and duplicate groups inside the extension.",
           "status": "released"
         },
         {
@@ -296,12 +244,12 @@
         },
         {
           "title": "Which pages can use AI, and what is sent?",
-          "body": "AI runs only for newly saved public web pages after you enable it. Excluded, local, and private pages are skipped. For each request, Link Library sends readable page text, the title, a sanitized URL, and the current Description and Tags to your selected provider. It does not keep full page text, raw prompts, or raw responses after processing.",
+          "body": "AI runs only for newly saved public web pages after you enable it. Excluded, local, and private pages are skipped. For each request, Bookmark Assistant sends readable page text, the title, a sanitized URL, and the current Description and Tags to your selected provider. It does not keep full page text, raw prompts, or raw responses after processing.",
           "status": "released"
         },
         {
           "title": "Will AI overwrite my Notion edits?",
-          "body": "No. Finished items are not processed again automatically. If you change the Description in Notion after saving, Link Library leaves it alone.",
+          "body": "No. Finished items are not processed again automatically. If you change the Description in Notion after saving, Bookmark Assistant leaves it alone.",
           "status": "released"
         },
         {

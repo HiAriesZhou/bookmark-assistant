@@ -4,20 +4,20 @@
  * Automatically builds extension and creates a publish-ready zip file
  *
  * This script:
- * Builds the explicitly selected production profile and packages its validated output.
+ * Builds the production extension for the configured service and packages its validated output.
  */
 
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { resolveBuildProfile } from '../../../scripts/build-profile.mjs';
-const selectedProfile = resolveBuildProfile();
+import { resolveBuildConfig } from '../../../scripts/build-config.mjs';
+const buildConfig = resolveBuildConfig();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
-const distPath = path.join(projectRoot, `dist-${selectedProfile.profile}`);
+const distPath = path.join(projectRoot, 'dist');
 const buildDir = path.join(projectRoot, 'build');
 const FORBIDDEN_ARTIFACT_NAMES = new Set([
   '.env',
@@ -154,7 +154,9 @@ export function validatePublishDirectory(directory) {
   const forbidden = files.filter((file) => {
     const segments = file.split(path.sep);
     return (
-      segments.some((segment) => FORBIDDEN_ARTIFACT_NAMES.has(segment) || /^\.env(?:\.|$)/.test(segment)) ||
+      segments.some(
+        (segment) => FORBIDDEN_ARTIFACT_NAMES.has(segment) || /^\.env(?:\.|$)/.test(segment)
+      ) ||
       file.endsWith('.map') ||
       file.endsWith('.log')
     );
@@ -202,7 +204,9 @@ function copyPublishDirectory(sourceDir, targetDir) {
 async function createPublishZip() {
   const { manifest } = validatePublishDirectory(distPath);
   const version = manifest.version;
-  const zipName = `bookmark-assistant-${selectedProfile.profile}-v${version}.zip`;
+  const zipName = buildConfig.officialService
+    ? `bookmark-assistant-v${version}.zip`
+    : `bookmark-assistant-self-hosted-v${version}.zip`;
   const zipPath = path.join(projectRoot, zipName);
 
   logStep('Archive', `Creating ${zipName}...`);

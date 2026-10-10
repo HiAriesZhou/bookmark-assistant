@@ -22,17 +22,18 @@ pnpm dev:server
 pnpm dev:website
 ```
 
-Default community builds use original neutral **Link Library** artwork and a local
-server at `http://localhost:3333`. Load `packages/extension/dist-dev` for development,
-or build a production community package:
+Development builds connect to a local server at `http://localhost:3333`; load
+`packages/extension/dist-dev`. Production builds are the official extension and
+connect to the official hosted service by default:
 
 ```sh
-pnpm build:community
+pnpm build:prod
 pnpm package
 ```
 
-The production directory is `packages/extension/dist-community`. Set your public
-Notion client ID and server origin explicitly at build time. Server-only credentials
+The production directory is `packages/extension/dist`. To use your own server, set
+`VITE_OAUTH_SERVER_URL` and your own `VITE_NOTION_CLIENT_ID` at build time; official
+links and the official Notion client ID then no longer apply. Server-only credentials
 must never be passed as Vite variables. See [self-hosting](deploy/README.md).
 
 ## Workspace
@@ -42,7 +43,7 @@ Shared types own the KnowledgeItem capture contract; shared styles supply UI tok
 The marketing workspace contains public example copy and headless rendering tools.
 
 The root package version is the product version source. Localized copy lives in
-`packages/marketing/content`; neutral brand sources live in `packages/shared`.
+`packages/marketing/content`; brand sources live in `packages/shared`.
 Generated mirrors are build artifacts. Run `pnpm resources:sync` and
 `pnpm resources:check` after changing their source inputs.
 
@@ -60,14 +61,11 @@ pnpm source:check
 Routine testing is headless and never opens the system browser. See CONTRIBUTING.md
 and SECURITY.md for contribution and disclosure guidance.
 
-## Official builds and source candidates
+## Official releases and source candidates
 
-Official brand artwork and store snapshots live in a separate private asset
-workspace. Set `BOOKMARK_ASSISTANT_OFFICIAL_ASSETS` to its root; its expected layout
-is documented in packages/marketing/README.md. `pnpm build:official` and
-`pnpm package:official` use that workspace and deterministic hosted-service origins,
-and require `VITE_NOTION_CLIENT_ID` for the hosted Notion integration.
-Official assets are required only for official branding, never for running the code.
+Official artwork, store snapshots and the hosted-service endpoints are part of this
+repository, so a tagged commit is the complete corresponding source of a store
+package. The Bookmark Assistant name and logo are covered by TRADEMARKS.md.
 
 `pnpm source:snapshot` exports the current source into a new, history-free directory
 under `.build`, with a file checksum manifest. It includes pending source changes

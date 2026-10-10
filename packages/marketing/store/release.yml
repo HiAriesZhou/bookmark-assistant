@@ -1,0 +1,59 @@
+schema: dashbye/release/v1
+listing:
+  defaultLanguage: English – en (default)
+  category: Tools
+  locales:
+    English – en (default):
+      description: listing/en/description.txt
+      screenshots:
+        - assets/screenshots/en/01-local-library.png
+        - assets/screenshots/en/02-optional-destination.png
+        - assets/screenshots/en/03-sync-and-ai-ready.png
+        - assets/screenshots/en/04-ai-summary-tags.png
+        - assets/screenshots/en/05-pro-auto-sync.png
+      promoVideoUrl: null
+    Chinese (China) – zh-CN:
+      description: listing/zh-CN/description.txt
+      screenshots:
+        - assets/screenshots/zh-CN/01-local-library.png
+        - assets/screenshots/zh-CN/02-optional-destination.png
+        - assets/screenshots/zh-CN/03-sync-and-ai-ready.png
+        - assets/screenshots/zh-CN/04-ai-summary-tags.png
+        - assets/screenshots/zh-CN/05-pro-auto-sync.png
+      promoVideoUrl: null
+  assets:
+    icon: assets/icon-128.png
+    smallPromo: assets/promo/small-promo.png
+    marqueePromo: assets/promo/marquee.png
+  globalScreenshots: []
+  globalPromoVideoUrl: null
+  officialUrl: bookmarkassistant.com
+  homepageUrl: https://bookmarkassistant.com
+  supportUrl: https://www.bookmarkassistant.com/#faq
+  matureContent: false
+privacy:
+  singlePurpose: Bookmark Assistant helps users manage saved web pages through a local Chrome bookmark library, with optional Notion synchronization and AI-assisted descriptions and tags.
+  permissionJustifications:
+    activeTab: Used only after an explicit user action that operates on the current page, such as choosing Save to Notion from the context menu while a Destination is connected. It provides temporary access to the current tab’s title and URL. It is not used to monitor tabs or browsing activity in the background.
+    alarms: Used to schedule optional Pro background sync and resume queued post-sync enrichment work without keeping the extension service worker continuously active. Alarms do not display notifications or track user activity.
+    bookmarks: Used to display and manage the user’s Chrome bookmark library. This includes searching bookmarks, displaying the folder tree, detecting duplicate URLs, editing bookmark titles and URLs, moving bookmarks between folders, and deleting bookmarks at the user’s request. When the user connects a Destination and starts a sync, the required bookmark fields are prepared for that requested operation.
+    contextMenus: Used to provide a Save to Notion action for a page or link only while a Notion Destination is connected. The action runs only when explicitly selected by the user, and the menu is removed when the Destination is disconnected.
+    favicon: Used only to display each saved bookmark’s website icon in the local bookmark library. The extension retrieves these icons through Chrome’s built-in Favicon API for URLs already present in the user’s bookmarks. It is not used to track browsing activity.
+    identity: Used to complete the user-initiated Notion OAuth connection through Chrome’s secure web authentication flow. Bookmark Assistant does not request or store the user’s Notion password.
+    readingList: Used to read the user’s Chrome Reading List for local counts and optional user-initiated synchronization to a connected Destination. Bookmark Assistant does not use this permission to add, edit, or delete Reading List entries.
+    scripting: Used only after an explicit current-page action when optional AI processing is configured and eligible. Bookmark Assistant runs a packaged content-extraction function in the selected tab to obtain readable page content required for the requested AI result. It does not download or execute remote code.
+    storage: Used to store extension preferences, a local authentication session token, bookmark descriptions and tags managed by Bookmark Assistant, cached local reports, connection status, sync state, and background job state on the user’s device. This data is used only to provide extension functionality and is not used for advertising or cross-site tracking.
+  hostPermissionJustification: null
+  remoteCode:
+    uses: false
+    justification: null
+  collectedData:
+    - personallyIdentifiableInformation
+    - authenticationInformation
+    - webHistory
+    - websiteContent
+  certifications:
+    noSaleOrTransfer: true
+    relatedToSinglePurpose: true
+    noCreditworthinessUse: true
+  policyUrl: https://www.bookmarkassistant.com/privacy

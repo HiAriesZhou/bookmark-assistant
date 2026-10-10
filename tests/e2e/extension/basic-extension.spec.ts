@@ -1,14 +1,11 @@
 import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
 import path from 'node:path';
 
-const extensionBuildDirectory = process.env.BOOKMARK_ASSISTANT_EXTENSION_BUILD || 'dist-community';
-const expectedProductName =
-  extensionBuildDirectory === 'dist-official' ? 'Bookmark Assistant' : 'Link Library';
-const expectedApiOrigin =
-  process.env.BOOKMARK_ASSISTANT_EXPECTED_API_ORIGIN ||
-  (extensionBuildDirectory === 'dist-official'
-    ? 'https://bookmark-assistant-server.vercel.app'
-    : 'http://localhost:3333');
+const OFFICIAL_API_ORIGIN = 'https://bookmark-assistant-server.vercel.app';
+const extensionBuildDirectory = process.env.BOOKMARK_ASSISTANT_EXTENSION_BUILD || 'dist';
+const expectedProductName = 'Bookmark Assistant';
+const expectedApiOrigin = process.env.BOOKMARK_ASSISTANT_EXPECTED_API_ORIGIN || OFFICIAL_API_ORIGIN;
+const officialService = expectedApiOrigin === OFFICIAL_API_ORIGIN;
 const extensionPath = path.resolve(
   __dirname,
   `../../../packages/extension/${extensionBuildDirectory}`
@@ -453,7 +450,7 @@ test.describe('Bookmark Assistant Pro extension', () => {
     );
 
     const page = await openExtensionPage(context, extensionId, 'popup.html');
-    if (extensionBuildDirectory !== 'dist-official') {
+    if (!officialService) {
       const requests: string[] = [];
       page.on('request', (request) => requests.push(request.url()));
       await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);

@@ -9,9 +9,10 @@ unrelated changes.
 
 - Keep credentials, logs and real user data out of source, fixtures and documentation.
 - Community builds must work without official services, brand assets or credentials.
-- Official artwork and store snapshots live in a separate private asset workspace.
-  Preserve third-party licenses and trademark ownership. UI code, CSS and neutral
-  artwork remain GPL; do not add commercial-use restrictions to the code license.
+- Official artwork and store snapshots are GPL-3.0-only files in this repository.
+  The Bookmark Assistant name and logo are protected by TRADEMARKS.md, not by
+  hiding files. Preserve third-party licenses and trademark ownership; keep
+  third-party logos out of the tree. Do not add commercial-use restrictions.
 - Product versions and runtime public copy have one source; profile-specific build
   resources go into ignored output directories. Never edit generated mirrors.
 - Keep README as an entry point. Product planning, strategy, architecture decisions
@@ -38,8 +39,7 @@ unrelated changes.
 
 Prepare an audited source snapshot without private Git history. Do not publish,
 rename repositories, submit store packages, deploy production or announce releases
-without the corresponding user direction. Treat official and community output
-directories separately. Each binary release needs corresponding source, build
+without the corresponding user direction. Each binary release needs corresponding source, build
 instructions, license notices and recorded checksums. No public CI job may access
 official deployment or asset credentials.
 

@@ -91,9 +91,5 @@ playwright-report/
 
 # Deterministic marketing renders and review packages
 packages/marketing/generated/
-.official-assets/
 .build/
 packages/website/public/product/
-packages/website/.product/
-packages/extension/dist-community/
-packages/extension/dist-official/

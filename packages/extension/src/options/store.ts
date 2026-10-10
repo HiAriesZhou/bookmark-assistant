@@ -9,10 +9,8 @@ import type { DeploymentMode, DeploymentCapabilities } from '@bookmark-assistant
 import { productConfig } from '../product-config';
 
 const defaultDeployment = {
-  deploymentMode: (productConfig.profile === 'official'
-    ? 'hosted'
-    : 'self-hosted') as DeploymentMode,
-  commerceEnabled: productConfig.profile === 'official',
+  deploymentMode: (productConfig.officialService ? 'hosted' : 'self-hosted') as DeploymentMode,
+  commerceEnabled: productConfig.officialService,
   capabilities: undefined as DeploymentCapabilities | undefined,
 };
 

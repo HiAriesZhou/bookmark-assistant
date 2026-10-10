@@ -1,21 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { APPROVED_STORE_DIR, PACKAGE_DIR, REPO_ROOT } from '../src/config.mjs';
-import { resolveBuildProfile } from '../../../scripts/build-profile.mjs';
-const profile = resolveBuildProfile();
-if (!profile.official) {
-  console.log('Community builds do not require official store snapshots.');
-  process.exit(0);
-}
 
 // packages/marketing/store is the per-release Chrome Web Store upload snapshot that
 // DashBye syncs from. Its brand and promo images are copies, so they must never
 // drift from the approved sources (decision 0006). Screenshots and listing text are
 // release-specific and are pinned by the DashBye release lock instead.
-const snapshotDir = join(profile.assetRoot, 'packages/marketing/store/assets');
+const snapshotDir = join(REPO_ROOT, 'packages/marketing/store/assets');
 const copies = [
   [
-    join(profile.assetRoot, 'packages/shared/assets/brand/logo_128x128.png'),
+    join(REPO_ROOT, 'packages/shared/assets/brand/logo_128x128.png'),
     join(snapshotDir, 'icon-128.png'),
   ],
   [join(APPROVED_STORE_DIR, 'small-promo.png'), join(snapshotDir, 'promo/small-promo.png')],

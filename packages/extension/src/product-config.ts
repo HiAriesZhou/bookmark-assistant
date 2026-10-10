@@ -1,6 +1,6 @@
 export const productConfig = {
-  name: import.meta.env.VITE_APP_NAME || 'Link Library',
-  profile: import.meta.env.VITE_BUILD_PROFILE || 'community',
+  name: import.meta.env.VITE_APP_NAME || 'Bookmark Assistant',
+  officialService: import.meta.env.VITE_OFFICIAL_SERVICE === 'true',
   apiUrl: import.meta.env.VITE_OAUTH_SERVER_URL || 'http://localhost:3333',
   websiteUrl: import.meta.env.VITE_WEBSITE_URL || 'http://localhost:3001',
   faqUrl: import.meta.env.VITE_FAQ_URL || '',

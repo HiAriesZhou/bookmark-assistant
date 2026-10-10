@@ -1,2 +1,2 @@
-import { prepareProfileAssets } from '../../../scripts/prepare-profile-assets.mjs';
-await prepareProfileAssets();
+import { prepareBrandAssets } from '../../../scripts/prepare-brand-assets.mjs';
+await prepareBrandAssets();

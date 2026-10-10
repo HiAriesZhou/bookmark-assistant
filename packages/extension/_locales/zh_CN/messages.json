@@ -3,7 +3,7 @@
     "message": "无法刷新本地书签，请重新加载页面重试。"
   },
   "appName": {
-    "message": "Link Library — 本地书签与可选同步",
+    "message": "Bookmark Assistant — Chrome 书签管理与 Notion 同步",
     "description": "The name of the extension"
   },
   "appDesc": {
