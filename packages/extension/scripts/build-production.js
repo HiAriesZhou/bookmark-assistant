@@ -4,10 +4,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveBuildProfile } from '../../../scripts/build-profile.mjs';
+import { assertReleaseBuildEnv, resolveBuildProfile } from '../../../scripts/build-profile.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const profile = resolveBuildProfile();
+assertReleaseBuildEnv(profile);
 const envDirectory = mkdtempSync(join(tmpdir(), `link-library-${profile.profile}-env-`));
 try {
   const env = Object.fromEntries(

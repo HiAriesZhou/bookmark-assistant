@@ -65,7 +65,8 @@ and SECURITY.md for contribution and disclosure guidance.
 Official brand artwork and store snapshots live in a separate private asset
 workspace. Set `BOOKMARK_ASSISTANT_OFFICIAL_ASSETS` to its root; its expected layout
 is documented in packages/marketing/README.md. `pnpm build:official` and
-`pnpm package:official` use that workspace and deterministic hosted-service origins.
+`pnpm package:official` use that workspace and deterministic hosted-service origins,
+and require `VITE_NOTION_CLIENT_ID` for the hosted Notion integration.
 Official assets are required only for official branding, never for running the code.
 
 `pnpm source:snapshot` exports the current source into a new, history-free directory

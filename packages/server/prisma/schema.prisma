@@ -95,6 +95,8 @@ model AiSettings {
   validatedDataSourceId String?
   schemaStatus          String   @default("not_configured")
   schemaValidatedAt     DateTime?
+  // Unused legacy column kept to avoid a destructive migration on deployed databases.
+  excludedHosts         Json?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

@@ -3,6 +3,7 @@ import logoUrl from '@product-logo';
 import { Mail } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { createTranslator } from '../../utils/i18n';
+import { productConfig } from '../../product-config';
 
 export function SectionCard({
   id,
@@ -37,11 +38,7 @@ export function SectionCard({
 
 export function PageHeader() {
   const { t } = createTranslator();
-  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'aries0331.dev@gmail.com';
-
-  const handleSupportClick = () => {
-    window.open(`mailto:${supportEmail}?subject=Bookmark Assistant Support`, '_blank');
-  };
+  const { supportUrl } = productConfig;
 
   return (
     <header className="sticky top-0 z-20 border-b border-ui-line bg-white/95 backdrop-blur-xl">
@@ -49,7 +46,7 @@ export function PageHeader() {
         <div className="flex items-center gap-3">
           <img
             src={logoUrl}
-            alt="Bookmark Assistant logo"
+            alt={`${productConfig.name} logo`}
             className="h-9 w-9 rounded-lg object-cover shadow-sm"
           />
           <span className="text-sm font-semibold leading-tight tracking-[-0.01em] text-ui-ink">
@@ -57,14 +54,18 @@ export function PageHeader() {
           </span>
         </div>
 
-        <button
-          onClick={handleSupportClick}
-          className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-ui-subtle transition-colors hover:border-ui-line hover:bg-ui-muted hover:text-ui-ink"
-          title={t('contact_support')}
-        >
-          <Mail className="w-4 h-4" />
-          <span className="hidden sm:inline">{t('support')}</span>
-        </button>
+        {supportUrl ? (
+          <a
+            href={supportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-ui-subtle transition-colors hover:border-ui-line hover:bg-ui-muted hover:text-ui-ink"
+            title={t('contact_support')}
+          >
+            <Mail className="w-4 h-4" />
+            <span className="hidden sm:inline">{t('support')}</span>
+          </a>
+        ) : null}
       </div>
     </header>
   );

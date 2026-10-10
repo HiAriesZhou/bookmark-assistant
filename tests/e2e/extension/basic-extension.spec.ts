@@ -491,6 +491,10 @@ test.describe('Bookmark Assistant Pro extension', () => {
       });
       expect(new URL((await profileRequest).url()).origin).toBe(expectedApiOrigin);
       await context.unroute('**/api/user/profile');
+      // Later tests share this context. Log out through the background so its cached
+      // profile and session are cleared too, then close the connected page.
+      await page.evaluate(() => chrome.runtime.sendMessage({ type: 'LOGOUT' }));
+      await page.close();
       return;
     }
     await page.evaluate(() => chrome.storage.local.remove('cached_pricing'));
