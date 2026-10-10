@@ -8,7 +8,8 @@ unrelated changes.
 ## Code, assets and documentation
 
 - Keep credentials, logs and real user data out of source, fixtures and documentation.
-- Community builds must work without official services, brand assets or credentials.
+- Self-hosted builds must work without official services or credentials; they select
+  their own server and integration configuration.
 - Official artwork and store snapshots are GPL-3.0-only files in this repository.
   The Bookmark Assistant name and logo are protected by TRADEMARKS.md, not by
   hiding files. Preserve third-party licenses and trademark ownership; keep

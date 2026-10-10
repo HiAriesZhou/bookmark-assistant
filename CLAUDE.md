@@ -52,7 +52,7 @@ and test setup are included. Routine browser tests must remain headless.
   not an HTTP administrator endpoint.
 - Types: shared KnowledgeItem, AI and deployment contracts. Keep the basic data
   model compatible with LiteContext; do not fork it by plan.
-- Shared: neutral artwork, design tokens and Tailwind preset. Website: Next.js.
+- Shared: brand artwork, design tokens and Tailwind preset. Website: Next.js.
   Marketing: public example copy and headless rendering/validation tools.
 - Pure core transforms must not depend on Chrome APIs, database access or network
   calls. AI providers reuse the shared provider contract and adapter boundary.

@@ -15,7 +15,10 @@ export default async function nextConfig(phase) {
       NEXT_PUBLIC_OFFICIAL_SERVICE: String(config.officialService),
       NEXT_PUBLIC_PRODUCT_NAME: config.brand.name,
       NEXT_PUBLIC_ASSET_PREFIX: config.publicAssetsPath,
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl,
+      // The official site keeps its canonical URL; other deployments may set their own.
+      NEXT_PUBLIC_SITE_URL: config.officialService
+        ? config.websiteUrl
+        : process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl,
       NEXT_PUBLIC_API_URL: config.apiUrl,
       NEXT_PUBLIC_COMMERCE_ENABLED:
         process.env.NEXT_PUBLIC_COMMERCE_ENABLED || String(config.officialService),

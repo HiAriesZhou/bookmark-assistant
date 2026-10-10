@@ -8,7 +8,9 @@ const config = resolveBuildConfig({
   ...process.env,
   VITE_OAUTH_SERVER_URL: process.env.NEXT_PUBLIC_API_URL || process.env.VITE_OAUTH_SERVER_URL,
 });
-const canonicalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl;
+const canonicalSiteUrl = config.officialService
+  ? config.websiteUrl
+  : process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl;
 const assetPrefix = config.publicAssetsPath;
 
 const require = createRequire(import.meta.url);

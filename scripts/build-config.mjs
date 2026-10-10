@@ -63,7 +63,8 @@ function parseApiOrigin(apiUrl) {
 /**
  * Resolves the single product build. Production builds connect to the official
  * service unless VITE_OAUTH_SERVER_URL selects another server; development builds
- * default to a local server. Official links apply only to the official service.
+ * default to a local server. Official links and the official Notion client ID apply
+ * only to the official service and cannot be overridden there.
  */
 export function resolveBuildConfig(env = process.env, { development = false } = {}) {
   const brand = JSON.parse(readFileSync(resolve(ROOT, 'packages/shared/brand.json'), 'utf8'));
@@ -72,10 +73,10 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
       (development ? LOCAL_SERVICE.apiUrl : OFFICIAL_SERVICE.apiUrl)
   );
   const officialService = apiUrl === OFFICIAL_SERVICE.apiUrl;
-  const official = (key) => (officialService ? OFFICIAL_SERVICE[key] : '');
-  const websiteUrl =
-    env.VITE_WEBSITE_URL ||
-    (officialService ? OFFICIAL_SERVICE.websiteUrl : LOCAL_SERVICE.websiteUrl);
+  // The official service pins its own public identity; overrides apply only to other servers.
+  const link = (key, envKey, fallback = '') =>
+    officialService ? OFFICIAL_SERVICE[key] : env[envKey]?.trim() || fallback;
+  const websiteUrl = link('websiteUrl', 'VITE_WEBSITE_URL', LOCAL_SERVICE.websiteUrl);
   return {
     brand,
     brandRoot: resolve(ROOT, 'packages/shared', brand.assets.root),
@@ -87,12 +88,12 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
       VITE_OFFICIAL_SERVICE: String(officialService),
       VITE_APP_NAME: brand.name,
       VITE_OAUTH_SERVER_URL: apiUrl,
-      VITE_NOTION_CLIENT_ID: env.VITE_NOTION_CLIENT_ID?.trim() || official('notionClientId'),
+      VITE_NOTION_CLIENT_ID: link('notionClientId', 'VITE_NOTION_CLIENT_ID'),
       VITE_WEBSITE_URL: websiteUrl,
-      VITE_FAQ_URL: env.VITE_FAQ_URL || official('faqUrl'),
-      VITE_PRIVACY_URL: env.VITE_PRIVACY_URL || official('privacyUrl'),
-      VITE_TERMS_URL: env.VITE_TERMS_URL || official('termsUrl'),
-      VITE_SUPPORT_URL: env.VITE_SUPPORT_URL || official('supportUrl'),
+      VITE_FAQ_URL: link('faqUrl', 'VITE_FAQ_URL'),
+      VITE_PRIVACY_URL: link('privacyUrl', 'VITE_PRIVACY_URL'),
+      VITE_TERMS_URL: link('termsUrl', 'VITE_TERMS_URL'),
+      VITE_SUPPORT_URL: link('supportUrl', 'VITE_SUPPORT_URL'),
       VITE_DEBUG_MODE: env.VITE_DEBUG_MODE || 'false',
     },
   };
