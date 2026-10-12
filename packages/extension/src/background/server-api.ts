@@ -108,7 +108,7 @@ const USER_PROFILE_CACHE_MS = 30_000;
 const SESSION_RENEWAL_ENDPOINT = '/api/oauth/session';
 
 // Sync progress belongs to one Notion destination and is reset whenever that
-// destination changes, is disconnected, or the account signs out.
+// destination changes, is disconnected, or the account is deleted.
 const DESTINATION_SYNC_STATE_KEYS = [
   'oauth_template_database_id',
   'last_sync',
@@ -294,40 +294,6 @@ class ServerAPIClient {
         });
     }
     await this.sessionRenewal;
-  }
-
-  // 🔑 Google account sign-in
-  async signInWithGoogle(input: {
-    code: string;
-    redirectUri: string;
-    codeVerifier: string;
-  }): Promise<{ userId: string; userEmail?: string }> {
-    // With a session this links Google to the signed-in account; without one it signs in.
-    const response = await this.makeRequest<{
-      sessionToken?: string;
-      userId: string;
-      userEmail?: string;
-    }>('/api/oauth/google', {
-      method: 'POST',
-      timeoutMs: 30_000,
-      body: JSON.stringify(input),
-    });
-    if (!response.sessionToken) {
-      throw new Error('Server did not return a session token');
-    }
-
-    const { user_id: previousUserId } = await chrome.storage.local.get('user_id');
-    if (previousUserId && previousUserId !== response.userId) {
-      await chrome.storage.local.remove(DESTINATION_SYNC_STATE_KEYS);
-    }
-    this.clearUserProfileCache();
-    this.sessionToken = response.sessionToken;
-    await chrome.storage.local.set({
-      session_token: response.sessionToken,
-      user_id: response.userId,
-      user_email: response.userEmail || '',
-    });
-    return { userId: response.userId, userEmail: response.userEmail };
   }
 
   // 🔌 Remove the Notion destination; the account and its plan stay.
@@ -711,9 +677,10 @@ class ServerAPIClient {
     });
   }
 
-  // 🚪 Sign out on this device. The account, plan and Notion link stay on the server.
-  // Sessions are stateless, so signing out needs no server call. The legacy
-  // /api/user/logout endpoint disconnects Notion for pre-1.5.0 extensions.
+  // 🚪 Clear this device's account session.
+  // Local cleanup after the account is deleted. Sessions are stateless, so no
+  // server call is needed; the legacy /api/user/logout endpoint now only
+  // disconnects Notion for older extensions.
   async logout(): Promise<void> {
     this.clearUserProfileCache();
     this.sessionToken = null;

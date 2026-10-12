@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
-import { AccountSection } from './AccountSection';
 import { BillingSection } from './BillingSection';
+import { ServiceDataSection } from './ServiceDataSection';
 import { SyncSettingsSection } from './SyncSettingsSection';
 import { AiSettingsSection } from './AiSettingsSection';
 import { useAppStore } from '../store';
@@ -73,7 +73,6 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
         </h1>
       </header>
       <div id="settings" aria-label={t('settings_workspace_label')} className="mt-8 space-y-9">
-        <AccountSection />
         <AiSettingsSection active={active} onUpgrade={() => togglePlans(true)} />
         <SyncSettingsSection onUpgrade={() => togglePlans(true)} />
         {deploymentMode === 'self-hosted' ? (
@@ -81,6 +80,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
         ) : commerceEnabled ? (
           <BillingSection plansExpanded={plansExpanded} onTogglePlans={togglePlans} />
         ) : null}
+        <ServiceDataSection />
       </div>
       <footer className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs text-library-muted">
         <a

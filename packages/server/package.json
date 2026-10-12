@@ -1,6 +1,6 @@
 {
   "name": "@bookmark-assistant/server",
-  "version": "1.5.0",
+  "version": "1.4.4",
   "private": true,
   "description": "Secure OAuth server for Bookmark Assistant Chrome extension",
   "main": "dist/index.js",

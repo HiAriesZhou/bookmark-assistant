@@ -18,7 +18,7 @@ describe('account state', () => {
     expect(hasNotionDestination({ session_token: 't', notion_connected: true })).toBe(true);
   });
 
-  it('keeps sessions from before 1.5.0 connected to Notion', () => {
+  it('keeps sessions created before notion_connected existed connected to Notion', () => {
     expect(hasNotionDestination({ session_token: 'legacy' })).toBe(true);
   });
 

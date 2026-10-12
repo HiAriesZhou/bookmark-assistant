@@ -361,9 +361,18 @@ const chromeMock: any = {
       if (message.type === 'GET_DASHBOARD_STATE') {
         return { success: true, dashboard: activeScenario().dashboard };
       }
-      if (message.type === 'LOGOUT') {
+      if (message.type === 'DISCONNECT_NOTION') {
         activeScenarioId = 'disconnected-report';
-        await chromeMock.storage.local.remove(['session_token', 'notion_token']);
+        await chromeMock.storage.local.set({ notion_connected: false });
+        return { success: true };
+      }
+      if (message.type === 'DELETE_ACCOUNT') {
+        activeScenarioId = 'disconnected-report';
+        await chromeMock.storage.local.remove([
+          'session_token',
+          'notion_connected',
+          'notion_token',
+        ]);
         return { success: true };
       }
       return { success: false, error: 'Unsupported deterministic demo message' };

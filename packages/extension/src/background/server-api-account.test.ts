@@ -50,7 +50,7 @@ const authorizationOf = (call: unknown[]) =>
   ((call[1] as RequestInit).headers as Record<string, string>).Authorization;
 
 describe('account session handling', () => {
-  it('signs out locally without asking the server to change the account', async () => {
+  it('clears the local session without asking the server to change the account', async () => {
     storage.session_token = sessionToken(FRESH);
     storage.notion_connected = true;
     global.fetch = vi.fn();
@@ -98,26 +98,7 @@ describe('account session handling', () => {
     expect(storage.session_token).toBe(renewed);
   });
 
-  it('keeps the current session when adding Google sign-in fails', async () => {
-    const current = sessionToken(FRESH);
-    storage.session_token = current;
-    storage.user_id = 'acct-1';
-    global.fetch = vi
-      .fn()
-      .mockResolvedValue(
-        jsonResponse({ code: 'GOOGLE_ACCOUNT_LINKED_ELSEWHERE', message: 'linked elsewhere' }, 409)
-      );
-
-    await expect(
-      serverAPI.signInWithGoogle({ code: 'c', redirectUri: 'r', codeVerifier: 'v' })
-    ).rejects.toThrow('linked elsewhere');
-
-    expect(authorizationOf(vi.mocked(global.fetch).mock.calls[0])).toBe(`Bearer ${current}`);
-    expect(storage.session_token).toBe(current);
-    expect(storage.user_id).toBe('acct-1');
-  });
-
-  it('disconnects Notion but stays signed in', async () => {
+  it('disconnects Notion but keeps the account session and plan', async () => {
     const current = sessionToken(FRESH);
     storage.session_token = current;
     storage.notion_connected = true;

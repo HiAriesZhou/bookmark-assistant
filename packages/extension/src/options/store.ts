@@ -98,11 +98,10 @@ export type AppState = {
   // Overview
   version: string;
   isConnecting: boolean;
-  /** A Notion destination is linked to the signed-in account. */
+  /** A Notion destination is linked to the service account. */
   isConnected: boolean;
-  /** A Bookmark Assistant account session exists on this device. */
+  /** A service account session exists (created by connecting Notion). */
   isSignedIn: boolean;
-  hasGoogleSignIn: boolean;
   isSyncing: boolean;
   syncEnrichment?: SyncEnrichmentStatus;
   isRefreshingProfile: boolean;
@@ -164,7 +163,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   isConnecting: false,
   isConnected: false,
   isSignedIn: false,
-  hasGoogleSignIn: false,
   isSyncing: false,
   syncEnrichment: undefined,
   isRefreshingProfile: false,
@@ -507,7 +505,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           subscriptionExpiresAt,
           isSignedIn: true,
           isConnected: response.profile.hasNotionAccess === true,
-          hasGoogleSignIn: response.profile.hasGoogleSignIn === true,
           ...(typeof response.profile.email === 'string'
             ? { userEmail: response.profile.email }
             : {}),
@@ -532,7 +529,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
           isConnected: false,
           isSignedIn: false,
-          hasGoogleSignIn: false,
           isPro: false,
           plan: 'free',
           purchaseType: undefined,
@@ -556,7 +552,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
           isConnected: false,
           isSignedIn: false,
-          hasGoogleSignIn: false,
           isPro: false,
           plan: 'free',
           purchaseType: undefined,
@@ -612,8 +607,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 /**
  * Applies account and Notion destination changes from storage. A renewed token
- * for the same account must not reset the dashboard; signing in to another
- * account, signing out, or changing the Notion link does.
+ * for the same account must not reset the dashboard; connecting another
+ * account, deleting the account, or changing the Notion link does.
  */
 async function handleAccountStateChange(changes: { [key: string]: chrome.storage.StorageChange }) {
   const sessionChange = changes[CACHE_KEYS.session_token];
@@ -632,7 +627,6 @@ async function handleAccountStateChange(changes: { [key: string]: chrome.storage
   useAppStore.setState({
     isSignedIn,
     isConnected,
-    ...(isSignedIn ? {} : { hasGoogleSignIn: false }),
     ...(shouldClearDashboard ? { dashboard: undefined, hasTriedInitialLoad: false } : {}),
   });
   if (shouldClearDashboard) void chrome.storage.local.remove(CACHE_KEYS.dashboard_snapshot);

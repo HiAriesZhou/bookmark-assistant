@@ -39,7 +39,6 @@ router.get('/profile', validateSession, async (req: AuthenticatedRequest, res: R
       ...deployment,
       userId,
       email: userData.email || null,
-      hasGoogleSignIn: !!userData.googleSub,
       templateDatabaseId: userData.templateDatabaseId,
       databaseCount: userData.databases?.length || 0,
       lastActivity: userData.lastActivity,
@@ -169,8 +168,9 @@ router.get(
 
 /**
  * Legacy Disconnect Endpoint
- * Extensions before 1.5.0 call this to disconnect Notion. It removes the Notion
- * connection but keeps the account and its plan. 1.5.0 signs out locally only.
+ * Extensions up to 1.4.3 call this to disconnect Notion. It removes the Notion
+ * connection but keeps the account and its plan. Newer extensions call
+ * /notion/disconnect instead.
  */
 router.post('/logout', validateSession, async (req: AuthenticatedRequest, res: Response) => {
   try {

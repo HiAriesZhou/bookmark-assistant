@@ -94,14 +94,6 @@ export const NOTION_CONFIG = {
 } as const;
 
 /**
- * Google account sign-in. The OAuth client secret stays on the server; an empty
- * client ID hides Google sign-in (for example on self-hosted builds).
- */
-export const GOOGLE_SIGN_IN_CONFIG = {
-  clientId: productConfig.googleClientId,
-} as const;
-
-/**
  * Validate configuration and log warnings for missing values
  */
 export function validateConfig(): { isValid: boolean; errors: string[]; warnings: string[] } {

@@ -283,7 +283,7 @@
     "description": "Disconnected title"
   },
   "disconnected_desc": {
-    "message": "Your Notion connection has been removed. Your account and plan are unchanged.",
+    "message": "Your Notion connection has been removed. Your plan is unchanged.",
     "description": "Disconnected description"
   },
   "sync_no_changes_title": {
@@ -343,7 +343,7 @@
     "description": "Confirm disconnect title"
   },
   "confirm_disconnect_message": {
-    "message": "This removes the Notion workspace connection and its sync state. Your account and plan stay; pages already in Notion are kept.",
+    "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
     "description": "Confirm disconnect message"
   },
   "confirm_important": {
@@ -1531,61 +1531,40 @@
   "deployment_self_hosted": {
     "message": "Self-hosted · All features available"
   },
-  "account_title": {
-    "message": "Account"
+  "subscription_local_mode": {
+    "message": "Local mode"
   },
-  "account_signed_out_label": {
-    "message": "Not signed in"
+  "subscription_local_mode_desc": {
+    "message": "Managing Chrome bookmarks needs no account or plan. Connect Notion to sync and to use Pro."
   },
-  "account_signed_out_desc": {
-    "message": "Local bookmark management never needs an account. Sign in to keep your plan with you and use Pro features."
+  "service_data_title": {
+    "message": "Service data"
   },
-  "account_signed_out_notion_only": {
-    "message": "Local bookmark management never needs an account. Connect Notion under Destinations to create one."
+  "service_data_delete_label": {
+    "message": "Delete service account"
   },
-  "account_sign_in_google": {
-    "message": "Sign in with Google"
+  "service_data_delete_desc": {
+    "message": "Permanently removes the server-side account with its Notion connection, AI key and AI records."
   },
-  "account_signing_in": {
-    "message": "Signing in…"
-  },
-  "account_signed_in_label": {
-    "message": "Signed in"
-  },
-  "account_signed_in_with": {
-    "message": "Signed in with $METHODS$",
+  "service_data_delete_desc_with_email": {
+    "message": "Linked to $EMAIL$. Deleting permanently removes the server-side account with its Notion connection, AI key and AI records.",
     "placeholders": {
-      "methods": {
+      "email": {
         "content": "$1",
-        "example": "Google · Notion"
+        "example": "person@example.com"
       }
     }
   },
-  "account_method_google": {
-    "message": "Google"
-  },
-  "account_method_notion": {
-    "message": "Notion"
-  },
-  "account_link_google": {
-    "message": "Add Google sign-in"
-  },
-  "account_sign_out": {
-    "message": "Sign out"
-  },
-  "account_delete_label": {
+  "service_data_delete_action": {
     "message": "Delete account"
   },
-  "account_delete_desc": {
-    "message": "Permanently removes the service account with its Notion connection and AI records."
+  "service_data_delete_confirm_title": {
+    "message": "Delete your service account?"
   },
-  "account_delete_action": {
-    "message": "Delete account"
+  "service_data_delete_confirm_message": {
+    "message": "This permanently deletes your Bookmark Assistant service account, plan record, Notion connection, AI key and AI records. Chrome bookmarks and pages already in Notion are kept. Cancel an active Paddle subscription in the customer portal first."
   },
-  "account_delete_confirm_title": {
-    "message": "Delete your account?"
-  },
-  "account_delete_confirm_message": {
-    "message": "This permanently deletes your Bookmark Assistant service account, its Notion connection, AI key and AI records. Chrome bookmarks and pages already in Notion are kept. Cancel an active Paddle subscription in the customer portal first."
+  "service_data_deleted_title": {
+    "message": "Service account deleted"
   }
 }

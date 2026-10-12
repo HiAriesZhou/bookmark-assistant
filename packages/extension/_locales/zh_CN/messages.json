@@ -441,7 +441,7 @@
     "description": "Free plan description"
   },
   "confirm_disconnect_message": {
-    "message": "这会移除 Notion 工作区连接及其同步状态。账号和套餐保持不变，已写入 Notion 的页面会保留。",
+    "message": "这会移除 Notion 工作区连接及其同步状态。套餐保留在你的账户上，已写入 Notion 的页面也会保留。",
     "description": "Confirm disconnect message"
   },
   "confirm_disconnect_title": {
@@ -469,7 +469,7 @@
     "description": "Footer contact support subtitle"
   },
   "disconnected_desc": {
-    "message": "Notion 连接已移除，账号和套餐保持不变。",
+    "message": "Notion 连接已移除，套餐保持不变。",
     "description": "Disconnected description"
   },
   "disconnected_title": {
@@ -1239,61 +1239,40 @@
   "deployment_self_hosted": {
     "message": "自托管 · 全部功能可用"
   },
-  "account_title": {
-    "message": "账号"
+  "subscription_local_mode": {
+    "message": "本地模式"
   },
-  "account_signed_out_label": {
-    "message": "未登录"
+  "subscription_local_mode_desc": {
+    "message": "管理 Chrome 书签不需要账户或套餐。连接 Notion 后可同步，并可使用 Pro。"
   },
-  "account_signed_out_desc": {
-    "message": "管理本地书签不需要账号。登录后套餐会跟随你的账号，并可使用 Pro 功能。"
+  "service_data_title": {
+    "message": "服务端数据"
   },
-  "account_signed_out_notion_only": {
-    "message": "管理本地书签不需要账号。在「同步目标」中连接 Notion 即可创建账号。"
+  "service_data_delete_label": {
+    "message": "删除服务端账户"
   },
-  "account_sign_in_google": {
-    "message": "使用 Google 登录"
+  "service_data_delete_desc": {
+    "message": "永久删除服务端账户及其 Notion 连接、AI Key 和 AI 记录。"
   },
-  "account_signing_in": {
-    "message": "正在登录…"
-  },
-  "account_signed_in_label": {
-    "message": "已登录"
-  },
-  "account_signed_in_with": {
-    "message": "登录方式：$METHODS$",
+  "service_data_delete_desc_with_email": {
+    "message": "已关联 $EMAIL$。删除后会永久移除服务端账户及其 Notion 连接、AI Key 和 AI 记录。",
     "placeholders": {
-      "methods": {
+      "email": {
         "content": "$1",
-        "example": "Google · Notion"
+        "example": "person@example.com"
       }
     }
   },
-  "account_method_google": {
-    "message": "Google"
+  "service_data_delete_action": {
+    "message": "删除账户"
   },
-  "account_method_notion": {
-    "message": "Notion"
+  "service_data_delete_confirm_title": {
+    "message": "删除服务端账户？"
   },
-  "account_link_google": {
-    "message": "添加 Google 登录"
+  "service_data_delete_confirm_message": {
+    "message": "这会永久删除你的 Bookmark Assistant 服务端账户、套餐记录、Notion 连接、AI Key 和 AI 记录。Chrome 书签和已写入 Notion 的页面会保留。如有有效的 Paddle 订阅，请先在客户门户中取消。"
   },
-  "account_sign_out": {
-    "message": "退出登录"
-  },
-  "account_delete_label": {
-    "message": "删除账号"
-  },
-  "account_delete_desc": {
-    "message": "永久删除服务账号及其 Notion 连接和 AI 记录。"
-  },
-  "account_delete_action": {
-    "message": "删除账号"
-  },
-  "account_delete_confirm_title": {
-    "message": "删除账号？"
-  },
-  "account_delete_confirm_message": {
-    "message": "这会永久删除你的 Bookmark Assistant 服务账号、Notion 连接、AI Key 和 AI 记录。Chrome 书签和已写入 Notion 的页面会保留。如有有效的 Paddle 订阅，请先在客户门户中取消。"
+  "service_data_deleted_title": {
+    "message": "服务端账户已删除"
   }
 }

@@ -1,9 +1,8 @@
-import { productConfig } from '../product-config';
-
 // Account session and Notion destination state shared by background and UI.
 //
-// `session_token` means a signed-in Bookmark Assistant account. Notion is an
-// optional destination recorded separately in `notion_connected`.
+// `session_token` identifies the service account created by connecting Notion.
+// Disconnecting Notion keeps that session (and the plan), so the destination is
+// recorded separately in `notion_connected`.
 
 export const NOTION_CONNECTED_KEY = 'notion_connected';
 
@@ -14,7 +13,7 @@ type StoredAccountState = { session_token?: unknown; notion_connected?: unknown 
 
 export function hasNotionDestination(stored: StoredAccountState): boolean {
   if (!stored.session_token) return false;
-  // Sessions created before 1.5.0 always came from Notion OAuth.
+  // Sessions created before this field existed always had Notion connected.
   return typeof stored.notion_connected === 'boolean' ? stored.notion_connected : true;
 }
 
@@ -39,8 +38,4 @@ export function shouldRenewSession(token: string, now = Date.now()): boolean {
   const expiresAt = readSessionExpiry(token);
   if (expiresAt === null || expiresAt <= now) return false;
   return expiresAt - now < SESSION_RENEW_WHEN_REMAINING_MS;
-}
-
-export function isGoogleSignInAvailable(): boolean {
-  return !!productConfig.googleClientId;
 }

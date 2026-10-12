@@ -27,9 +27,11 @@ function formatCurrency(value: number) {
 
 function planTitle(
   kind: SubscriptionKind,
-  t: (key: string, substitutions?: string | string[]) => string
+  t: (key: string, substitutions?: string | string[]) => string,
+  localMode: boolean
 ) {
-  if (kind === 'free') return t('subscription_free_current');
+  if (kind === 'free')
+    return t(localMode ? 'subscription_local_mode' : 'subscription_free_current');
   if (kind === 'trial') return t('subscription_trial_active');
   if (kind === 'loading') return t('loading');
   return t('subscription_pro_active');
@@ -61,6 +63,7 @@ function HostedBillingSection({
   const {
     plan,
     isPro,
+    isSignedIn,
     userId,
     userEmail,
     purchaseType,
@@ -95,6 +98,8 @@ function HostedBillingSection({
     ]
   );
   const action = getSubscriptionAction(subscription.kind);
+  // No service account yet: local management needs no plan, so show local mode, not Free.
+  const localMode = !isSignedIn && subscription.kind === 'free';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -249,11 +254,15 @@ function HostedBillingSection({
               aria-hidden="true"
               className={`h-2 w-2 rounded-full ${subscription.kind === 'loading' ? 'bg-ui-disabled' : 'bg-ui-success'}`}
             />
-            {planTitle(subscription.kind, t)}
+            {planTitle(subscription.kind, t, localMode)}
           </span>
         }
         description={
-          subscription.kind === 'loading' ? undefined : subscription.email || t('no_email_linked')
+          subscription.kind === 'loading'
+            ? undefined
+            : localMode
+              ? t('subscription_local_mode_desc')
+              : subscription.email || t('no_email_linked')
         }
         controlAlign="end"
         control={

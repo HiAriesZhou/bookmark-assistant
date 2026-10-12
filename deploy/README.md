@@ -17,12 +17,12 @@ Missing OAuth configuration leaves local management usable. AI requires a separa
 
 AI keys are application-encrypted. Notion access and refresh tokens currently reside in database fields without application-level encryption. Protect the database, volume, backups and host; use encrypted storage and HTTPS. Losing AI encryption keys makes saved provider keys unreadable. Back up the database and encryption keyring separately and securely.
 
-Accounts: connecting Notion signs in and creates an account. Google sign-in is optional: create an OAuth "Web application" client, register `https://<your-extension-id>.chromiumapp.org/google` as a redirect URI, set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the server, and build the extension with `VITE_GOOGLE_CLIENT_ID=<your-client-id>`. Sessions last 14 days and renew while the extension is used. Disconnecting Notion keeps the account; deleting the account is a separate action in Settings.
+Accounts: connecting Notion creates the service account. Sessions last 14 days and renew while the extension is used. Disconnecting Notion keeps the account and its plan; deleting the service account is a separate action in Settings.
 
 No Paddle configuration is required or used in self-hosted mode. The server decides capabilities; a modified client cannot grant access on the official hosted service.
 
 Cache maintenance is local only: after building the server, use `pnpm -F @bookmark-assistant/server cache stats`, `cache cleanup`, or `cache clear CLEAR_ALL_CACHE`. No cache administration routes are exposed over HTTP.
 
-Plan grants on a hosted deployment are also local only: `pnpm -F @bookmark-assistant/server entitlement show <email>`, `entitlement grant <email>` (permanent developer Pro), `entitlement grant <email> --source gift|trial --expires YYYY-MM-DD`, or `entitlement revoke <email>`. A grant for an email without an account is adopted by the first sign-in with that verified email. Paddle subscriptions are managed only through Paddle webhooks.
+Plan grants on a hosted deployment are also local only: `pnpm -F @bookmark-assistant/server entitlement show <email>`, `entitlement grant <email>` (permanent developer Pro), `entitlement grant <email> --source gift|trial --expires YYYY-MM-DD`, or `entitlement revoke <email>`. A grant for an email without an account is adopted by the first Notion connection with that email. Paddle subscriptions are managed only through Paddle webhooks.
 
 The supplied deployment targets a personal installation and binds port 3333 to loopback. Changing this to an internet-facing multi-user service requires appropriate operator controls, TLS, backups, monitoring and your own integration configuration.

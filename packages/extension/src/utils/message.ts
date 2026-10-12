@@ -22,8 +22,6 @@ export type MessageMap = {
       error?: string;
     };
   };
-  LOGOUT: { req: {}; res: { success: boolean; error?: string } };
-  GOOGLE_SIGN_IN: { req: {}; res: { success: boolean; error?: string } };
   DISCONNECT_NOTION: { req: {}; res: { success: boolean; error?: string } };
   DELETE_ACCOUNT: { req: {}; res: { success: boolean; error?: string } };
   RESTORE_PURCHASE: {
@@ -65,8 +63,6 @@ export const Messages: { [K in MessageType]: K } = {
   SYNC_ALL_BOOKMARKS: 'SYNC_ALL_BOOKMARKS',
   GET_USER_PROFILE: 'GET_USER_PROFILE',
   GET_PRICING: 'GET_PRICING',
-  LOGOUT: 'LOGOUT',
-  GOOGLE_SIGN_IN: 'GOOGLE_SIGN_IN',
   DISCONNECT_NOTION: 'DISCONNECT_NOTION',
   DELETE_ACCOUNT: 'DELETE_ACCOUNT',
   RESTORE_PURCHASE: 'RESTORE_PURCHASE',

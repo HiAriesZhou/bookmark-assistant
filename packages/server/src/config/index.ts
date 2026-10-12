@@ -160,10 +160,6 @@ export const config = {
   allowedExtensionIds,
   aiCredentialEncryption,
 
-  // Google account sign-in is optional; both values must be present to enable it.
-  googleClientId: process.env.GOOGLE_CLIENT_ID?.trim() || '',
-  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim() || '',
-
   // Notion API Configuration
   notionClientId: process.env.NOTION_CLIENT_ID!,
   notionClientSecret: process.env.NOTION_CLIENT_SECRET!,

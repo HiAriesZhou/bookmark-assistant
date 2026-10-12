@@ -16,7 +16,6 @@ const entitlementSelect = {
   plan: true,
   subscriptionSource: true,
   expiresAt: true,
-  googleSub: true,
   notionUserId: true,
 } as const;
 
@@ -35,7 +34,7 @@ function describe(account: Awaited<ReturnType<typeof findAccount>>) {
     plan: account.plan,
     subscriptionSource: account.subscriptionSource,
     expiresAt: account.expiresAt?.toISOString() ?? null,
-    signIn: { google: !!account.googleSub, notion: !!account.notionUserId },
+    notionConnected: !!account.notionUserId,
   };
 }
 
@@ -53,8 +52,8 @@ async function run(command: EntitlementCommand) {
         subscriptionSource: command.source,
         expiresAt: command.expiresAt,
       };
-      // An account that has not signed in yet is created by email and adopted by
-      // the first Google or Notion sign-in with the same verified address.
+      // An account that has not connected Notion yet is created by email and is
+      // adopted by the first Notion connection with the same address.
       const account = existing
         ? await prisma.user.update({ where: { id: existing.id }, data, select: entitlementSelect })
         : await prisma.user.create({

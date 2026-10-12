@@ -12,13 +12,7 @@ import {
   readOptionalSessionUserId,
   SessionTokenError,
 } from '../services/session';
-import { exchangeGoogleCode, GoogleSignInError } from '../services/google-auth';
-import {
-  AccountConflictError,
-  findAccountByEmail,
-  linkGoogleIdentity,
-  resolveGoogleAccount,
-} from '../services/account';
+import { findAccountByEmail } from '../services/account';
 
 const router: import('express').Router = Router();
 
@@ -86,7 +80,7 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session token' });
     }
     if (sessionUserId) {
-      // Sessions issued before 1.5.0 may carry the Notion user ID.
+      // Older sessions may carry the Notion user ID instead of the internal ID.
       sessionUserId = (await userPrisma.resolveInternalUserId(sessionUserId)) ?? null;
       if (!sessionUserId) {
         return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session token' });
@@ -121,7 +115,8 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
     );
 
     if (sessionUserId) {
-      // Signed-in account: Notion is a destination linked to this account.
+      // A kept session (for example after disconnecting Notion) reconnects Notion
+      // to the same account, so its plan is never split across accounts.
       if (existingUser && existingUser.id !== sessionUserId) {
         return res.status(409).json({
           error: 'Conflict',
@@ -174,7 +169,6 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
     } else {
       // 3. Step 2: Try Reconciliation via Email (if Step 1 failed)
       if (notionEmail) {
-        // Case-insensitive so a Google account stored in lower case is adopted, not duplicated.
         const paidUser = await retryPrismaOperation(
           () => findAccountByEmail(notionEmail),
           3,
@@ -310,76 +304,6 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to process OAuth exchange',
-    });
-  }
-});
-
-/**
- * Google Account Sign-In
- * Exchanges a PKCE authorization code for a Bookmark Assistant account session.
- */
-router.post('/google', validateExtension, async (req, res: Response) => {
-  const { code, redirectUri, codeVerifier } = req.body ?? {};
-  if (
-    typeof code !== 'string' ||
-    !code ||
-    typeof redirectUri !== 'string' ||
-    !redirectUri ||
-    typeof codeVerifier !== 'string' ||
-    !codeVerifier
-  ) {
-    return res.status(400).json({
-      error: 'Bad Request',
-      message: 'code, redirectUri and codeVerifier are required',
-    });
-  }
-
-  let sessionUserId: string | null;
-  try {
-    const presented = readOptionalSessionUserId(req.headers.authorization);
-    sessionUserId = presented
-      ? ((await userPrisma.resolveInternalUserId(presented)) ?? null)
-      : null;
-    if (presented && !sessionUserId) throw new SessionTokenError('Account not found');
-  } catch (error) {
-    if (!(error instanceof SessionTokenError)) throw error;
-    return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session token' });
-  }
-
-  try {
-    const identity = await exchangeGoogleCode({ code, redirectUri, codeVerifier });
-    const user = await retryPrismaOperation(
-      () =>
-        sessionUserId
-          ? linkGoogleIdentity(sessionUserId, identity)
-          : resolveGoogleAccount(identity),
-      3,
-      sessionUserId ? 'Google identity link' : 'Google account resolution'
-    );
-    auditLog('google_sign_in_success', user.id, {
-      plan: user.plan,
-      linkedToSession: !!sessionUserId,
-    });
-    res.json({
-      success: true,
-      sessionToken: issueSessionToken(user.id),
-      userId: user.id,
-      userEmail: user.email,
-    });
-  } catch (error) {
-    if (error instanceof GoogleSignInError) {
-      const status = error.code === 'GOOGLE_SIGN_IN_UNAVAILABLE' ? 503 : 401;
-      auditLog('google_sign_in_error', 'unknown', { code: error.code });
-      return res.status(status).json({ error: 'Google Sign-In Failed', code: error.code });
-    }
-    if (error instanceof AccountConflictError) {
-      auditLog('google_sign_in_error', 'unknown', { code: error.code });
-      return res.status(409).json({ error: 'Conflict', code: error.code, message: error.message });
-    }
-    console.error('Google sign-in error:', sanitizeError(error));
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to complete Google sign-in',
     });
   }
 });

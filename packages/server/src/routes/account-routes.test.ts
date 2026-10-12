@@ -1,5 +1,5 @@
 /**
- * Route-level tests for account sign-in, Notion linking and account lifecycle.
+ * Route-level tests for sessions, Notion linking and account lifecycle.
  * @vitest-environment node
  */
 
@@ -13,9 +13,6 @@ const mocks = vi.hoisted(() => ({
   notionService: { exchangeOAuthCode: vi.fn(), resolveDatabaseFromTemplate: vi.fn() },
   prisma: { user: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() } },
   userPrisma: { find: vi.fn(), resolveInternalUserId: vi.fn() },
-  linkGoogleIdentity: vi.fn(),
-  exchangeGoogleCode: vi.fn(),
-  resolveGoogleAccount: vi.fn(),
   disconnectNotion: vi.fn(),
   deleteAccount: vi.fn(),
 }));
@@ -49,21 +46,14 @@ vi.mock('../utils', () => ({
   sanitizeError: (error: unknown) => (error instanceof Error ? error.message : String(error)),
   resolveProEntitlement: () => ({ plan: 'free', isPro: false, subscriptionSource: null }),
 }));
-vi.mock('../services/google-auth', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../services/google-auth')>()),
-  exchangeGoogleCode: mocks.exchangeGoogleCode,
-}));
 vi.mock('../services/account', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../services/account')>()),
-  resolveGoogleAccount: mocks.resolveGoogleAccount,
-  linkGoogleIdentity: mocks.linkGoogleIdentity,
   disconnectNotion: mocks.disconnectNotion,
   deleteAccount: mocks.deleteAccount,
 }));
 
 import oauthRoutes from './oauth';
 import userRoutes from './user';
-import { GoogleSignInError } from '../services/google-auth';
 
 const sessionFor = (userId: string) => `Bearer ${jwt.sign({ userId }, JWT_SECRET)}`;
 
@@ -100,45 +90,13 @@ const notionToken = {
 describe('account routes', () => {
   afterEach(() => vi.resetAllMocks());
 
-  it('signs in with Google and issues a renewable session', async () => {
-    mocks.exchangeGoogleCode.mockResolvedValue({ sub: 'g1', email: 'p@example.com' });
-    mocks.resolveGoogleAccount.mockResolvedValue({ id: 'acct-1', email: 'p@example.com' });
-
-    const res = await call('POST', '/api/oauth/google', {
-      code: 'c',
-      redirectUri: 'https://ext.chromiumapp.org/google',
-      codeVerifier: 'v',
-    });
-
-    expect(res.status).toBe(200);
-    expect(jwt.verify(res.body.sessionToken, JWT_SECRET)).toMatchObject({ userId: 'acct-1' });
-    const { exp, iat } = jwt.decode(res.body.sessionToken) as { exp: number; iat: number };
-    expect(exp - iat).toBe(14 * 24 * 60 * 60);
-  });
-
-  it('requires the PKCE verifier for Google sign-in', async () => {
-    const res = await call('POST', '/api/oauth/google', { code: 'c', redirectUri: 'r' });
-    expect(res.status).toBe(400);
-    expect(mocks.exchangeGoogleCode).not.toHaveBeenCalled();
-  });
-
-  it('reports an unconfigured Google sign-in as unavailable', async () => {
-    mocks.exchangeGoogleCode.mockRejectedValue(
-      new GoogleSignInError('off', 'GOOGLE_SIGN_IN_UNAVAILABLE')
-    );
-    const res = await call('POST', '/api/oauth/google', {
-      code: 'c',
-      redirectUri: 'r',
-      codeVerifier: 'v',
-    });
-    expect(res).toMatchObject({ status: 503, body: { code: 'GOOGLE_SIGN_IN_UNAVAILABLE' } });
-  });
-
-  it('renews the session of an existing account', async () => {
+  it('renews the session of an existing account for another 14 days', async () => {
     mocks.userPrisma.find.mockResolvedValue({ id: 'acct-1' });
     const res = await call('POST', '/api/oauth/session', undefined, sessionFor('acct-1'));
     expect(res.status).toBe(200);
     expect(jwt.verify(res.body.sessionToken, JWT_SECRET)).toMatchObject({ userId: 'acct-1' });
+    const { exp, iat } = jwt.decode(res.body.sessionToken) as { exp: number; iat: number };
+    expect(exp - iat).toBe(14 * 24 * 60 * 60);
   });
 
   it('refuses to renew a session for a deleted account', async () => {
@@ -147,12 +105,12 @@ describe('account routes', () => {
     expect(res.status).toBe(401);
   });
 
-  it('links Notion to the signed-in account instead of creating another one', async () => {
+  it('reconnects Notion to the kept account instead of creating another one', async () => {
     mocks.notionService.exchangeOAuthCode.mockResolvedValue(notionToken);
     mocks.userPrisma.resolveInternalUserId.mockResolvedValue('acct-1');
     mocks.prisma.user.findUnique
       .mockResolvedValueOnce(null) // Notion user not linked yet
-      .mockResolvedValueOnce({ id: 'acct-1', email: 'google@example.com' });
+      .mockResolvedValueOnce({ id: 'acct-1', email: 'owner@example.com' });
     mocks.prisma.user.update.mockResolvedValue({ id: 'acct-1', plan: 'pro' });
 
     const res = await call(
@@ -168,7 +126,7 @@ describe('account routes', () => {
       where: { id: 'acct-1' },
       data: { notionUserId: 'notion-1', notionAccessToken: 'notion-access' },
     });
-    expect(res.body.userEmail).toBe('google@example.com');
+    expect(res.body.userEmail).toBe('owner@example.com');
   });
 
   it('refuses to move a Notion account that belongs to another account', async () => {
@@ -206,7 +164,7 @@ describe('account routes', () => {
     expect(mocks.deleteAccount).not.toHaveBeenCalled();
   });
 
-  it('links Notion for a pre-1.5.0 session that carries the Notion user ID', async () => {
+  it('links Notion for an older session that carries the Notion user ID', async () => {
     mocks.notionService.exchangeOAuthCode.mockResolvedValue(notionToken);
     mocks.userPrisma.resolveInternalUserId.mockResolvedValue('acct-1');
     mocks.prisma.user.findUnique
@@ -245,26 +203,6 @@ describe('account routes', () => {
       mode: 'insensitive',
     });
     expect(mocks.prisma.user.create).not.toHaveBeenCalled();
-  });
-
-  it('adds Google sign-in to the signed-in account instead of switching accounts', async () => {
-    mocks.userPrisma.resolveInternalUserId.mockResolvedValue('acct-1');
-    mocks.exchangeGoogleCode.mockResolvedValue({ sub: 'g1', email: 'other@example.com' });
-    mocks.linkGoogleIdentity.mockResolvedValue({ id: 'acct-1', email: 'notion@example.com' });
-
-    const res = await call(
-      'POST',
-      '/api/oauth/google',
-      { code: 'c', redirectUri: 'r', codeVerifier: 'v' },
-      sessionFor('acct-1')
-    );
-
-    expect(res.status).toBe(200);
-    expect(mocks.linkGoogleIdentity).toHaveBeenCalledWith('acct-1', {
-      sub: 'g1',
-      email: 'other@example.com',
-    });
-    expect(mocks.resolveGoogleAccount).not.toHaveBeenCalled();
   });
 
   it('disconnects Notion without deleting the account', async () => {

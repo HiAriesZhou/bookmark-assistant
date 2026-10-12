@@ -12,12 +12,7 @@ import {
   withBookmarkType,
 } from '../core';
 import { extractPageContentFromDocument } from '../core';
-import {
-  launchNotionOAuth,
-  exchangeCodeForToken,
-  debugOAuthSetup,
-  signInWithGoogle,
-} from './oauth';
+import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
 import { NOTION_CONNECTED_KEY, readNotionDestination } from '../utils/account-state';
 import { config, validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
@@ -809,7 +804,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 });
 
 /**
- * Stores fresh entitlements after a sign-in or Notion link. The new session
+ * Stores fresh entitlements after a Notion connection. The new session
  * token invalidates the profile cache, so other readers join this request.
  * A failed refresh never fails the sign-in itself.
  */
@@ -830,7 +825,7 @@ async function refreshStoredEntitlements(): Promise<void> {
       entitlements_cached_at: Date.now(),
     });
   } catch (profileError) {
-    console.warn('⚠️ Failed to refresh entitlements after sign-in:', profileError);
+    console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
   }
 }
 
@@ -935,16 +930,6 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.GOOGLE_SIGN_IN]: async () => {
-    try {
-      await signInWithGoogle();
-      await refreshStoredEntitlements();
-      return { success: true } as const;
-    } catch (err) {
-      console.error('❌ Google sign-in failed:', err);
-      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
-    }
-  },
   [Messages.DISCONNECT_NOTION]: async () => {
     try {
       await serverAPI.disconnectNotion();
@@ -963,16 +948,6 @@ addMessageListener({
     } catch (err) {
       console.error('❌ Account deletion failed:', err);
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
-    }
-  },
-  [Messages.LOGOUT]: async () => {
-    try {
-      await serverAPI.logout();
-      await scheduleAutoSync(false, 0);
-      return { success: true } as const;
-    } catch (err) {
-      console.error('❌ Logout failed:', err);
-      return { success: false, error: String(err) } as const;
     }
   },
   [Messages.RESTORE_PURCHASE]: async (req: { email: string }) => {
