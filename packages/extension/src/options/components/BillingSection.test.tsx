@@ -79,4 +79,30 @@ describe('BillingSection', () => {
     expect(container.querySelector('button')).toBeNull();
     expect(container.textContent).toBe('');
   });
+
+  it('shows local mode instead of Free before a service account exists', async () => {
+    useAppStore.setState({ isSignedIn: false });
+    await act(async () =>
+      root.render(
+        <ToastProvider>
+          <BillingSection plansExpanded={false} onTogglePlans={() => undefined} />
+        </ToastProvider>
+      )
+    );
+    expect(container.textContent).toContain('subscription_local_mode');
+    expect(container.textContent).not.toContain('subscription_free_current');
+  });
+
+  it('shows the Free plan for a service account without Pro', async () => {
+    useAppStore.setState({ isSignedIn: true, userEmail: 'person@example.com' });
+    await act(async () =>
+      root.render(
+        <ToastProvider>
+          <BillingSection plansExpanded={false} onTogglePlans={() => undefined} />
+        </ToastProvider>
+      )
+    );
+    expect(container.textContent).toContain('subscription_free_current');
+    expect(container.textContent).toContain('person@example.com');
+  });
 });

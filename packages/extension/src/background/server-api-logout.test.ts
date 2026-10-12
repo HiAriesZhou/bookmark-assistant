@@ -200,11 +200,9 @@ describe('ServerAPI - Logout Selective Cleanup', () => {
     expect(mockChromeStorage.last_sync_results).toBeUndefined();
   });
 
-  it('should handle logout API call failure gracefully', async () => {
-    // Mock fetch to fail
+  it('clears the local session even when the network is unavailable', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-    // Should not throw
     await expect(serverAPI.logout()).resolves.not.toThrow();
 
     // Should still clear local storage

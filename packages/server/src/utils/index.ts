@@ -8,7 +8,6 @@ import { logger } from './logger';
 
 export {
   hasProAccess,
-  isDeveloperEmail,
   resolveProEntitlement,
   type Plan,
   type ProEntitlement,

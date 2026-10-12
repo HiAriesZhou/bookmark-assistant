@@ -76,10 +76,6 @@ const allowedExtensionIds = Array.from(
   new Set(parseCsv(process.env.ALLOWED_EXTENSION_IDS).map(normalizeExtensionId).filter(Boolean))
 );
 
-const developerEmails = Array.from(
-  new Set(parseCsv(process.env.DEVELOPER_EMAILS).map((email) => email.toLowerCase()))
-);
-
 export type AiCredentialEncryptionConfig =
   | {
       available: true;
@@ -162,7 +158,6 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET!,
   allowedExtensionId: allowedExtensionIds[0] || '',
   allowedExtensionIds,
-  developerEmails,
   aiCredentialEncryption,
 
   // Notion API Configuration

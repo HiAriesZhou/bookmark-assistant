@@ -1,6 +1,6 @@
 {
   "name": "bookmark-assistant",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Open-source local bookmark manager with optional Notion sync, AI enrichment, and hosted-service billing.",
   "private": true,
   "packageManager": "pnpm@9.12.0",

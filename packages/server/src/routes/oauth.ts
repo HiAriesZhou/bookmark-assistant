@@ -1,14 +1,18 @@
 // 🔐 OAuth Routes for Notion Integration
 
 import { Router, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { isRetryablePersistenceError } from '../core';
 import { AuthenticatedRequest, OAuthExchangeRequest } from '../types';
 import { validateExtension, validateSession } from '../middleware/auth';
 import { notionService } from '../services/notion';
 import { userPrisma, prisma, userCompatSelect } from '../services/userPrisma';
-import { config } from '../config';
 import { auditLog, sanitizeError } from '../utils';
+import {
+  issueSessionToken,
+  readOptionalSessionUserId,
+  SessionTokenError,
+} from '../services/session';
+import { findAccountByEmail } from '../services/account';
 
 const router: import('express').Router = Router();
 
@@ -68,6 +72,21 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
         message: 'redirectUri is required',
       });
     }
+    let sessionUserId: string | null;
+    try {
+      sessionUserId = readOptionalSessionUserId(req.headers.authorization);
+    } catch (error) {
+      if (!(error instanceof SessionTokenError)) throw error;
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session token' });
+    }
+    if (sessionUserId) {
+      // Older sessions may carry the Notion user ID instead of the internal ID.
+      sessionUserId = (await userPrisma.resolveInternalUserId(sessionUserId)) ?? null;
+      if (!sessionUserId) {
+        return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session token' });
+      }
+    }
+
     // Exchange code for tokens with Notion
     const tokenData = await notionService.exchangeOAuthCode(code, redirectUri);
 
@@ -95,7 +114,38 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
       'OAuth findUnique by notionUserId'
     );
 
-    if (existingUser) {
+    if (sessionUserId) {
+      // A kept session (for example after disconnecting Notion) reconnects Notion
+      // to the same account, so its plan is never split across accounts.
+      if (existingUser && existingUser.id !== sessionUserId) {
+        return res.status(409).json({
+          error: 'Conflict',
+          code: 'NOTION_ACCOUNT_LINKED_ELSEWHERE',
+          message:
+            'This Notion account is linked to another Bookmark Assistant account. Sign in with that account, or delete it before linking Notion here.',
+        });
+      }
+      user = await retryPrismaOperation(
+        () =>
+          prisma.user.update({
+            where: { id: sessionUserId },
+            data: {
+              notionUserId,
+              notionAccessToken: tokenData.access_token,
+              notionRefreshToken:
+                tokenData.refresh_token || existingUser?.notionRefreshToken || null,
+              notionWorkspaceId: tokenData.workspace_id,
+              ...(tokenData.workspace_name
+                ? { notionWorkspaceName: tokenData.workspace_name }
+                : {}),
+              lastActivity: new Date(),
+            },
+            select: userCompatSelect,
+          }),
+        3,
+        'OAuth link Notion to account'
+      );
+    } else if (existingUser) {
       console.log('✅ Found existing user by Notion ID');
       // Update tokens and activity (with retry)
       user = await retryPrismaOperation(
@@ -120,9 +170,9 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
       // 3. Step 2: Try Reconciliation via Email (if Step 1 failed)
       if (notionEmail) {
         const paidUser = await retryPrismaOperation(
-          () => prisma.user.findUnique({ where: { email: notionEmail }, select: userCompatSelect }),
+          () => findAccountByEmail(notionEmail),
           3,
-          'OAuth findUnique by email'
+          'OAuth find account by email'
         );
 
         if (paidUser) {
@@ -221,13 +271,12 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
     }
 
     // Create JWT session token using the internal ID (CUID) only after template resolution succeeds.
-    const sessionToken = jwt.sign({ userId: user.id, timestamp: Date.now() }, config.jwtSecret, {
-      expiresIn: '24h',
-    });
+    const sessionToken = issueSessionToken(user.id);
 
     auditLog('oauth_exchange_success', user.id, {
       hasRefreshToken: !!tokenData.refresh_token,
       plan: user.plan,
+      linkedToSession: !!sessionUserId,
     });
 
     // Fetch latest user data (with retry)
@@ -256,6 +305,24 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
       error: 'Internal Server Error',
       message: 'Failed to process OAuth exchange',
     });
+  }
+});
+
+/**
+ * Session Renewal
+ * Issues a fresh session token for an existing account so active users stay signed in.
+ */
+router.post('/session', validateSession, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const account = await userPrisma.find(userId);
+    if (!account?.id) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Account not found' });
+    }
+    res.json({ success: true, sessionToken: issueSessionToken(account.id) });
+  } catch (error) {
+    console.error('Session renewal error:', sanitizeError(error));
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to renew session' });
   }
 });
 

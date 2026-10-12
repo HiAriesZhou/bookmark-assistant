@@ -75,7 +75,7 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant processes only the information needed for local bookmark management and library reports, Notion sync, optional AI features, billing, and support.',
     effectiveLabel: 'Effective',
     updatedLabel: 'Last updated',
-    date: 'August 25, 2026',
+    date: 'October 12, 2026',
     contentsLabel: 'On this page',
     backHome: 'Back to Bookmark Assistant',
     language: '中文',
@@ -97,13 +97,13 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'notion-sync',
-        title: '3. Notion connection and sync data',
+        title: '3. Account, Notion connection and sync data',
         paragraphs: [
           'When you connect or sync, Bookmark Assistant processes the information required to perform the action you requested.',
         ],
         bullets: [
-          'Account information, including the email and identifiers returned through the Notion OAuth flow.',
-          'Notion OAuth tokens, workspace identifiers, selected database or data-source identifiers, and template connection settings. These are retained until you disconnect or the account is deleted.',
+          'Account information, including the email and identifiers returned through the Notion OAuth flow. Local bookmark management does not require an account.',
+          'Notion OAuth tokens, workspace identifiers, selected database or data-source identifiers, and template connection settings. These are retained until you disconnect Notion or delete the account.',
           'Bookmark, Reading List, and current-page fields selected for sync, such as title, URL, folder, source type, reading status, description, tags, and favicon when available.',
           'Notion page identifiers and stable item identifiers required to update entries and avoid duplicates.',
         ],
@@ -164,8 +164,8 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         id: 'controls',
         title: '10. Your controls and deletion',
         paragraphs: [
-          'You can disable AI, edit the excluded-hostname list, replace or delete the stored AI key, turn off scheduled sync, and disconnect Notion from the extension.',
-          'Disconnecting deletes the Bookmark Assistant service account and its associated Notion connection and AI records. It does not delete pages already written to your Notion workspace. Paddle may retain billing records under its legal obligations; manage an active monthly subscription through the Paddle customer portal before disconnecting. Shared page-description cache entries expire under the retention rule above.',
+          'You can disable AI, edit the excluded-hostname list, replace or delete the stored AI key, turn off scheduled sync, disconnect Notion, and delete your service account from the extension.',
+          'Disconnecting Notion removes the Notion tokens, database identifiers and AI work items tied to Notion pages; your account and plan remain. Deleting the service account removes the Bookmark Assistant service account with its Notion connection, AI key and AI records. Neither action deletes Chrome bookmarks or pages already written to your Notion workspace. Paddle may retain billing records under its legal obligations; manage an active monthly subscription through the Paddle customer portal before deleting the service account. Shared page-description cache entries expire under the retention rule above.',
         ],
       },
       {
@@ -200,7 +200,7 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant 只处理本地书签管理与报告、Notion 同步、可选 AI、支付和支持所必需的信息。',
     effectiveLabel: '生效日期',
     updatedLabel: '最后更新',
-    date: '2026 年 8 月 25 日',
+    date: '2026 年 10 月 12 日',
     contentsLabel: '本页目录',
     backHome: '返回 Bookmark Assistant',
     language: 'English',
@@ -222,11 +222,11 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'notion-sync',
-        title: '3. Notion 连接与同步数据',
+        title: '3. 账户、Notion 连接与同步数据',
         paragraphs: ['连接或同步时，Bookmark Assistant 会处理完成你所请求操作必需的信息。'],
         bullets: [
-          '账户信息，包括 Notion OAuth 流程返回的邮箱与标识符。',
-          'Notion OAuth Token、工作区标识、所选数据库或数据源标识，以及模板连接设置。这些信息保留到你断开连接或账户被删除。',
+          '账户信息，包括 Notion OAuth 流程返回的邮箱与标识符。管理本地书签不需要账户。',
+          'Notion OAuth Token、工作区标识、所选数据库或数据源标识，以及模板连接设置。这些信息保留到你断开 Notion 或删除账户。',
           '你选择同步的书签、阅读清单和当前页面字段，例如标题、URL、目录、来源类型、阅读状态、描述、标签，以及可用时的网站图标。',
           '更新条目和避免重复所需的 Notion 页面标识与稳定项目标识。',
         ],
@@ -287,8 +287,8 @@ export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         id: 'controls',
         title: '10. 你的控制与删除方式',
         paragraphs: [
-          '你可以关闭 AI、编辑排除 hostname 列表、更换或删除已保存的 AI Key、关闭定时同步，并从扩展中断开 Notion。',
-          '断开连接会删除 Bookmark Assistant 服务账户及其关联的 Notion 连接和 AI 记录，但不会删除已经写入 Notion 工作区的页面。Paddle 可能因法律义务保留支付记录；如有有效月度订阅，请先通过 Paddle 客户门户管理订阅。共享页面描述缓存会按上述保留规则过期。',
+          '你可以在扩展中关闭 AI、编辑排除 hostname 列表、更换或删除已保存的 AI Key、关闭定时同步、断开 Notion 以及删除服务端账户。',
+          '断开 Notion 会移除 Notion Token、数据库标识以及关联 Notion 页面的 AI 任务，账户和套餐保留。删除服务端账户会移除 Bookmark Assistant 服务账户及其 Notion 连接、AI Key 和 AI 记录。这两项操作都不会删除 Chrome 书签或已经写入 Notion 工作区的页面。Paddle 可能因法律义务保留支付记录；如有有效月度订阅，请先通过 Paddle 客户门户管理订阅再删除服务端账户。共享页面描述缓存会按上述保留规则过期。',
         ],
       },
       {

@@ -98,13 +98,13 @@ describe('server config', () => {
     expect(config.allowedExtensionIds).toEqual(['primary-extension-id', 'secondary-extension-id']);
   });
 
-  it('parses developer emails as a normalized allowlist', async () => {
+  it('ignores the retired developer email allowlist', async () => {
     const { config } = await loadConfigWithEnv({
       ALLOWED_EXTENSION_IDS: 'primary-extension-id',
-      DEVELOPER_EMAILS: 'Dev@Example.com, another@example.com ',
+      DEVELOPER_EMAILS: 'dev@example.com',
     });
 
-    expect(config.developerEmails).toEqual(['dev@example.com', 'another@example.com']);
+    expect(config).not.toHaveProperty('developerEmails');
   });
 
   it('uses the current recurring Paddle prices as safe fallbacks', async () => {

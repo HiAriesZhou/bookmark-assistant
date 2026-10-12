@@ -441,7 +441,7 @@
     "description": "Free plan description"
   },
   "confirm_disconnect_message": {
-    "message": "这将移除你的 Notion 工作区连接并清除所有本地设置。",
+    "message": "这会移除 Notion 工作区连接及其同步状态。套餐保留在你的账户上，已写入 Notion 的页面也会保留。",
     "description": "Confirm disconnect message"
   },
   "confirm_disconnect_title": {
@@ -469,7 +469,7 @@
     "description": "Footer contact support subtitle"
   },
   "disconnected_desc": {
-    "message": "Notion 连接已移除。",
+    "message": "Notion 连接已移除，套餐保持不变。",
     "description": "Disconnected description"
   },
   "disconnected_title": {
@@ -1238,5 +1238,41 @@
   },
   "deployment_self_hosted": {
     "message": "自托管 · 全部功能可用"
+  },
+  "subscription_local_mode": {
+    "message": "本地模式"
+  },
+  "subscription_local_mode_desc": {
+    "message": "管理 Chrome 书签不需要账户或套餐。连接 Notion 后可同步，并可使用 Pro。"
+  },
+  "service_data_title": {
+    "message": "服务端数据"
+  },
+  "service_data_delete_label": {
+    "message": "删除服务端账户"
+  },
+  "service_data_delete_desc": {
+    "message": "永久删除服务端账户及其 Notion 连接、AI Key 和 AI 记录。"
+  },
+  "service_data_delete_desc_with_email": {
+    "message": "已关联 $EMAIL$。删除后会永久移除服务端账户及其 Notion 连接、AI Key 和 AI 记录。",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "person@example.com"
+      }
+    }
+  },
+  "service_data_delete_action": {
+    "message": "删除账户"
+  },
+  "service_data_delete_confirm_title": {
+    "message": "删除服务端账户？"
+  },
+  "service_data_delete_confirm_message": {
+    "message": "这会永久删除你的 Bookmark Assistant 服务端账户、套餐记录、Notion 连接、AI Key 和 AI 记录。Chrome 书签和已写入 Notion 的页面会保留。如有有效的 Paddle 订阅，请先在客户门户中取消。"
+  },
+  "service_data_deleted_title": {
+    "message": "服务端账户已删除"
   }
 }

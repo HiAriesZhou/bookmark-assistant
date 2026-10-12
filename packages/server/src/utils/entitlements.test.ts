@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockConfig = vi.hoisted(() => ({
   selfHosted: false,
-  developerEmails: [] as string[],
 }));
 
 vi.mock('../config', () => ({
@@ -21,7 +20,6 @@ const now = new Date('2026-07-08T00:00:00.000Z');
 describe('Pro entitlements', () => {
   beforeEach(() => {
     mockConfig.selfHosted = false;
-    mockConfig.developerEmails = [];
   });
 
   it('does not grant Pro to a free user', () => {
@@ -67,12 +65,16 @@ describe('Pro entitlements', () => {
     });
   });
 
-  it('grants Pro to a developer email from DEVELOPER_EMAILS', () => {
-    mockConfig.developerEmails = ['dev@example.com'];
-
-    const entitlement = resolveProEntitlement({ email: ' Dev@Example.com ', plan: 'free' }, now);
-
-    expect(entitlement).toMatchObject({
+  it('derives developer Pro from the stored account grant, not the email address', () => {
+    expect(resolveProEntitlement({ email: 'dev@example.com', plan: 'free' }, now).isPro).toBe(
+      false
+    );
+    expect(
+      resolveProEntitlement(
+        { email: 'dev@example.com', plan: 'pro', subscriptionSource: 'developer' },
+        now
+      )
+    ).toMatchObject({
       plan: 'pro',
       isPro: true,
       subscriptionSource: 'developer',

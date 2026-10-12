@@ -3,9 +3,10 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest } from '../types';
 import { validateSession } from '../middleware/auth';
-import { userPrisma, prisma } from '../services/userPrisma';
+import { userPrisma } from '../services/userPrisma';
 import { auditLog, sanitizeError, resolveProEntitlement } from '../utils';
 import { config } from '../config';
+import { deleteAccount, disconnectNotion } from '../services/account';
 import type { DeploymentProfile } from '@bookmark-assistant/types';
 
 const router: import('express').Router = Router();
@@ -37,6 +38,7 @@ router.get('/profile', validateSession, async (req: AuthenticatedRequest, res: R
     const profile = {
       ...deployment,
       userId,
+      email: userData.email || null,
       templateDatabaseId: userData.templateDatabaseId,
       databaseCount: userData.databases?.length || 0,
       lastActivity: userData.lastActivity,
@@ -165,24 +167,62 @@ router.get(
 );
 
 /**
- * Logout Endpoint
- * Delete user record to prevent stale cache conflicts on reconnection.
- * Each reconnection creates a new duplicated database in Notion.
+ * Legacy Disconnect Endpoint
+ * Extensions up to 1.4.3 call this to disconnect Notion. It removes the Notion
+ * connection but keeps the account and its plan. Newer extensions call
+ * /notion/disconnect instead.
  */
 router.post('/logout', validateSession, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = req.user!.userId;
-    // Delete the user record entirely to prevent stale database ID conflicts
-    // When user reconnects, they will create a fresh database in Notion
-    await prisma.user.delete({ where: { id: userId } }).catch(() => {
-      // Ignore if user doesn't exist
-    });
-    auditLog('logout', userId, { action: 'user_deleted' });
+    const account = await userPrisma.find(req.user!.userId);
+    if (account?.id) await disconnectNotion(account.id);
+    auditLog('logout', account?.id || req.user!.userId, { action: 'notion_disconnected' });
     res.json({ success: true });
   } catch (error) {
     const errorMessage = sanitizeError(error);
     auditLog('logout_error', req.user?.userId || 'unknown', { error: errorMessage });
     res.status(500).json({ success: false, message: 'Failed to logout' });
+  }
+});
+
+/**
+ * Disconnect Notion
+ * Removes the Notion destination while keeping the account and its plan.
+ */
+router.post(
+  '/notion/disconnect',
+  validateSession,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const account = await userPrisma.find(req.user!.userId);
+      if (!account?.id) {
+        return res.status(404).json({ error: 'Not Found', message: 'User data not found' });
+      }
+      await disconnectNotion(account.id);
+      auditLog('notion_disconnected', account.id, {});
+      res.json({ success: true });
+    } catch (error) {
+      const errorMessage = sanitizeError(error);
+      auditLog('notion_disconnect_error', req.user?.userId || 'unknown', { error: errorMessage });
+      res.status(500).json({ success: false, message: 'Failed to disconnect Notion' });
+    }
+  }
+);
+
+/**
+ * Delete Account
+ * Permanently deletes the service account with its Notion connection and AI records.
+ */
+router.delete('/account', validateSession, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const account = await userPrisma.find(req.user!.userId);
+    if (account?.id) await deleteAccount(account.id);
+    auditLog('account_deleted', account?.id || req.user!.userId, {});
+    res.json({ success: true });
+  } catch (error) {
+    const errorMessage = sanitizeError(error);
+    auditLog('account_delete_error', req.user?.userId || 'unknown', { error: errorMessage });
+    res.status(500).json({ success: false, message: 'Failed to delete account' });
   }
 });
 

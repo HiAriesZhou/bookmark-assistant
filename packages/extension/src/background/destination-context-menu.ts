@@ -1,9 +1,10 @@
+import { readNotionDestination } from '../utils/account-state';
 export const SAVE_TO_NOTION_CONTEXT_MENU_ID = 'saveToNotion';
 
 let contextMenuUpdate: Promise<void> = Promise.resolve();
 
 async function applyDestinationContextMenuState(): Promise<void> {
-  const { session_token } = await chrome.storage.local.get('session_token');
+  const notionConnected = await readNotionDestination();
 
   await new Promise<void>((resolve) => {
     chrome.contextMenus.remove(SAVE_TO_NOTION_CONTEXT_MENU_ID, () => {
@@ -13,7 +14,7 @@ async function applyDestinationContextMenuState(): Promise<void> {
     });
   });
 
-  if (!session_token) return;
+  if (!notionConnected) return;
 
   chrome.contextMenus.create({
     id: SAVE_TO_NOTION_CONTEXT_MENU_ID,

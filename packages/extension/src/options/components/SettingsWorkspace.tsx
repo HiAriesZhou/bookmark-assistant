@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { BillingSection } from './BillingSection';
+import { ServiceDataSection } from './ServiceDataSection';
 import { SyncSettingsSection } from './SyncSettingsSection';
 import { AiSettingsSection } from './AiSettingsSection';
 import { useAppStore } from '../store';
@@ -11,7 +12,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
   const [plansExpanded, setPlansExpanded] = useState(false);
   const {
     fetchPricing,
-    isConnected,
+    isSignedIn,
     refreshDashboard,
     refreshEntitlements,
     commerceEnabled,
@@ -42,10 +43,10 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
   }, [refreshDashboard]);
 
   useEffect(() => {
-    if (!isConnected || requestedEntitlements.current) return;
+    if (!isSignedIn || requestedEntitlements.current) return;
     requestedEntitlements.current = true;
     void refreshEntitlements();
-  }, [isConnected, refreshEntitlements]);
+  }, [isSignedIn, refreshEntitlements]);
 
   const togglePlans = (next?: boolean) => {
     if (!commerceEnabled || deploymentMode === 'self-hosted') return;
@@ -79,6 +80,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
         ) : commerceEnabled ? (
           <BillingSection plansExpanded={plansExpanded} onTogglePlans={togglePlans} />
         ) : null}
+        <ServiceDataSection />
       </div>
       <footer className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs text-library-muted">
         <a

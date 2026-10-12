@@ -13,6 +13,7 @@ import {
 } from '../core';
 import { extractPageContentFromDocument } from '../core';
 import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
+import { NOTION_CONNECTED_KEY, readNotionDestination } from '../utils/account-state';
 import { config, validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
 import { addMessageListener, Messages } from '../utils/message';
@@ -571,9 +572,8 @@ async function saveCurrentPage(
   source: CurrentPageCaptureSource = 'current_page'
 ): Promise<{ success: boolean; error?: string; aiStatus?: string; aiRequestId?: string }> {
   try {
-    // Check if user is connected first
-    const { session_token } = await chrome.storage.local.get('session_token');
-    if (!session_token) {
+    // Saving the current page needs a linked Notion destination.
+    if (!(await readNotionDestination())) {
       return { success: false, error: 'Not connected' };
     }
 
@@ -725,10 +725,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   console.log('[DEBUG] Context menu clicked:', info.menuItemId);
   if (info.menuItemId === SAVE_TO_NOTION_CONTEXT_MENU_ID) {
     console.log('[DEBUG] saveToNotion handler started');
-    // Check if user is connected first
-    const { session_token } = await chrome.storage.local.get('session_token');
-    console.log('[DEBUG] session_token:', session_token ? 'exists' : 'missing');
-    if (!session_token) {
+    if (!(await readNotionDestination())) {
       console.log('[Context Menu] Not connected to Notion');
       return;
     }
@@ -802,9 +799,35 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Keep destination-only actions aligned with the active connection.
 void syncDestinationContextMenu();
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || !changes.session_token) return;
+  if (areaName !== 'local' || (!changes.session_token && !changes[NOTION_CONNECTED_KEY])) return;
   void syncDestinationContextMenu();
 });
+
+/**
+ * Stores fresh entitlements after a Notion connection. The new session
+ * token invalidates the profile cache, so other readers join this request.
+ * A failed refresh never fails the sign-in itself.
+ */
+async function refreshStoredEntitlements(): Promise<void> {
+  try {
+    const { user, isPro } = await serverAPI.getUserProfile();
+    await chrome.storage.local.set({
+      is_pro: isPro,
+      purchase_type: user.purchaseType,
+      subscription_source: user.subscriptionSource,
+      subscription_expires_at: user.expiresAt,
+      deployment_profile: {
+        deploymentMode: user.deploymentMode || 'hosted',
+        commerceEnabled: user.commerceEnabled ?? true,
+        capabilities: user.capabilities || { autoSync: isPro, batchAi: isPro },
+        apiOrigin: new URL(config.notion.serverUrl).origin,
+      },
+      entitlements_cached_at: Date.now(),
+    });
+  } catch (profileError) {
+    console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
+  }
+}
 
 addMessageListener({
   [Messages.NOTION_OAUTH]: async () => {
@@ -816,30 +839,7 @@ addMessageListener({
       // Clear connecting state after OAuth completes
       await chrome.storage.local.set({ is_connecting: false });
 
-      // Refresh entitlements after successful OAuth
-      // This ensures isPro status is updated after authentication
-      try {
-        // The OAuth exchange changes the session token, which invalidates the
-        // background profile cache. Other post-connect readers can safely join
-        // this fresh request instead of starting their own fetch.
-        const { user, isPro } = await serverAPI.getUserProfile();
-        await chrome.storage.local.set({
-          is_pro: isPro,
-          purchase_type: user.purchaseType,
-          subscription_source: user.subscriptionSource,
-          subscription_expires_at: user.expiresAt,
-          deployment_profile: {
-            deploymentMode: user.deploymentMode || 'hosted',
-            commerceEnabled: user.commerceEnabled ?? true,
-            capabilities: user.capabilities || { autoSync: isPro, batchAi: isPro },
-            apiOrigin: new URL(config.notion.serverUrl).origin,
-          },
-          entitlements_cached_at: Date.now(),
-        });
-      } catch (profileError) {
-        console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
-        // Don't fail the OAuth flow if profile refresh fails
-      }
+      await refreshStoredEntitlements();
 
       await recordDashboardEvent({ kind: 'connection_checked', result: 'success' });
 
@@ -930,13 +930,24 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.LOGOUT]: async () => {
+  [Messages.DISCONNECT_NOTION]: async () => {
     try {
-      await serverAPI.logout();
+      await serverAPI.disconnectNotion();
+      await scheduleAutoSync(false, 0);
       return { success: true } as const;
     } catch (err) {
-      console.error('❌ Logout failed:', err);
-      return { success: false, error: String(err) } as const;
+      console.error('❌ Notion disconnect failed:', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
+    }
+  },
+  [Messages.DELETE_ACCOUNT]: async () => {
+    try {
+      await serverAPI.deleteAccount();
+      await scheduleAutoSync(false, 0);
+      return { success: true } as const;
+    } catch (err) {
+      console.error('❌ Account deletion failed:', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
     }
   },
   [Messages.RESTORE_PURCHASE]: async (req: { email: string }) => {

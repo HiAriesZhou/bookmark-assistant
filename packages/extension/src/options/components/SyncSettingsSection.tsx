@@ -10,6 +10,7 @@ export function SyncSettingsSection({ onUpgrade }: { onUpgrade: () => void }) {
   const { show } = useToast();
   const {
     isPro,
+    isConnected,
     capabilities,
     deploymentMode,
     autoSync,
@@ -18,7 +19,9 @@ export function SyncSettingsSection({ onUpgrade }: { onUpgrade: () => void }) {
     saveSyncSettings,
     getEffectiveLimits,
   } = useAppStore();
-  const autoSyncAllowed = capabilities?.autoSync ?? isPro;
+  const planAllowsAutoSync = capabilities?.autoSync ?? isPro;
+  // Scheduled sync writes to Notion, so the plan alone is not enough.
+  const autoSyncAllowed = planAllowsAutoSync && isConnected;
   const [value, setValue] = useState<number>(intervalHours);
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +57,7 @@ export function SyncSettingsSection({ onUpgrade }: { onUpgrade: () => void }) {
       <SettingsRow
         label={t('auto_sync_label')}
         badge={
-          autoSyncAllowed || deploymentMode === 'self-hosted' ? undefined : (
+          planAllowsAutoSync || deploymentMode === 'self-hosted' ? undefined : (
             <ProBadge onClick={onUpgrade} />
           )
         }

@@ -15,7 +15,11 @@ beforeEach(() => {
   vi.stubGlobal('chrome', {
     storage: {
       local: {
-        get: vi.fn(async (key: string) => ({ [key]: storage[key] })),
+        get: vi.fn(async (keys: string | string[]) =>
+          Object.fromEntries(
+            (Array.isArray(keys) ? keys : [keys]).map((key) => [key, storage[key]])
+          )
+        ),
       },
     },
     contextMenus: { create, remove },
@@ -52,4 +56,13 @@ it('removes the destination action after disconnecting', async () => {
 
   expect(remove).toHaveBeenCalledTimes(2);
   expect(create).toHaveBeenCalledTimes(1);
+});
+
+it('omits the destination action for an account without a linked Notion destination', async () => {
+  storage.session_token = 'session-token';
+  storage.notion_connected = false;
+
+  await syncDestinationContextMenu();
+
+  expect(create).not.toHaveBeenCalled();
 });

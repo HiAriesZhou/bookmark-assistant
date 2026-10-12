@@ -22,10 +22,6 @@ export type ProEntitlement = {
 
 const PRO_SOURCES = new Set<SubscriptionSource>(['paddle', 'developer', 'gift', 'trial']);
 
-function normalizeEmail(email?: string | null): string {
-  return email?.trim().toLowerCase() || '';
-}
-
 function normalizeSource(source?: string | null): SubscriptionSource | null {
   if (!source) return null;
   return PRO_SOURCES.has(source as SubscriptionSource) ? (source as SubscriptionSource) : null;
@@ -35,11 +31,6 @@ function normalizeExpiresAt(value?: Date | string | null): Date | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
-}
-
-export function isDeveloperEmail(email?: string | null): boolean {
-  const normalized = normalizeEmail(email);
-  return normalized.length > 0 && config.developerEmails.includes(normalized);
 }
 
 function inferLegacySource(user: ProEntitlementInput): SubscriptionSource | null {
@@ -71,15 +62,6 @@ export function resolveProEntitlement(
       plan: 'free',
       isPro: false,
       subscriptionSource: null,
-      expiresAt: null,
-    };
-  }
-
-  if (isDeveloperEmail(user.email)) {
-    return {
-      plan: 'pro',
-      isPro: true,
-      subscriptionSource: 'developer',
       expiresAt: null,
     };
   }

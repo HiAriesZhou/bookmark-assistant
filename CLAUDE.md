@@ -48,8 +48,12 @@ and test setup are included. Routine browser tests must remain headless.
   remain the local library's source of truth. Notion is an optional destination.
 - Server: Express/Prisma/PostgreSQL. OAuth, sync, AI and Paddle share one codebase.
   Hosted Free/Pro and self-hosted capabilities are decided by server configuration
-  and authentication, not client flags. Cache maintenance uses a local command,
-  not an HTTP administrator endpoint.
+  and authentication, not client flags. Cache maintenance and plan grants
+  (`cache`, `entitlement`) use local commands, not HTTP administrator endpoints.
+- Notion OAuth creates the service account; plans belong to that account, not to
+  the Notion connection. Disconnecting Notion keeps the account, session and plan;
+  only the explicit account deletion removes the server record. Local bookmark
+  management never requires an account.
 - Types: shared KnowledgeItem, AI and deployment contracts. Keep the basic data
   model compatible with LiteContext; do not fork it by plan.
 - Shared: brand artwork, design tokens and Tailwind preset. Website: Next.js.

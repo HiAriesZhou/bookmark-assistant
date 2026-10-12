@@ -283,7 +283,7 @@
     "description": "Disconnected title"
   },
   "disconnected_desc": {
-    "message": "Your Notion connection has been removed.",
+    "message": "Your Notion connection has been removed. Your plan is unchanged.",
     "description": "Disconnected description"
   },
   "sync_no_changes_title": {
@@ -343,7 +343,7 @@
     "description": "Confirm disconnect title"
   },
   "confirm_disconnect_message": {
-    "message": "This will remove your Notion workspace connection and clear all local settings.",
+    "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
     "description": "Confirm disconnect message"
   },
   "confirm_important": {
@@ -1530,5 +1530,41 @@
   },
   "deployment_self_hosted": {
     "message": "Self-hosted · All features available"
+  },
+  "subscription_local_mode": {
+    "message": "Local mode"
+  },
+  "subscription_local_mode_desc": {
+    "message": "Managing Chrome bookmarks needs no account or plan. Connect Notion to sync and to use Pro."
+  },
+  "service_data_title": {
+    "message": "Service data"
+  },
+  "service_data_delete_label": {
+    "message": "Delete service account"
+  },
+  "service_data_delete_desc": {
+    "message": "Permanently removes the server-side account with its Notion connection, AI key and AI records."
+  },
+  "service_data_delete_desc_with_email": {
+    "message": "Linked to $EMAIL$. Deleting permanently removes the server-side account with its Notion connection, AI key and AI records.",
+    "placeholders": {
+      "email": {
+        "content": "$1",
+        "example": "person@example.com"
+      }
+    }
+  },
+  "service_data_delete_action": {
+    "message": "Delete account"
+  },
+  "service_data_delete_confirm_title": {
+    "message": "Delete your service account?"
+  },
+  "service_data_delete_confirm_message": {
+    "message": "This permanently deletes your Bookmark Assistant service account, plan record, Notion connection, AI key and AI records. Chrome bookmarks and pages already in Notion are kept. Cancel an active Paddle subscription in the customer portal first."
+  },
+  "service_data_deleted_title": {
+    "message": "Service account deleted"
   }
 }
