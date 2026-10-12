@@ -113,7 +113,9 @@ export default defineConfig(({ mode }) => {
               });
               manifest.key = process.env.BOOKMARK_ASSISTANT_EXTENSION_PUBLIC_KEY;
             }
-            manifest.host_permissions = [`${config.apiUrl}/*`];
+            // The API allows the extension origin through CORS, so no host permission
+            // (and no install-time warning that would disable existing installs) is needed.
+            manifest.host_permissions = [];
             manifest.action.default_icon['128'] = 'assets/logo_128x128.png';
             manifest.icons['128'] = 'assets/logo_128x128.png';
             manifest.version = PRODUCT_VERSION;
