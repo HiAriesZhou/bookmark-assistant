@@ -93,6 +93,9 @@ test.describe('Bookmark Assistant Pro extension', () => {
     expect(manifest.name).toContain(expectedProductName);
     expect(manifest.background?.service_worker).toBe('assets/background.js');
     expect(manifest.permissions).toContain('favicon');
+    // A new host permission would show a warning and disable existing installs on update;
+    // the API is reached through CORS instead.
+    expect(manifest.host_permissions ?? []).toEqual([]);
     // Toolbar icons must resolve to real images at their declared pixel sizes.
     const iconSizes = await page.evaluate(async () => {
       const icons = chrome.runtime.getManifest().action?.default_icon as Record<string, string>;
