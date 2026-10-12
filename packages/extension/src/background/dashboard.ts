@@ -8,6 +8,7 @@ import { analyzeBookmarkLibrary } from '../dashboard/library-health';
 import { getReadingListItems } from '../utils/reading-list';
 import { getAutoSyncStatus } from './auto-sync';
 import { serverAPI } from './server-api';
+import { hasNotionDestination, NOTION_CONNECTED_KEY } from '../utils/account-state';
 
 export const DASHBOARD_EVENTS_KEY = 'dashboard_recent_activity';
 export const DASHBOARD_SYNC_SUMMARY_KEY = 'dashboard_last_sync';
@@ -108,8 +109,12 @@ export function inferSyncResult(
 }
 
 async function readConnection(refresh: boolean): Promise<DashboardSnapshot['connection']> {
-  const stored = await chrome.storage.local.get(['session_token', DASHBOARD_CONNECTION_KEY]);
-  if (!stored.session_token) return { status: 'disconnected', action: 'connect' };
+  const stored = await chrome.storage.local.get([
+    'session_token',
+    NOTION_CONNECTED_KEY,
+    DASHBOARD_CONNECTION_KEY,
+  ]);
+  if (!hasNotionDestination(stored)) return { status: 'disconnected', action: 'connect' };
 
   const cached = stored[DASHBOARD_CONNECTION_KEY] as CachedConnection | undefined;
   const cacheWindow =

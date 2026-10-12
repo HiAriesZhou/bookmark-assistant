@@ -18,6 +18,7 @@ describe('disconnectNotionDestination', () => {
     useAppStore.setState({
       ...originalState,
       isConnected: true,
+      isSignedIn: true,
       isPro: true,
       plan: 'pro',
       dashboard: connectedDashboard,
@@ -32,7 +33,7 @@ describe('disconnectNotionDestination', () => {
     vi.unstubAllGlobals();
   });
 
-  it('clears remote state and rebuilds the local dashboard after logout', async () => {
+  it('unlinks Notion but keeps the account and its plan', async () => {
     const disconnectedDashboard = {
       ...connectedDashboard,
       connection: { status: 'disconnected', action: 'connect' },
@@ -43,9 +44,19 @@ describe('disconnectNotionDestination', () => {
 
     await disconnectNotionDestination(refreshDashboard);
 
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'DISCONNECT_NOTION' });
     expect(refreshDashboard).toHaveBeenCalledWith(false);
     expect(useAppStore.getState().isConnected).toBe(false);
-    expect(useAppStore.getState().isPro).toBe(false);
+    expect(useAppStore.getState().isSignedIn).toBe(true);
+    expect(useAppStore.getState().isPro).toBe(true);
+    expect(useAppStore.getState().plan).toBe('pro');
     expect(useAppStore.getState().dashboard).toEqual(disconnectedDashboard);
+  });
+
+  it('reports a failed disconnect instead of pretending Notion was removed', async () => {
+    vi.mocked(chrome.runtime.sendMessage).mockResolvedValue({ success: false, error: 'offline' });
+
+    await expect(disconnectNotionDestination(vi.fn())).rejects.toThrow('offline');
+    expect(useAppStore.getState().isConnected).toBe(true);
   });
 });

@@ -113,6 +113,13 @@ export function setupAutoSyncListener(onSync: () => Promise<void>): void {
         await chrome.storage.local.set({ auto_sync_enabled: false });
         return;
       }
+      if (!profile.user.hasNotionAccess) {
+        // Notion may have been unlinked from another device; there is nothing to sync to.
+        console.warn('🚫 Auto-sync skipped: no Notion destination is linked');
+        await chrome.alarms.clear(ALARM_NAME);
+        await chrome.storage.local.set({ auto_sync_enabled: false });
+        return;
+      }
     } catch (error) {
       console.error('❌ Failed to verify Pro status for auto-sync:', error);
       // On error, don't sync and disable auto-sync to prevent potential abuse

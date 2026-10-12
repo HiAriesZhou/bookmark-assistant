@@ -1,6 +1,6 @@
 {
   "name": "@bookmark-assistant/extension",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "private": true,
   "description": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and optionally add AI summaries and tags.",
   "type": "module",

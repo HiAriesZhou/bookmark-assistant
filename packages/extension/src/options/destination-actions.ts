@@ -1,20 +1,14 @@
 import { Messages, sendMessage } from '../utils/message';
 import { useAppStore } from './store';
 
+/** Removes the Notion destination. The account stays signed in with its plan. */
 export async function disconnectNotionDestination(
   refreshDashboard: (force: boolean) => Promise<void>
 ) {
-  await sendMessage({ type: Messages.LOGOUT });
+  const result = await sendMessage({ type: Messages.DISCONNECT_NOTION });
+  if (!result.success) throw new Error(result.error || 'Failed to disconnect Notion');
   useAppStore.setState({
     isConnected: false,
-    isPro: false,
-    capabilities: undefined,
-    plan: 'free',
-    purchaseType: undefined,
-    subscriptionSource: undefined,
-    subscriptionExpiresAt: undefined,
-    userId: '',
-    userEmail: '',
     lastSync: '',
     isSyncing: false,
     lastSyncSummary: undefined,

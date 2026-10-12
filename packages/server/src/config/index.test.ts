@@ -15,6 +15,8 @@ const ENV_KEYS = [
   'ALLOWED_EXTENSION_ID',
   'ALLOWED_EXTENSION_IDS',
   'DEVELOPER_EMAILS',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
   'WEBSITE_URL',
   'AI_CREDENTIAL_ENCRYPTION_KEYS',
   'AI_CREDENTIAL_ACTIVE_KEY_VERSION',
@@ -98,13 +100,24 @@ describe('server config', () => {
     expect(config.allowedExtensionIds).toEqual(['primary-extension-id', 'secondary-extension-id']);
   });
 
-  it('parses developer emails as a normalized allowlist', async () => {
+  it('ignores the retired developer email allowlist', async () => {
     const { config } = await loadConfigWithEnv({
       ALLOWED_EXTENSION_IDS: 'primary-extension-id',
-      DEVELOPER_EMAILS: 'Dev@Example.com, another@example.com ',
+      DEVELOPER_EMAILS: 'dev@example.com',
     });
 
-    expect(config.developerEmails).toEqual(['dev@example.com', 'another@example.com']);
+    expect(config).not.toHaveProperty('developerEmails');
+  });
+
+  it('reads optional Google sign-in credentials', async () => {
+    const { config } = await loadConfigWithEnv({
+      ALLOWED_EXTENSION_IDS: 'primary-extension-id',
+      GOOGLE_CLIENT_ID: ' client-id.apps.googleusercontent.com ',
+      GOOGLE_CLIENT_SECRET: 'google-secret',
+    });
+
+    expect(config.googleClientId).toBe('client-id.apps.googleusercontent.com');
+    expect(config.googleClientSecret).toBe('google-secret');
   });
 
   it('uses the current recurring Paddle prices as safe fallbacks', async () => {

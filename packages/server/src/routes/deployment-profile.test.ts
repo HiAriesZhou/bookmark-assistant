@@ -14,7 +14,6 @@ vi.mock('../config', () => ({
     get commerceEnabled() {
       return state.commerceEnabled;
     },
-    developerEmails: [],
   },
 }));
 vi.mock('../services/userPrisma', () => ({

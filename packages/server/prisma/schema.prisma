@@ -25,14 +25,17 @@ model User {
   purchaseType         String? // "monthly" or "yearly"
   licenseKey           String?
 
-  // --- 3. Notion Identity (Linked via OAuth) ---
+  // --- 3. Account sign-in (optional; Notion can also sign in legacy accounts) ---
+  googleSub String? @unique
+
+  // --- 4. Notion Identity (Linked via OAuth) ---
   notionUserId        String? @unique
   notionAccessToken   String?
   notionRefreshToken  String?
   notionWorkspaceId   String?
   notionWorkspaceName String?
 
-  // --- 4. App Configuration ---
+  // --- 5. App Configuration ---
   databases            Json?
   templateDatabaseId   String?
   notionDatabaseId     String?

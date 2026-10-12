@@ -6,12 +6,14 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Public endpoints of the official hosted service. These values ship in every store
- * package; none of them is a credential. The Notion client ID is public by design.
+ * package; none of them is a credential. OAuth client IDs are public by design.
+ * An empty Google client ID hides Google sign-in; Notion sign-in keeps working.
  */
 export const OFFICIAL_SERVICE = Object.freeze({
   apiUrl: 'https://bookmark-assistant-server.vercel.app',
   websiteUrl: 'https://bookmarkassistant.com',
   notionClientId: '257d872b-594c-805a-9f58-0037c0162612',
+  googleClientId: '',
   faqUrl: 'https://bookmarkassistant.com/#faq',
   privacyUrl: 'https://bookmarkassistant.com/privacy',
   termsUrl:
@@ -89,6 +91,7 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
       VITE_APP_NAME: brand.name,
       VITE_OAUTH_SERVER_URL: apiUrl,
       VITE_NOTION_CLIENT_ID: link('notionClientId', 'VITE_NOTION_CLIENT_ID'),
+      VITE_GOOGLE_CLIENT_ID: link('googleClientId', 'VITE_GOOGLE_CLIENT_ID'),
       VITE_WEBSITE_URL: websiteUrl,
       VITE_FAQ_URL: link('faqUrl', 'VITE_FAQ_URL'),
       VITE_PRIVACY_URL: link('privacyUrl', 'VITE_PRIVACY_URL'),

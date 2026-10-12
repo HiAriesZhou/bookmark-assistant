@@ -1,5 +1,6 @@
 /// <reference types="chrome" />
 /// <reference types="vite/client" />
+import { hasNotionDestination } from '../utils/account-state';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { create } from 'zustand';
 import { CACHE_KEYS, WATCHED_CACHE_KEYS } from '../utils/cache';
@@ -97,7 +98,11 @@ export type AppState = {
   // Overview
   version: string;
   isConnecting: boolean;
+  /** A Notion destination is linked to the signed-in account. */
   isConnected: boolean;
+  /** A Bookmark Assistant account session exists on this device. */
+  isSignedIn: boolean;
+  hasGoogleSignIn: boolean;
   isSyncing: boolean;
   syncEnrichment?: SyncEnrichmentStatus;
   isRefreshingProfile: boolean;
@@ -158,6 +163,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   version: '',
   isConnecting: false,
   isConnected: false,
+  isSignedIn: false,
+  hasGoogleSignIn: false,
   isSyncing: false,
   syncEnrichment: undefined,
   isRefreshingProfile: false,
@@ -303,6 +310,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         'user_id',
         'user_email',
         'session_token',
+        CACHE_KEYS.notion_connected,
         'sync_in_progress',
         CACHE_KEYS.sync_enrichment_state,
         'is_connecting',
@@ -344,13 +352,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? stored[CACHE_KEYS.dashboard_snapshot]
         : undefined;
       const hasSession = !!session_token;
+      const notionConnected = hasNotionDestination(stored);
       const validPricing = parseCachedPricing(cached_pricing) || get().pricing;
 
       set({
         ...(stored.deployment_profile?.apiOrigin === productConfig.apiUrl
           ? stored.deployment_profile
           : defaultDeployment),
-        isConnected: hasSession,
+        isConnected: notionConnected,
+        isSignedIn: hasSession,
         isConnecting: !!is_connecting,
         isSyncing: !!sync_in_progress,
         syncEnrichment: stored[CACHE_KEYS.sync_enrichment_state] as
@@ -495,6 +505,12 @@ export const useAppStore = create<AppState>((set, get) => ({
           purchaseType,
           subscriptionSource,
           subscriptionExpiresAt,
+          isSignedIn: true,
+          isConnected: response.profile.hasNotionAccess === true,
+          hasGoogleSignIn: response.profile.hasGoogleSignIn === true,
+          ...(typeof response.profile.email === 'string'
+            ? { userEmail: response.profile.email }
+            : {}),
         });
 
         // Cache with timestamp for performance
@@ -515,6 +531,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (is401) {
         set({
           isConnected: false,
+          isSignedIn: false,
+          hasGoogleSignIn: false,
           isPro: false,
           plan: 'free',
           purchaseType: undefined,
@@ -537,6 +555,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!session_token) {
         set({
           isConnected: false,
+          isSignedIn: false,
+          hasGoogleSignIn: false,
           isPro: false,
           plan: 'free',
           purchaseType: undefined,
@@ -590,6 +610,39 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 }));
 
+/**
+ * Applies account and Notion destination changes from storage. A renewed token
+ * for the same account must not reset the dashboard; signing in to another
+ * account, signing out, or changing the Notion link does.
+ */
+async function handleAccountStateChange(changes: { [key: string]: chrome.storage.StorageChange }) {
+  const sessionChange = changes[CACHE_KEYS.session_token];
+  const userChange = changes[CACHE_KEYS.user_id];
+  const stored = await chrome.storage.local.get([
+    CACHE_KEYS.session_token,
+    CACHE_KEYS.notion_connected,
+  ]);
+  const state = useAppStore.getState();
+  const isSignedIn = !!stored.session_token;
+  const isConnected = hasNotionDestination(stored);
+  const accountChanged =
+    !isSignedIn || (!!userChange && userChange.oldValue !== userChange.newValue);
+  const shouldClearDashboard = accountChanged || isConnected !== state.isConnected;
+
+  useAppStore.setState({
+    isSignedIn,
+    isConnected,
+    ...(isSignedIn ? {} : { hasGoogleSignIn: false }),
+    ...(shouldClearDashboard ? { dashboard: undefined, hasTriedInitialLoad: false } : {}),
+  });
+  if (shouldClearDashboard) void chrome.storage.local.remove(CACHE_KEYS.dashboard_snapshot);
+
+  const signedInNow = !!sessionChange && !sessionChange.oldValue && !!sessionChange.newValue;
+  if (signedInNow || (isSignedIn && accountChanged)) {
+    void useAppStore.getState().refreshEntitlements(true);
+  }
+}
+
 // Thin provider to run init effects and listeners
 export function AppProvider({ children }: { children: ReactNode }) {
   const initialized = useRef(false);
@@ -613,28 +666,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const shot = WATCHED_CACHE_KEYS.some((key) => key in changes);
       if (!shot) return;
 
-      if (changes[CACHE_KEYS.session_token]) {
-        const oldToken = changes[CACHE_KEYS.session_token].oldValue;
-        const newToken = changes[CACHE_KEYS.session_token].newValue;
-        const wasConnected = useAppStore.getState().isConnected;
-        const isNowConnected = !!newToken;
-        const sessionChanged = !!newToken && oldToken !== newToken;
-        const shouldClearDashboard = !newToken || sessionChanged;
-
-        useAppStore.setState({
-          isConnected: isNowConnected,
-          ...(shouldClearDashboard ? { dashboard: undefined } : {}),
-        });
-        if (shouldClearDashboard) void chrome.storage.local.remove(CACHE_KEYS.dashboard_snapshot);
-
-        if (newToken && (!oldToken || oldToken !== newToken)) {
-          // hasTriedInitialLoad is obsolete - no longer needed
-          useAppStore.setState({ hasTriedInitialLoad: false });
-        }
-
-        if (!wasConnected && isNowConnected) {
-          useAppStore.getState().refreshEntitlements();
-        }
+      if (changes[CACHE_KEYS.session_token] || changes[CACHE_KEYS.notion_connected]) {
+        void handleAccountStateChange(changes);
       }
       if (changes['is_connecting']) {
         useAppStore.setState({ isConnecting: !!changes['is_connecting'].newValue });

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
+import { AccountSection } from './AccountSection';
 import { BillingSection } from './BillingSection';
 import { SyncSettingsSection } from './SyncSettingsSection';
 import { AiSettingsSection } from './AiSettingsSection';
@@ -11,7 +12,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
   const [plansExpanded, setPlansExpanded] = useState(false);
   const {
     fetchPricing,
-    isConnected,
+    isSignedIn,
     refreshDashboard,
     refreshEntitlements,
     commerceEnabled,
@@ -42,10 +43,10 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
   }, [refreshDashboard]);
 
   useEffect(() => {
-    if (!isConnected || requestedEntitlements.current) return;
+    if (!isSignedIn || requestedEntitlements.current) return;
     requestedEntitlements.current = true;
     void refreshEntitlements();
-  }, [isConnected, refreshEntitlements]);
+  }, [isSignedIn, refreshEntitlements]);
 
   const togglePlans = (next?: boolean) => {
     if (!commerceEnabled || deploymentMode === 'self-hosted') return;
@@ -72,6 +73,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
         </h1>
       </header>
       <div id="settings" aria-label={t('settings_workspace_label')} className="mt-8 space-y-9">
+        <AccountSection />
         <AiSettingsSection active={active} onUpgrade={() => togglePlans(true)} />
         <SyncSettingsSection onUpgrade={() => togglePlans(true)} />
         {deploymentMode === 'self-hosted' ? (

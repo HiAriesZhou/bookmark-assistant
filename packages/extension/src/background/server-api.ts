@@ -1,6 +1,11 @@
 // Server API Client for Bookmark Notion Sync Extension
 // Handles all communication with the backend server
 import { productConfig } from '../product-config';
+import {
+  NOTION_CONNECTED_KEY,
+  readSessionExpiry,
+  shouldRenewSession,
+} from '../utils/account-state';
 import type { DeploymentProfile } from '@bookmark-assistant/types';
 export interface ServerResponse<T = any> {
   success: boolean;
@@ -100,6 +105,33 @@ export function parsePublicPricing(value: unknown): PublicPricing | null {
 }
 
 const USER_PROFILE_CACHE_MS = 30_000;
+const SESSION_RENEWAL_ENDPOINT = '/api/oauth/session';
+
+// Sync progress belongs to one Notion destination and is reset whenever that
+// destination changes, is disconnected, or the account signs out.
+const DESTINATION_SYNC_STATE_KEYS = [
+  'oauth_template_database_id',
+  'last_sync',
+  'last_sync_at',
+  'last_sync_summary',
+  'last_sync_count',
+  'last_sync_fingerprint',
+  'last_sync_payload_version',
+  'last_sync_hash',
+  'sync_in_progress',
+  'sync_enrichment_job',
+  'sync_enrichment_state',
+  'sync_started_at',
+  'sync_trigger',
+  'is_connecting',
+  'auto_sync_enabled',
+  'auto_sync_interval_minutes',
+  'sync_interval_hours',
+  'last_bulk_sync',
+  'last_sync_results',
+  'last_reading_list_debug',
+  'dashboard_snapshot',
+];
 const USER_PROFILE_FAILURE_BACKOFF_MS = 30_000;
 export const BULK_SYNC_REQUEST_TIMEOUT_MS = 10 * 60_000;
 export const SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS = 90_000;
@@ -107,6 +139,7 @@ export const SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS = 90_000;
 class ServerAPIClient {
   private baseUrl: string;
   private sessionToken: string | null = null;
+  private sessionRenewal: Promise<void> | null = null;
   private userProfileCache: {
     sessionToken: string;
     expiresAt: number;
@@ -151,13 +184,15 @@ class ServerAPIClient {
   ): Promise<T> {
     // Always reload token before requests to pick up changes after OAuth
     await this.loadSessionToken();
+    if (endpoint !== SESSION_RENEWAL_ENDPOINT) await this.renewSessionIfNeeded();
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Extension-ID': chrome.runtime.id,
       ...((options.headers as Record<string, string>) || {}),
     };
-    if (this.sessionToken && !endpoint.includes('/api/oauth/exchange')) {
+    // The Notion exchange carries the session too, so Notion links to the signed-in account.
+    if (this.sessionToken) {
       headers['Authorization'] = `Bearer ${this.sessionToken}`;
     }
 
@@ -227,6 +262,88 @@ class ServerAPIClient {
     }
   }
 
+  /**
+   * Keeps an active account signed in. Failures are left to the request that
+   * follows; an expired session is cleared by the normal 401 handling.
+   */
+  private async renewSessionIfNeeded(): Promise<void> {
+    const token = this.sessionToken;
+    if (!token) return;
+    const expiresAt = readSessionExpiry(token);
+    if (expiresAt !== null && expiresAt <= Date.now()) {
+      // An expired session would reject the request (and waste a one-time OAuth code).
+      await this.clearLocalSession();
+      return;
+    }
+    if (!shouldRenewSession(token)) return;
+    if (!this.sessionRenewal) {
+      this.sessionRenewal = this.makeRequest<{ sessionToken?: string }>(SESSION_RENEWAL_ENDPOINT, {
+        method: 'POST',
+        timeoutMs: 10_000,
+      })
+        .then(async (response) => {
+          if (!response.sessionToken || this.sessionToken !== token) return;
+          this.sessionToken = response.sessionToken;
+          await chrome.storage.local.set({ session_token: response.sessionToken });
+        })
+        .catch((error) => {
+          console.warn('[ServerAPI] Session renewal failed:', error);
+        })
+        .finally(() => {
+          this.sessionRenewal = null;
+        });
+    }
+    await this.sessionRenewal;
+  }
+
+  // 🔑 Google account sign-in
+  async signInWithGoogle(input: {
+    code: string;
+    redirectUri: string;
+    codeVerifier: string;
+  }): Promise<{ userId: string; userEmail?: string }> {
+    // With a session this links Google to the signed-in account; without one it signs in.
+    const response = await this.makeRequest<{
+      sessionToken?: string;
+      userId: string;
+      userEmail?: string;
+    }>('/api/oauth/google', {
+      method: 'POST',
+      timeoutMs: 30_000,
+      body: JSON.stringify(input),
+    });
+    if (!response.sessionToken) {
+      throw new Error('Server did not return a session token');
+    }
+
+    const { user_id: previousUserId } = await chrome.storage.local.get('user_id');
+    if (previousUserId && previousUserId !== response.userId) {
+      await chrome.storage.local.remove(DESTINATION_SYNC_STATE_KEYS);
+    }
+    this.clearUserProfileCache();
+    this.sessionToken = response.sessionToken;
+    await chrome.storage.local.set({
+      session_token: response.sessionToken,
+      user_id: response.userId,
+      user_email: response.userEmail || '',
+    });
+    return { userId: response.userId, userEmail: response.userEmail };
+  }
+
+  // 🔌 Remove the Notion destination; the account and its plan stay.
+  async disconnectNotion(): Promise<void> {
+    await this.makeRequest('/api/user/notion/disconnect', { method: 'POST', timeoutMs: 10_000 });
+    this.clearUserProfileCache();
+    await chrome.storage.local.remove(DESTINATION_SYNC_STATE_KEYS);
+    await chrome.storage.local.set({ [NOTION_CONNECTED_KEY]: false, auto_sync_enabled: false });
+  }
+
+  // 🗑️ Permanently delete the service account, then sign out locally.
+  async deleteAccount(): Promise<void> {
+    await this.makeRequest('/api/user/account', { method: 'DELETE', timeoutMs: 10_000 });
+    await this.logout();
+  }
+
   // 🔐 OAuth Token Exchange (Server-first, secure)
   async exchangeOAuthCode(
     code: string,
@@ -256,6 +373,7 @@ class ServerAPIClient {
       const toStore: Record<string, any> = {
         session_token: response.sessionToken,
         user_id: response.userId,
+        [NOTION_CONNECTED_KEY]: true,
       };
       if (response.userEmail) {
         toStore.user_email = response.userEmail;
@@ -496,8 +614,15 @@ class ServerAPIClient {
     }
 
     const request = this.makeRequest<any>('/api/user/profile')
-      .then((res) => {
+      .then(async (res) => {
         const value = { user: res.profile, isPro: res.profile.isPro };
+        if (this.sessionToken === sessionToken) {
+          // The server is authoritative for whether this account has Notion linked.
+          await chrome.storage.local.set({
+            [NOTION_CONNECTED_KEY]: !!res.profile.hasNotionAccess,
+            ...(res.profile.email ? { user_email: res.profile.email } : {}),
+          });
+        }
         if (this.sessionToken === sessionToken) {
           this.userProfileFailure = null;
           this.userProfileCache = {
@@ -586,50 +711,26 @@ class ServerAPIClient {
     });
   }
 
-  // 🚪 Logout
+  // 🚪 Sign out on this device. The account, plan and Notion link stay on the server.
+  // Sessions are stateless, so signing out needs no server call. The legacy
+  // /api/user/logout endpoint disconnects Notion for pre-1.5.0 extensions.
   async logout(): Promise<void> {
-    try {
-      await this.makeRequest('/api/user/logout', { method: 'POST', timeoutMs: 5000 });
-    } catch {}
     this.clearUserProfileCache();
     this.sessionToken = null;
 
-    // Selective cleanup: Remove all authentication and session data
-    // Note: We no longer preserve oauth_template_database_id because:
-    // 1. Server-side recovery was removed (each reconnection creates a new database)
-    // 2. The old template ID would cause stale cache issues
-    const keysToRemove = [
+    await chrome.storage.local.remove([
+      ...DESTINATION_SYNC_STATE_KEYS,
       'session_token',
       'user_id',
       'user_email',
-      'oauth_template_database_id', // Remove - no longer needed, causes stale cache
+      NOTION_CONNECTED_KEY,
       'is_pro',
       'purchase_type',
+      'subscription_source',
+      'subscription_expires_at',
       'entitlements_cached_at', // Clear entitlements cache on logout
       'deployment_profile',
-      'last_sync',
-      'last_sync_at',
-      'last_sync_summary',
-      'last_sync_count',
-      'last_sync_fingerprint',
-      'last_sync_payload_version',
-      'last_sync_hash',
-      'sync_in_progress',
-      'sync_enrichment_job',
-      'sync_enrichment_state',
-      'sync_started_at',
-      'sync_trigger',
-      'is_connecting',
-      'auto_sync_enabled',
-      'auto_sync_interval_minutes',
-      'sync_interval_hours',
-      'last_bulk_sync',
-      'last_sync_results',
-      'last_reading_list_debug',
-      'dashboard_snapshot',
-    ];
-
-    await chrome.storage.local.remove(keysToRemove);
+    ]);
 
     // Note: We intentionally preserve:
     // - description_cache_* keys (user's cached descriptions - expensive to rebuild)
@@ -643,6 +744,7 @@ class ServerAPIClient {
       'session_token',
       'user_id',
       'user_email',
+      NOTION_CONNECTED_KEY,
       'oauth_template_database_id',
       'is_pro',
       'purchase_type',
