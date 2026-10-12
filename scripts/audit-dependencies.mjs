@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { ROOT } from './build-profile.mjs';
+import { ROOT } from './build-config.mjs';
 // Dependency metadata is a review aid, not proof that unknown/custom licenses are GPL compatible.
 const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const report = execFileSync(command, ['licenses', 'list', '--json'], {

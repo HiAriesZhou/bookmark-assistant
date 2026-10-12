@@ -144,7 +144,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Extension
-        run: pnpm build
+        run: |
+          pnpm build
+          pnpm build:prod
+          node -e "const i=require('./packages/extension/dist/BUILD_INFO.json'); if(!i.officialService) throw new Error('Default production build must target the official service.')"
 
   website-quality:
     runs-on: ubuntu-latest

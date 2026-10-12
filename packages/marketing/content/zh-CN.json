@@ -1,26 +1,18 @@
 {
   "locale": "zh-CN",
-  "productName": "Link Library",
-  "extensionName": "Link Library — 本地书签与可选同步",
+  "productName": "Bookmark Assistant",
+  "extensionName": "Bookmark Assistant — Chrome 书签管理与 Notion 同步",
   "extensionTitle": "书签助手",
   "shortDescription": "本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。",
-  "longDescription": "在本地管理 Chrome 书签。连接自己的 Notion 集成，按需同步并生成 AI 摘要与标签。自托管包含自动同步和批量 AI，无需官方订阅。源代码采用 GPL-3.0-only；官方托管服务可以提供 Free 和 Pro 套餐。",
+  "longDescription": "管理你已经拥有的 Chrome 书签，无需迁移到另一套书签服务。\n\nBookmark Assistant 为现有 Chrome 书签提供专注的本地管理界面。你可以搜索标题、网址、描述和标签，编辑详情，在文件夹之间移动书签，并删除不再需要的内容。Chrome 书签仍是事实来源，不连接任何服务也能使用本地书签库。\n\n从本地开始\n\n浏览文件夹和最近收藏，筛选未加标签或未分类的条目，并查看重复链接组。书签数量与重复项分析都在扩展内完成，不会为了生成报告而上传完整书签库。\n\n需要时再连接 Notion\n\n需要外部副本或工作流时，再通过 Notion OAuth 连接工作区并复制 Bookmark Assistant 模板。手动同步会按需把 Chrome 书签和阅读清单发送到 Notion、更新变化，并尽量避免重复；连接目标后，也可以把当前页面直接保存到 Notion。\n\n可选 AI 增强\n\n使用受支持服务商的自有 Key，可以为符合条件的新保存公开网页生成简洁描述和实用主题标签。AI 完全可选，不会成为本地书签管理或基础 Notion 同步的依赖。\n\n生成结果仍可编辑。处理完成的条目不会被静默重复生成，因此之后的修改仍由你掌控。AI 运行时，页面可读正文、标题、净化后的 URL，以及当前 Description 和 Tags 会发送给你选择的服务商；处理完成后不会保留完整正文、原始提示词或原始响应。\n\nFree 与 Pro\n\n本地书签管理、针对完成设置后新保存页面的可选 AI，以及手动 Notion 同步无需 Pro。Pro 提供定时后台同步，以及针对符合条件新同步页面的批量 AI。\n\n开始使用\n\n1. 安装 Bookmark Assistant，打开本地书签库。\n2. 搜索、编辑、加标签、移动或清理 Chrome 书签。\n3. 只有需要外部目标时再连接 Notion。\n4. 只有需要摘要和标签时再添加 AI 服务商 Key。\n5. 按需手动同步，或在需要时启用 Pro 自动化。\n\n数据由你决定\n\nBookmark Assistant 仅使用 Chrome 权限管理你选择的书签和阅读清单。Notion 数据通过 HTTPS 写入你授权的工作区和数据库。AI 处理完全可选，并使用你选择的服务商。\n\n源码与品牌\n\n扩展、服务端、官网与官方素材均采用 GPL-3.0-only；Bookmark Assistant 名称与标志另受商标政策约束。自托管包含全部现有功能；官方托管服务保留 Free 和 Pro 套餐。",
   "releasedClaims": [
     {
       "id": "page-metadata",
       "text": "在本地搜索和管理 Chrome 书签，包括描述与标签。",
       "plan": "all"
     },
-    {
-      "id": "manual-sync",
-      "text": "按需将 Chrome 书签和阅读清单同步到 Notion。",
-      "plan": "all"
-    },
-    {
-      "id": "notion-oauth",
-      "text": "通过托管的 Notion OAuth 安全连接。",
-      "plan": "all"
-    },
+    { "id": "manual-sync", "text": "按需将 Chrome 书签和阅读清单同步到 Notion。", "plan": "all" },
+    { "id": "notion-oauth", "text": "通过托管的 Notion OAuth 安全连接。", "plan": "all" },
     {
       "id": "duplicate-handling",
       "text": "通过稳定的链接处理避免重复的 Notion 条目。",
@@ -31,26 +23,12 @@
       "text": "使用自己的 AI 服务商 Key，为新保存的页面生成简洁摘要和主题标签。",
       "plan": "all"
     },
-    {
-      "id": "auto-sync",
-      "text": "使用 Pro 定时在后台同步。",
-      "plan": "pro"
-    },
-    {
-      "id": "ai-batch",
-      "text": "使用 Pro 为新同步页面运行待处理的 AI 生成。",
-      "plan": "pro"
-    }
+    { "id": "auto-sync", "text": "使用 Pro 定时在后台同步。", "plan": "pro" },
+    { "id": "ai-batch", "text": "使用 Pro 为新同步页面运行待处理的 AI 生成。", "plan": "pro" }
   ],
   "featureGatedClaims": [],
-  "planLabels": {
-    "free": "免费版",
-    "pro": "Pro"
-  },
-  "ctas": {
-    "primary": "安装",
-    "secondary": "查看 Notion 模板"
-  },
+  "planLabels": { "free": "免费版", "pro": "Pro" },
+  "ctas": { "primary": "安装", "secondary": "查看 Notion 模板" },
   "store": {
     "marquee": {
       "headline": "让收藏，有下文。",
@@ -93,9 +71,7 @@
     }
   ],
   "website": {
-    "publication": {
-      "ai": "released"
-    },
+    "publication": { "ai": "released" },
     "capabilities": {
       "notion-oauth": "released",
       "manual-sync": "released",
@@ -106,9 +82,9 @@
       "ai-batch": "released"
     },
     "metadata": {
-      "baselineTitle": "Link Library — 本地管理 Chrome 书签，按需同步到 Notion",
+      "baselineTitle": "Bookmark Assistant — 本地管理 Chrome 书签，按需同步到 Notion",
       "baselineDescription": "在本地管理 Chrome 书签，需要时将书签与阅读清单同步到 Notion，无需迁移到另一套书签服务。",
-      "aiTitle": "Link Library — 本地管理 Chrome 书签，按需同步到 Notion",
+      "aiTitle": "Bookmark Assistant — 本地管理 Chrome 书签，按需同步到 Notion",
       "aiDescription": "在本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。"
     },
     "navigation": {
@@ -128,7 +104,7 @@
       "benefitsLabel": "核心价值",
       "baselineBenefits": ["本地书签报告", "安全连接 Notion", "手动同步免费"],
       "aiBenefits": ["使用自己的 AI Key", "AI 不覆盖后续 Notion 修改"],
-      "imageAlt": "Link Library 本地 Chrome 书签管理界面，展示搜索、文件夹、描述与标签",
+      "imageAlt": "Bookmark Assistant 本地 Chrome 书签管理界面，展示搜索、文件夹、描述与标签",
       "imageNote": "书签仍保留在 Chrome。",
       "productHunt": "Product Hunt 当日第 8 名",
       "productHuntCta": "查看发布页"
@@ -173,13 +149,13 @@
     "ai": {
       "eyebrow": "可选的智能增强",
       "title": "按需添加摘要与标签",
-      "body": "只在需要时启用 AI。对于符合条件的新保存公开网页，Link Library 会把生成结果所需的可读内容发送给你选择的服务商。",
+      "body": "只在需要时启用 AI。对于符合条件的新保存公开网页，Bookmark Assistant 会把生成结果所需的可读内容发送给你选择的服务商。",
       "points": [
         "支持 OpenAI、Anthropic、Google Gemini、DeepSeek、Groq 和 MiniMax 预设",
         "服务商 Key 会加密保存，保存后不会再次完整显示",
         "简短摘要和 3 至 5 个标签只写入 Notion 一次，之后的修改不会被覆盖"
       ],
-      "screenshotAlt": "Link Library 使用用户自己的服务商 Key，为保存的页面生成 AI 摘要和四个实用标签",
+      "screenshotAlt": "Bookmark Assistant 使用用户自己的服务商 Key，为保存的页面生成 AI 摘要和四个实用标签",
       "freeLabel": "免费版 · 为新保存页面生成 AI 内容",
       "proLabel": "Pro · 批量处理本次同步的新条目"
     },
@@ -190,7 +166,7 @@
       "steps": [
         {
           "title": "安装扩展",
-          "body": "把 Link Library 添加到 Chrome 并打开本地总览。",
+          "body": "把 Bookmark Assistant 添加到 Chrome 并打开本地总览。",
           "status": "released"
         },
         {
@@ -200,7 +176,7 @@
         },
         {
           "title": "连接 Notion",
-          "body": "授权目标工作区，并复制 Link Library 模板。",
+          "body": "授权目标工作区，并复制 Bookmark Assistant 模板。",
           "status": "released"
         },
         {
@@ -220,55 +196,19 @@
       "freeName": "免费版",
       "freeSummary": "手动同步与保存页面",
       "freeFeatures": [
-        {
-          "title": "本地 Bookmark Library Report",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "手动同步书签与阅读清单",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "保存当前页面",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "为完成设置后保存的页面生成 AI 内容",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "重复项处理",
-          "body": "",
-          "status": "released"
-        }
+        { "title": "本地 Bookmark Library Report", "body": "", "status": "released" },
+        { "title": "手动同步书签与阅读清单", "body": "", "status": "released" },
+        { "title": "保存当前页面", "body": "", "status": "released" },
+        { "title": "为完成设置后保存的页面生成 AI 内容", "body": "", "status": "released" },
+        { "title": "重复项处理", "body": "", "status": "released" }
       ],
       "proName": "Pro",
       "proSummary": "定时同步与批量 AI",
       "proFeatures": [
-        {
-          "title": "包含免费版全部功能",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "定时后台同步",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "最短 6 小时间隔",
-          "body": "",
-          "status": "released"
-        },
-        {
-          "title": "为本次同步的新页面批量生成 AI 内容",
-          "body": "",
-          "status": "released"
-        }
+        { "title": "包含免费版全部功能", "body": "", "status": "released" },
+        { "title": "定时后台同步", "body": "", "status": "released" },
+        { "title": "最短 6 小时间隔", "body": "", "status": "released" },
+        { "title": "为本次同步的新页面批量生成 AI 内容", "body": "", "status": "released" }
       ],
       "perYear": "每年",
       "perMonth": "每月",
@@ -281,8 +221,8 @@
       "title": "连接前可能想了解的问题",
       "items": [
         {
-          "title": "需要把书签迁移到 Link Library 吗？",
-          "body": "不需要。Chrome 书签仍是事实来源。Link Library 通过 Chrome 读取和编辑书签，并在扩展内计算书签数量与重复链接组。",
+          "title": "需要把书签迁移到 Bookmark Assistant 吗？",
+          "body": "不需要。Chrome 书签仍是事实来源。Bookmark Assistant 通过 Chrome 读取和编辑书签，并在扩展内计算书签数量与重复链接组。",
           "status": "released"
         },
         {
@@ -292,12 +232,12 @@
         },
         {
           "title": "哪些页面可以使用 AI，会发送什么？",
-          "body": "AI 只处理启用功能后新保存的公开网页。排除的网站、本地页面和私有地址会被跳过。每次请求会把可读正文、标题、净化后的 URL 以及当前 Description 和 Tags 发送给你选择的服务商。处理完成后，Link Library 不保留完整正文、原始提示词或原始响应。",
+          "body": "AI 只处理启用功能后新保存的公开网页。排除的网站、本地页面和私有地址会被跳过。每次请求会把可读正文、标题、净化后的 URL 以及当前 Description 和 Tags 发送给你选择的服务商。处理完成后，Bookmark Assistant 不保留完整正文、原始提示词或原始响应。",
           "status": "released"
         },
         {
           "title": "AI 会覆盖我在 Notion 中的修改吗？",
-          "body": "不会。处理完成的条目不会自动再次生成。如果你在保存后修改了 Notion 中的 Description，Link Library 会保留你的内容。",
+          "body": "不会。处理完成的条目不会自动再次生成。如果你在保存后修改了 Notion 中的 Description，Bookmark Assistant 会保留你的内容。",
           "status": "released"
         },
         {

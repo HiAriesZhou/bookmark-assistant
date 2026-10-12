@@ -8,7 +8,6 @@
  */
 
 import type { I18nSubstitution, TranslationContext } from '../types/i18n';
-import { productConfig } from '../product-config';
 
 /**
  * Creates a translator instance for Chrome extension i18n.
@@ -30,7 +29,7 @@ export function createTranslator(): TranslationContext {
 
     const message = chrome.i18n.getMessage(key, substitutions);
     // Chrome returns empty string for missing keys
-    return (message || key).replace(/Bookmark Assistant|Link Library/g, productConfig.name);
+    return message || key;
   };
 
   const locale = isAvailable ? chrome.i18n.getUILanguage() : 'en';

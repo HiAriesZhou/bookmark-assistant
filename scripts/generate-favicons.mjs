@@ -3,21 +3,18 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveBuildProfile } from './build-profile.mjs';
+import { resolveBuildConfig } from './build-config.mjs';
 
 const require = createRequire(new URL('../packages/marketing/package.json', import.meta.url));
 const sharp = require('sharp');
-const profile = resolveBuildProfile();
-const brandRoot = pathToFileURL(profile.brandRoot + '/');
+const brandRoot = pathToFileURL(resolveBuildConfig().brandRoot + '/');
 
 // Preserve the Paperbird artwork. Only crop its surrounding transparent canvas,
 // scale proportionally, and center. Ignore faint export noise when locating the
 // artwork, but keep every original pixel inside the crop (no alpha thresholding).
 export async function generateFavicons(checkOnly = false) {
   if (checkOnly) return checkFavicons();
-  const source = await readFile(
-    new URL(profile.official ? 'paperbird-master.png' : 'library-master.png', brandRoot)
-  );
+  const source = await readFile(new URL('paperbird-master.png', brandRoot));
   const { data, info } = await sharp(source)
     .ensureAlpha()
     .raw()

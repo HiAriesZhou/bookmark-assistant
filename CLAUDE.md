@@ -26,16 +26,17 @@ pnpm source:check
 Run individual tests through the root Vitest configuration so shared type aliases
 and test setup are included. Routine browser tests must remain headless.
 
-## Build profiles and resources
+## Builds and resources
 
-- Community is the default profile: neutral Link Library artwork and a local API.
-  `pnpm build:community` outputs `packages/extension/dist-community`; `pnpm package`
-  packages that profile. Development outputs go to `dist-dev`.
-- Official builds require a separately authorized asset workspace. See README.md
-  and packages/marketing/README.md. `pnpm build:official` outputs `dist-official`.
-  Never copy official artwork, credentials or store snapshots into public source.
+- There is one product build with the official Bookmark Assistant brand.
+  `pnpm build:prod` outputs `packages/extension/dist` and connects to the official
+  service unless `VITE_OAUTH_SERVER_URL` selects another server; `pnpm package`
+  packages it. Development builds go to `dist-dev` and default to a local API.
+- Official artwork and store snapshots are GPL-3.0-only source in this repository;
+  the name and logo are governed by TRADEMARKS.md. Never commit credentials.
+  Third-party marks such as the Google Chrome logo stay out of the tree.
 - Root package.json owns the version. Public localized copy lives in
-  `packages/marketing/content`; neutral brand inputs live in `packages/shared`.
+  `packages/marketing/content`; brand inputs live in `packages/shared`.
   Run `pnpm resources:sync` and `pnpm resources:check` after changing inputs.
 - Generated build directories and source-manifest.json are packaging outputs, not
   source files. A public release must identify its corresponding source revision.
@@ -51,7 +52,7 @@ and test setup are included. Routine browser tests must remain headless.
   not an HTTP administrator endpoint.
 - Types: shared KnowledgeItem, AI and deployment contracts. Keep the basic data
   model compatible with LiteContext; do not fork it by plan.
-- Shared: neutral artwork, design tokens and Tailwind preset. Website: Next.js.
+- Shared: brand artwork, design tokens and Tailwind preset. Website: Next.js.
   Marketing: public example copy and headless rendering/validation tools.
 - Pure core transforms must not depend on Chrome APIs, database access or network
   calls. AI providers reuse the shared provider contract and adapter boundary.

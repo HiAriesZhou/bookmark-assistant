@@ -3,7 +3,7 @@
     "message": "Could not refresh local bookmarks. Reload this page to retry."
   },
   "appName": {
-    "message": "Link Library — Local bookmarks & optional sync",
+    "message": "Bookmark Assistant — Chrome Bookmarks & Notion Sync",
     "description": "The name of the extension"
   },
   "appDesc": {
@@ -11,7 +11,7 @@
     "description": "The description of the extension"
   },
   "extensionTitle": {
-    "message": "Link Library",
+    "message": "Bookmark Assistant",
     "description": "Short title for the extension action"
   },
   "syncNow": {

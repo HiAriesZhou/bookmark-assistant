@@ -1,0 +1,44 @@
+{
+  "schema": "dashbye/lock/v1",
+  "version": "1.4.2",
+  "artifactSha256": "bfb165e8f4add121086470a4f942a7641ea30e9177be85a84f916293c611a49c",
+  "releaseHash": "2e680459d977b0bd7a3f02fd49cc3f51ab098b3580dc33e7132a3621d803ca60",
+  "manifest": {
+    "version": "1.4.2",
+    "name": "__MSG_appName__",
+    "summary": "__MSG_appDesc__",
+    "permissions": [
+      "activeTab",
+      "alarms",
+      "bookmarks",
+      "contextMenus",
+      "favicon",
+      "identity",
+      "readingList",
+      "scripting",
+      "storage"
+    ],
+    "optionalPermissions": [],
+    "hostPermissions": [],
+    "optionalHostPermissions": [],
+    "contentScriptMatches": []
+  },
+  "resourceHashes": {
+    "assets/icon-128.png": "ffd8f5a27f9e0dd812fc3c4c099808d265f91bcf655380be10db7582e08f5d3c",
+    "assets/promo/marquee.png": "bbf76b657d2c8e4037d6ef764d141abc504b93f2ebdd4601c7658af23a94930a",
+    "assets/promo/small-promo.png": "1d30bab384da1f67548483a71f71a0281ff2b473a8abd0e47f1048985e1ace27",
+    "assets/screenshots/en/01-local-library.png": "b31bd0910eff8c98d19a6137a47a20da2e531f21b3380a9cf2a48468276aef06",
+    "assets/screenshots/en/02-optional-destination.png": "e9b8ed3a05abacbf11e7c7d7ec72ebbaff5e95d62a644a3622e12551021a7452",
+    "assets/screenshots/en/03-sync-and-ai-ready.png": "a9d4c34c03856ef4c3dc998484e5e5b20ec9a28ec2662a68b4445cba907b3368",
+    "assets/screenshots/en/04-ai-summary-tags.png": "310104abd1ea232ca650bec0ae56d8f7485e7c04446812053e9ade60b2f4588f",
+    "assets/screenshots/en/05-pro-auto-sync.png": "24f3afc811020e349c2332f6082fcc3a95bbdf9d5c6b0e6f30187c14b9a3443a",
+    "assets/screenshots/zh-CN/01-local-library.png": "37fd263b64ac4bb2f05f1f2ea3a18a5fa19f7b23afce8fd2a2deb2a389dcd4a3",
+    "assets/screenshots/zh-CN/02-optional-destination.png": "c4922cb70f50df952c63c55a54018a878d36e9458b86ddb76c64eecf8845703c",
+    "assets/screenshots/zh-CN/03-sync-and-ai-ready.png": "8bd98f762cd56a752b9a3df1a22ecbe9972dc50ad476f6c111e6280379e4aa45",
+    "assets/screenshots/zh-CN/04-ai-summary-tags.png": "b9967f921a7ec2058adf606b6d58ed27720dca8c8938ff80f4f0ee8a1104b2b6",
+    "assets/screenshots/zh-CN/05-pro-auto-sync.png": "f7d87f1be7404d19af5580eadd0f7c3453cedfa624e82a8bb5b91b8f572bf8d6",
+    "listing/en/description.txt": "0b1f775b885643ea8588089e63a01cf0fd6de4a2f5a2941f949d37103ce68bb1",
+    "listing/zh-CN/description.txt": "003800f2d980adaa7889e0625df4ec9afaae1be55e57bacca1bbac1d1a2f13f1"
+  },
+  "recordedAt": "2026-09-28T02:56:55.481Z"
+}

@@ -4,12 +4,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertReleaseBuildEnv, resolveBuildProfile } from '../../../scripts/build-profile.mjs';
+import { resolveBuildConfig } from '../../../scripts/build-config.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const profile = resolveBuildProfile();
-assertReleaseBuildEnv(profile);
-const envDirectory = mkdtempSync(join(tmpdir(), `link-library-${profile.profile}-env-`));
+const config = resolveBuildConfig();
+const envDirectory = mkdtempSync(join(tmpdir(), 'bookmark-assistant-env-'));
 try {
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !key.startsWith('VITE_'))
@@ -25,7 +24,7 @@ try {
     {
       cwd,
       stdio: 'inherit',
-      env: { ...env, ...profile.publicEnv, BOOKMARK_ASSISTANT_ENV_DIR: envDirectory },
+      env: { ...env, ...config.publicEnv, BOOKMARK_ASSISTANT_ENV_DIR: envDirectory },
     }
   );
 } finally {

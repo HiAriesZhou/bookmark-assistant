@@ -109,7 +109,7 @@ async function storeLocalErrorReport(report: ErrorReport): Promise<void> {
  * Send error to server
  */
 async function sendToServer(report: ErrorReport): Promise<void> {
-  if (productConfig.profile !== 'official') return;
+  if (!productConfig.officialService) return;
   const serverUrl = config.notion.serverUrl;
 
   try {

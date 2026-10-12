@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- Original neutral artwork. SPDX-License-Identifier: GPL-3.0-only -->
-  <rect x="24" y="24" width="464" height="464" rx="96" fill="#20252b"/>
-  <g fill="none" stroke="#f4f5f6" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M148 142v226M224 142v226M298 153l64 204"/>
-  </g>
-</svg>

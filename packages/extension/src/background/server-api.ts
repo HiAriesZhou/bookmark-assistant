@@ -203,7 +203,7 @@ class ServerAPIClient {
         );
 
         // Log timeouts to backend for monitoring (all timeouts are noteworthy)
-        if (timeoutMs > 0 && productConfig.profile === 'official') {
+        if (timeoutMs > 0 && productConfig.officialService) {
           try {
             globalThis.fetch(`${this.baseUrl}/api/client-log`, {
               method: 'POST',

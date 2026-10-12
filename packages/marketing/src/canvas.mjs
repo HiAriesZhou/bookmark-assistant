@@ -63,7 +63,11 @@ export function screenshotCanvas({ locale, copy, scene, productImage, logoImage,
   </html>`;
 }
 
-export function globalOverviewCanvas({ productImage, logoImage, productName = 'Link Library' }) {
+export function globalOverviewCanvas({
+  productImage,
+  logoImage,
+  productName = 'Bookmark Assistant',
+}) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>
     ${baseStyles}
     body { background: radial-gradient(ellipse at 85% 0%, #e7e9e1 0%, transparent 48%), radial-gradient(ellipse at 5% 100%, #e8e3d9 0%, transparent 55%), #f5f4ef; }

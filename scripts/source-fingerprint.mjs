@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { sourceFiles } from './check-open-source.mjs';
-import { ROOT } from './build-profile.mjs';
+import { ROOT } from './build-config.mjs';
 
 export function sourceFingerprint() {
   const files = Object.fromEntries(

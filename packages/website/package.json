@@ -8,7 +8,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "predev": "node ../../scripts/prepare-profile-assets.mjs",
+    "predev": "node ../../scripts/prepare-brand-assets.mjs",
     "dev": "next dev -p 3001",
     "prebuild": "node ../../scripts/sync-brand-assets.mjs --check && node ../marketing/scripts/copy.mjs --check",
     "build": "next build",
