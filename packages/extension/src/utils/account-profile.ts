@@ -1,22 +1,16 @@
 import type { DeploymentProfile } from '@bookmark-assistant/types';
 import type { UserProfile } from '../background/server-api';
 
-/** Account views and OAuth cache writes retain their existing boundary defaults. */
-export function mapAccountProfile(profile: UserProfile, apiOrigin: string, oauthIsPro?: boolean) {
-  const forOptions = oauthIsPro === undefined;
-  const isPro = oauthIsPro ?? profile.isPro === true;
-  const deploymentMode = forOptions
-    ? profile.deploymentMode === 'self-hosted'
-      ? 'self-hosted'
-      : 'hosted'
-    : profile.deploymentMode || 'hosted';
+/** One server profile supplies both account views and the background-owned cache. */
+export function mapAccountProfile(profile: UserProfile, apiOrigin: string) {
+  const isPro = profile.isPro === true;
+  const deploymentMode = profile.deploymentMode === 'self-hosted' ? 'self-hosted' : 'hosted';
   const deployment: DeploymentProfile = {
     deploymentMode,
-    commerceEnabled:
-      (!forOptions || deploymentMode === 'hosted') && (profile.commerceEnabled ?? true),
+    commerceEnabled: deploymentMode === 'hosted' && (profile.commerceEnabled ?? true),
     capabilities: profile.capabilities || { autoSync: isPro, batchAi: isPro },
   };
-  const subscriptionExpiresAt = forOptions ? (profile.expiresAt ?? null) : profile.expiresAt;
+  const subscriptionExpiresAt = profile.expiresAt ?? null;
   return {
     state: {
       ...deployment,

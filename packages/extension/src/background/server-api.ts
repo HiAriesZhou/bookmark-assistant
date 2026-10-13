@@ -5,7 +5,18 @@ import {
   NOTION_CONNECTED_KEY,
   readSessionExpiry,
   shouldRenewSession,
+  ACCOUNT_REVISION_KEY,
+  readAccountContext,
+  assertAccountContextCurrent,
+  isAccountContextCurrent,
+  isStaleAccountStateError,
+  mutateAccountState,
+  withCurrentAccount,
+  sameAccountContext,
+  StaleAccountStateError,
+  type AccountContext,
 } from '../utils/account-state';
+import { mapAccountProfile } from '../utils/account-profile';
 import type {
   BookmarkSyncResponse,
   BookmarkSyncEnrichmentRequest,
@@ -110,6 +121,7 @@ const DESTINATION_SYNC_STATE_KEYS = [
   ...AUTO_SYNC_KEYS,
   'last_reading_list_debug',
   'dashboard_snapshot',
+  'dashboard_connection',
 ];
 const USER_PROFILE_FAILURE_BACKOFF_MS = 30_000;
 export const BULK_SYNC_REQUEST_TIMEOUT_MS = 10 * 60_000;
@@ -119,16 +131,20 @@ class ServerAPIClient {
   private baseUrl: string;
   private sessionToken: string | null = null;
   private sessionRenewal: Promise<void> | null = null;
+  private profileRequestVersion = 0;
   private userProfileCache: {
+    context: AccountContext;
     sessionToken: string;
     expiresAt: number;
     value: UserProfileResponse;
   } | null = null;
   private userProfileRequest: {
+    context: AccountContext;
     sessionToken: string;
     promise: Promise<UserProfileResponse>;
   } | null = null;
   private userProfileFailure: {
+    context: AccountContext;
     sessionToken: string;
     retryAt: number;
     error: unknown;
@@ -136,21 +152,21 @@ class ServerAPIClient {
 
   constructor() {
     this.baseUrl = productConfig.apiUrl;
-    void this.loadSessionToken().catch(() => {
-      this.sessionToken = null;
-    });
   }
 
   private async loadSessionToken() {
-    const result = await chrome.storage.local.get(['session_token']);
-    const nextSessionToken = result.session_token || null;
-    if (nextSessionToken !== this.sessionToken) {
-      this.clearUserProfileCache();
-    }
-    this.sessionToken = nextSessionToken;
+    await mutateAccountState(async () => {
+      const result = await chrome.storage.local.get(['session_token']);
+      const nextSessionToken =
+        typeof result.session_token === 'string' ? result.session_token : null;
+      if (nextSessionToken !== this.sessionToken) this.clearUserProfileCache();
+      this.sessionToken = nextSessionToken;
+    });
   }
 
   private clearUserProfileCache() {
+    this.profileRequestVersion++;
+    this.sessionRenewal = null;
     this.userProfileCache = null;
     this.userProfileRequest = null;
     this.userProfileFailure = null;
@@ -159,11 +175,20 @@ class ServerAPIClient {
   // todo - find a better way to make request
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit & { timeoutMs?: number } = {}
+    options: RequestInit & { timeoutMs?: number } = {},
+    expectedContext?: AccountContext
   ): Promise<T> {
+    const context = expectedContext ?? (await readAccountContext());
     // Always reload token before requests to pick up changes after OAuth
     await this.loadSessionToken();
     if (endpoint !== SESSION_RENEWAL_ENDPOINT) await this.renewSessionIfNeeded();
+    const requestContext = await readAccountContext();
+    // Validate the initiating account before sending, not only on completion.
+    // Pricing is public and can still load after an expired local session clears.
+    if (endpoint !== '/api/pricing' && !sameAccountContext(context, requestContext)) {
+      throw new StaleAccountStateError();
+    }
+    const requestToken = requestContext.token;
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -171,8 +196,8 @@ class ServerAPIClient {
       ...((options.headers as Record<string, string>) || {}),
     };
     // The Notion exchange carries the session too, so Notion links to the signed-in account.
-    if (this.sessionToken) {
-      headers['Authorization'] = `Bearer ${this.sessionToken}`;
+    if (requestToken) {
+      headers['Authorization'] = `Bearer ${requestToken}`;
     }
 
     // Default timeout: 30s for most operations, 0 (disabled) for critical ops
@@ -194,6 +219,7 @@ class ServerAPIClient {
       const contentType = response.headers.get('content-type');
       const isJson = contentType && contentType.includes('application/json');
       const data = (isJson ? await response.json() : { message: await response.text() }) as any;
+      await assertAccountContextCurrent(requestContext);
       if (!response.ok) {
         const message = data?.message || data?.error || `Server error: ${response.status}`;
         const retryAfterHeader = response.headers.get('retry-after');
@@ -202,13 +228,14 @@ class ServerAPIClient {
         // Attach server-provided code if any
         if (data?.code) (err as any).code = data.code;
         if (response.status === 401 && isSessionAuthError(message)) {
-          await this.clearLocalSession();
+          await this.clearLocalSession(requestContext, requestToken);
         }
         throw err;
       }
       return data as T;
     } catch (error: any) {
       if (timeout) clearTimeout(timeout);
+      if (!(error instanceof APIError)) await assertAccountContextCurrent(requestContext);
       if (error?.name === 'AbortError') {
         const timeoutSeconds = Math.round(timeoutMs / 1000);
         console.warn(
@@ -251,71 +278,107 @@ class ServerAPIClient {
     const expiresAt = readSessionExpiry(token);
     if (expiresAt !== null && expiresAt <= Date.now()) {
       // An expired session would reject the request (and waste a one-time OAuth code).
-      await this.clearLocalSession();
+      const context = await readAccountContext();
+      if (context.token !== token) return;
+      await this.clearLocalSession(context, token);
       return;
     }
     if (!shouldRenewSession(token)) return;
     if (!this.sessionRenewal) {
-      this.sessionRenewal = this.makeRequest<{ sessionToken?: string }>(SESSION_RENEWAL_ENDPOINT, {
-        method: 'POST',
-        timeoutMs: 10_000,
-      })
-        .then(async (response) => {
-          if (!response.sessionToken || this.sessionToken !== token) return;
-          this.sessionToken = response.sessionToken;
+      const renewal = (async () => {
+        const context = await readAccountContext();
+        const response = await this.makeRequest<{ sessionToken?: string }>(
+          SESSION_RENEWAL_ENDPOINT,
+          {
+            method: 'POST',
+            timeoutMs: 10_000,
+          }
+        );
+        if (!response.sessionToken || this.sessionToken !== token) return;
+        await withCurrentAccount(context, async () => {
+          this.sessionToken = response.sessionToken!;
           await chrome.storage.local.set({ session_token: response.sessionToken });
-        })
+        });
+      })()
         .catch((error) => {
-          console.warn('[ServerAPI] Session renewal failed:', error);
+          if (!isStaleAccountStateError(error))
+            console.warn('[ServerAPI] Session renewal failed:', error);
         })
         .finally(() => {
-          this.sessionRenewal = null;
+          if (this.sessionRenewal === renewal) this.sessionRenewal = null;
         });
+      this.sessionRenewal = renewal;
     }
     await this.sessionRenewal;
   }
 
   // 🔌 Remove the Notion destination; the account and its plan stay.
-  async disconnectNotion(): Promise<void> {
-    await this.makeRequest('/api/user/notion/disconnect', { method: 'POST', timeoutMs: 10_000 });
-    this.clearUserProfileCache();
-    await chrome.storage.local.remove(DESTINATION_SYNC_STATE_KEYS);
-    await chrome.storage.local.set({ [NOTION_CONNECTED_KEY]: false, auto_sync_enabled: false });
+  async disconnectNotion(expectedContext?: AccountContext): Promise<AccountContext> {
+    const context = expectedContext ?? (await readAccountContext());
+    await this.makeRequest(
+      '/api/user/notion/disconnect',
+      { method: 'POST', timeoutMs: 10_000 },
+      context
+    );
+    return withCurrentAccount(context, async () => {
+      this.clearUserProfileCache();
+      const current = await readAccountContext();
+      const revision = crypto.randomUUID();
+      await chrome.storage.local.set({
+        [ACCOUNT_REVISION_KEY]: revision,
+        [NOTION_CONNECTED_KEY]: false,
+        auto_sync_enabled: false,
+      });
+      await chrome.storage.local.remove(DESTINATION_SYNC_STATE_KEYS);
+      return { ...current, revision };
+    });
   }
 
   // 🗑️ Permanently delete the service account, then sign out locally.
-  async deleteAccount(): Promise<void> {
-    await this.makeRequest('/api/user/account', { method: 'DELETE', timeoutMs: 10_000 });
-    await this.logout();
+  async deleteAccount(expectedContext?: AccountContext): Promise<AccountContext> {
+    const context = expectedContext ?? (await readAccountContext());
+    await this.makeRequest('/api/user/account', { method: 'DELETE', timeoutMs: 10_000 }, context);
+    return this.logout(context);
   }
 
   // 🔐 OAuth Token Exchange (Server-first, secure)
   async exchangeOAuthCode(
     code: string,
-    redirectUri: string
+    redirectUri: string,
+    expectedContext?: AccountContext
   ): Promise<{
     sessionToken: string;
     user: { userId: string; userEmail?: string; templateDatabaseId?: string | null };
+    accountRevision: string;
   }> {
     try {
+      let context = expectedContext ?? (await readAccountContext());
+      await assertAccountContextCurrent(context);
+      const expiry = context.token ? readSessionExpiry(context.token) : null;
+      if (expiry !== null && expiry <= Date.now()) {
+        context = await this.clearLocalSession(context, context.token);
+      }
       // No timeout for OAuth - this is critical and can be slow due to Notion API calls
-      const response = await this.makeRequest<any>('/api/oauth/exchange', {
-        method: 'POST',
-        timeoutMs: 0, // Disable timeout for critical OAuth operation
-        body: JSON.stringify({
-          code,
-          redirectUri,
-          extensionUserId: chrome.runtime.id,
-        }),
-      });
+      const response = await this.makeRequest<any>(
+        '/api/oauth/exchange',
+        {
+          method: 'POST',
+          timeoutMs: 0, // Disable timeout for critical OAuth operation
+          body: JSON.stringify({
+            code,
+            redirectUri,
+            extensionUserId: chrome.runtime.id,
+          }),
+        },
+        context
+      );
 
       if (!response.sessionToken) {
         throw new Error('Server did not return a session token');
       }
 
-      this.clearUserProfileCache();
-      this.sessionToken = response.sessionToken;
       const toStore: Record<string, any> = {
+        [ACCOUNT_REVISION_KEY]: crypto.randomUUID(),
         session_token: response.sessionToken,
         user_id: response.userId,
         [NOTION_CONNECTED_KEY]: true,
@@ -326,23 +389,28 @@ class ServerAPIClient {
       if (response.templateDatabaseId) {
         toStore.oauth_template_database_id = response.templateDatabaseId;
       }
-      await chrome.storage.local.set(toStore);
+      await withCurrentAccount(context, async () => {
+        this.clearUserProfileCache();
+        this.sessionToken = response.sessionToken;
+        await chrome.storage.local.set(toStore);
 
-      // A successful OAuth exchange can point this extension at a freshly
-      // duplicated Notion database. The prior connection's content fingerprint
-      // is not evidence that this database has received those items, so it must
-      // never short-circuit the first sync after connecting or reconnecting.
-      await chrome.storage.local.remove([
-        ...SYNC_PROGRESS_KEYS,
-        'last_sync_error',
-        'dashboard_last_sync',
-        'dashboard_recent_activity',
-        'dashboard_saved_today',
-        'dashboard_snapshot',
-      ]);
+        // A successful OAuth exchange can point this extension at a freshly
+        // duplicated Notion database. The prior connection's content fingerprint
+        // is not evidence that this database has received those items, so it must
+        // never short-circuit the first sync after connecting or reconnecting.
+        await chrome.storage.local.remove([
+          ...SYNC_PROGRESS_KEYS,
+          'last_sync_error',
+          'dashboard_last_sync',
+          'dashboard_recent_activity',
+          'dashboard_saved_today',
+          'dashboard_snapshot',
+        ]);
+      });
 
       return {
         sessionToken: response.sessionToken,
+        accountRevision: toStore[ACCOUNT_REVISION_KEY],
         user: {
           userId: response.userId,
           userEmail: response.userEmail,
@@ -360,7 +428,8 @@ class ServerAPIClient {
       aiBatchEligible?: boolean;
       deferEnhancements?: boolean;
       requestTimeoutMs?: number;
-    } = {}
+    } = {},
+    context?: AccountContext
   ): Promise<BookmarkSyncResponse> {
     // A first sync can legitimately take several minutes while the server
     // extracts descriptions and writes each Notion page. Keep a bounded
@@ -373,25 +442,34 @@ class ServerAPIClient {
     const payload = Array.isArray(bookmarksOrPayload)
       ? buildLinkSyncPayload(bookmarksOrPayload)
       : bookmarksOrPayload;
-    return await this.makeRequest<BookmarkSyncResponse>('/api/bookmarks/sync', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...payload,
-        ...requestOptions,
-        ...(deferEnhancements !== undefined ? { options: { deferEnhancements } } : {}),
-      }),
-      timeoutMs: requestTimeoutMs,
-    });
+    return await this.makeRequest<BookmarkSyncResponse>(
+      '/api/bookmarks/sync',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...payload,
+          ...requestOptions,
+          ...(deferEnhancements !== undefined ? { options: { deferEnhancements } } : {}),
+        }),
+        timeoutMs: requestTimeoutMs,
+      },
+      context
+    );
   }
 
   async enrichBookmarks(
-    input: BookmarkSyncEnrichmentRequest
+    input: BookmarkSyncEnrichmentRequest,
+    context?: AccountContext
   ): Promise<BookmarkSyncEnrichmentResponse> {
-    return this.makeRequest('/api/bookmarks/enrich', {
-      method: 'POST',
-      body: JSON.stringify(input),
-      timeoutMs: BULK_SYNC_REQUEST_TIMEOUT_MS,
-    });
+    return this.makeRequest(
+      '/api/bookmarks/enrich',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+        timeoutMs: BULK_SYNC_REQUEST_TIMEOUT_MS,
+      },
+      context
+    );
   }
 
   async generateCurrentPage(input: {
@@ -482,15 +560,23 @@ class ServerAPIClient {
     return this.makeRequest('/api/ai/run-pending', { method: 'POST', timeoutMs: 45_000 });
   }
 
-  async getUserProfile(options: { forceRefresh?: boolean } = {}): Promise<UserProfileResponse> {
+  async getUserProfile(
+    options: { forceRefresh?: boolean } = {},
+    expectedContext?: AccountContext
+  ): Promise<UserProfileResponse> {
+    const context = expectedContext ?? (await readAccountContext());
+    await assertAccountContextCurrent(context);
     await this.loadSessionToken();
+    if (!this.sessionToken) throw new APIError('Session token required', 401);
+    await this.renewSessionIfNeeded();
     const sessionToken = this.sessionToken;
+    if (!sessionToken) throw new APIError('Session token required', 401);
+    await assertAccountContextCurrent(context);
 
-    if (!sessionToken) {
-      throw new APIError('Session token required', 401);
-    }
-
-    if (this.userProfileRequest?.sessionToken === sessionToken) {
+    if (
+      this.userProfileRequest?.sessionToken === sessionToken &&
+      sameAccountContext(this.userProfileRequest.context, context)
+    ) {
       return this.userProfileRequest.promise;
     }
 
@@ -498,6 +584,7 @@ class ServerAPIClient {
     if (
       !options.forceRefresh &&
       cached?.sessionToken === sessionToken &&
+      sameAccountContext(cached.context, context) &&
       cached.expiresAt > Date.now()
     ) {
       return cached.value;
@@ -507,34 +594,44 @@ class ServerAPIClient {
     if (
       !options.forceRefresh &&
       recentFailure?.sessionToken === sessionToken &&
+      sameAccountContext(recentFailure.context, context) &&
       recentFailure.retryAt > Date.now()
     ) {
       throw recentFailure.error;
     }
 
-    const request = this.makeRequest<any>('/api/user/profile')
+    const requestVersion = ++this.profileRequestVersion;
+    const request = this.makeRequest<any>('/api/user/profile', {}, context)
       .then(async (res) => {
         const value = { user: res.profile, isPro: res.profile.isPro };
-        if (this.sessionToken === sessionToken) {
-          // The server is authoritative for whether this account has Notion linked.
+        await withCurrentAccount(context, async () => {
+          if (requestVersion !== this.profileRequestVersion) throw new StaleAccountStateError();
+          const profile = mapAccountProfile(res.profile, this.baseUrl);
+          // One background commit owns connection and entitlement cache writes.
           await chrome.storage.local.set({
+            ...profile.cache,
             [NOTION_CONNECTED_KEY]: !!res.profile.hasNotionAccess,
             ...(res.profile.email ? { user_email: res.profile.email } : {}),
           });
-        }
-        if (this.sessionToken === sessionToken) {
+          if (requestVersion !== this.profileRequestVersion) throw new StaleAccountStateError();
           this.userProfileFailure = null;
           this.userProfileCache = {
-            sessionToken,
+            context,
+            sessionToken: this.sessionToken!,
             expiresAt: Date.now() + USER_PROFILE_CACHE_MS,
             value,
           };
-        }
+        });
         return value;
       })
-      .catch((error) => {
-        if (this.sessionToken === sessionToken) {
+      .catch(async (error) => {
+        if (
+          !isStaleAccountStateError(error) &&
+          (await isAccountContextCurrent(context)) &&
+          requestVersion === this.profileRequestVersion
+        ) {
           this.userProfileFailure = {
+            context,
             sessionToken,
             retryAt: Date.now() + USER_PROFILE_FAILURE_BACKOFF_MS,
             error,
@@ -548,7 +645,7 @@ class ServerAPIClient {
         this.userProfileRequest = null;
       }
     });
-    this.userProfileRequest = { sessionToken, promise: trackedRequest };
+    this.userProfileRequest = { context, sessionToken, promise: trackedRequest };
     return trackedRequest;
   }
 
@@ -566,11 +663,12 @@ class ServerAPIClient {
 
   async isConnected(): Promise<boolean> {
     try {
+      const context = await readAccountContext();
       await this.loadSessionToken();
       if (!this.sessionToken) return false;
 
-      await this.getUserProfile();
-      return true;
+      await this.getUserProfile({}, context);
+      return isAccountContextCurrent(context);
     } catch {
       return false;
     }
@@ -614,34 +712,53 @@ class ServerAPIClient {
   // Local cleanup after the account is deleted. Sessions are stateless, so no
   // server call is needed; the legacy /api/user/logout endpoint now only
   // disconnects Notion for older extensions.
-  async logout(): Promise<void> {
-    this.clearUserProfileCache();
-    this.sessionToken = null;
-
-    await chrome.storage.local.remove([...DESTINATION_SYNC_STATE_KEYS, ...ACCOUNT_STATE_KEYS]);
+  async logout(context?: AccountContext): Promise<AccountContext> {
+    return mutateAccountState(async () => {
+      if (context) await assertAccountContextCurrent(context);
+      this.clearUserProfileCache();
+      this.sessionToken = null;
+      const revision = crypto.randomUUID();
+      await chrome.storage.local.set({ [ACCOUNT_REVISION_KEY]: revision });
+      await chrome.storage.local.remove([...DESTINATION_SYNC_STATE_KEYS, ...ACCOUNT_STATE_KEYS]);
+      return { revision, token: null, userId: null };
+    });
 
     // Note: We intentionally preserve:
     // - bookmark_library_metadata_v1 (local descriptions and tags)
     // - cached_pricing (avoids unnecessary refetch)
   }
 
-  private async clearLocalSession(): Promise<void> {
-    this.clearUserProfileCache();
-    this.sessionToken = null;
-    await chrome.storage.local.remove([
-      ...ACCOUNT_STATE_KEYS,
-      'oauth_template_database_id',
-      'is_connecting',
-      ...ENRICHMENT_STATE_KEYS,
-      ...AUTO_SYNC_KEYS,
-      'dashboard_snapshot',
-    ]);
-    await chrome.storage.local.set({
-      is_pro: false,
-      auto_sync_enabled: false,
-      sync_in_progress: false,
-      sync_started_at: null,
-      sync_trigger: null,
+  private async clearLocalSession(
+    context?: AccountContext,
+    requestToken?: string | null
+  ): Promise<AccountContext> {
+    return mutateAccountState(async () => {
+      if (context) {
+        await assertAccountContextCurrent(context);
+        const current = await readAccountContext();
+        if (current.token !== requestToken) throw new StaleAccountStateError();
+      }
+      this.clearUserProfileCache();
+      this.sessionToken = null;
+      const revision = crypto.randomUUID();
+      await chrome.storage.local.set({ [ACCOUNT_REVISION_KEY]: revision });
+      await chrome.storage.local.remove([
+        ...ACCOUNT_STATE_KEYS,
+        'oauth_template_database_id',
+        'is_connecting',
+        ...ENRICHMENT_STATE_KEYS,
+        ...AUTO_SYNC_KEYS,
+        'dashboard_snapshot',
+        'dashboard_connection',
+      ]);
+      await chrome.storage.local.set({
+        is_pro: false,
+        auto_sync_enabled: false,
+        sync_in_progress: false,
+        sync_started_at: null,
+        sync_trigger: null,
+      });
+      return { revision, token: null, userId: null };
     });
   }
 }

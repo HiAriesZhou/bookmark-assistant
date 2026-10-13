@@ -13,9 +13,18 @@ import {
 } from '../core';
 import { extractPageContentFromDocument } from '../core';
 import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
-import { NOTION_CONNECTED_KEY, readNotionDestination } from '../utils/account-state';
-import { mapAccountProfile } from '../utils/account-profile';
-import { config, validateConfig, debugConfig } from './config';
+import {
+  NOTION_CONNECTED_KEY,
+  readNotionDestination,
+  withCurrentAccount,
+  isStaleAccountStateError,
+  readAccountContext,
+  assertAccountContextCurrent,
+  isAccountContextCurrent,
+  StaleAccountStateError,
+  type AccountContext,
+} from '../utils/account-state';
+import { validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
 import { addMessageListener, Messages } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
@@ -115,21 +124,30 @@ const runSyncOnce = createSyncExecutionGate<BookmarkSyncResult>(backgroundInitia
 
 // Extract sync logic into a reusable function
 async function performBookmarkSync(
-  trigger: 'manual' | 'auto' = 'manual'
+  trigger: 'manual' | 'auto' = 'manual',
+  expectedContext?: AccountContext
 ): Promise<BookmarkSyncResult> {
-  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger));
+  const context = expectedContext ?? (await readAccountContext());
+  await assertAccountContextCurrent(context);
+  const accountKey = JSON.stringify([context.revision, context.userId ?? context.token]);
+  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), accountKey);
 }
 
 async function performBookmarkSyncAfterInitialization(
-  trigger: 'manual' | 'auto'
+  trigger: 'manual' | 'auto',
+  context: AccountContext
 ): Promise<BookmarkSyncResult> {
   const setState = async (patch: Record<string, any>) => {
     try {
-      await chrome.storage.local.set(patch);
+      await withCurrentAccount(context, () => chrome.storage.local.set(patch));
     } catch (e) {
+      if (isStaleAccountStateError(e)) throw e;
       console.warn('Failed to update sync state:', patch, e);
     }
   };
+
+  const recordEvent = (event: Parameters<typeof recordDashboardEvent>[0]) =>
+    withCurrentAccount(context, () => recordDashboardEvent(event));
 
   // Declare variables outside try block so they're accessible in catch
   let formatted: LinkItem[] = [];
@@ -137,6 +155,7 @@ async function performBookmarkSyncAfterInitialization(
   let latestSummary: StoredSyncSummary | undefined;
 
   try {
+    await assertAccountContextCurrent(context);
     const startedAt = Date.now();
     const MIN_PROGRESS_MS = 1200; // keep UI spinner visible to avoid flicker / rapid re-clicks
     const bookmarkTree = await chrome.bookmarks.getTree();
@@ -148,7 +167,7 @@ async function performBookmarkSyncAfterInitialization(
       sync_trigger: trigger,
       last_sync_error: null,
     });
-    await recordDashboardEvent({ kind: 'sync_started', trigger });
+    await recordEvent({ kind: 'sync_started', trigger });
 
     console.log('[Sync] Starting to flatten bookmarks...');
     const collectedBookmarks = await collectBookmarkSyncItems(flat);
@@ -241,7 +260,7 @@ async function performBookmarkSyncAfterInitialization(
         last_sync_payload_version: SYNC_SCHEMA_VERSION,
         [DASHBOARD_SYNC_SUMMARY_KEY]: latestSummary,
       });
-      await recordDashboardEvent({
+      await recordEvent({
         kind: 'sync_completed',
         trigger,
         result: 'no_changes',
@@ -261,7 +280,12 @@ async function performBookmarkSyncAfterInitialization(
     );
 
     console.log('[Sync] Sending bookmarks to server...');
-    const syncResponse = await serverAPI.syncBookmarks(allItems, { deferEnhancements: true });
+    await assertAccountContextCurrent(context);
+    const syncResponse = await serverAPI.syncBookmarks(
+      allItems,
+      { deferEnhancements: true },
+      context
+    );
     console.log('[Sync] Server sync summary:', syncResponse.summary);
     if (syncResponse.summary?.readingListTotal !== undefined) {
       console.log(
@@ -304,7 +328,7 @@ async function performBookmarkSyncAfterInitialization(
       last_sync_payload_version: SYNC_SCHEMA_VERSION,
       [DASHBOARD_SYNC_SUMMARY_KEY]: latestSummary,
     });
-    await recordDashboardEvent({
+    await recordEvent({
       kind: 'sync_completed',
       trigger,
       result: 'success',
@@ -318,10 +342,11 @@ async function performBookmarkSyncAfterInitialization(
 
     if (syncResponse.enrichment?.items.length) {
       try {
-        await enqueueSyncEnrichment(syncResponse.enrichment);
+        await enqueueSyncEnrichment(syncResponse.enrichment, context);
       } catch (error) {
         // The base sync and fingerprint are already durable. Surface enrichment
         // separately without turning a successful Notion sync into a failure.
+        if (isStaleAccountStateError(error)) throw error;
         console.warn('[Sync Enrichment] Failed to persist deferred work:', error);
       }
     }
@@ -334,6 +359,8 @@ async function performBookmarkSyncAfterInitialization(
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
     return { success: true } as const;
   } catch (err) {
+    if (isStaleAccountStateError(err) || !(await isAccountContextCurrent(context)))
+      return { success: false, error: 'Account state changed' };
     console.error('❌ Server-side bookmark sync failed:', err);
 
     // Report error to server for monitoring
@@ -369,7 +396,7 @@ async function performBookmarkSyncAfterInitialization(
       [DASHBOARD_SYNC_SUMMARY_KEY]: failedSummary,
       ...summary,
     });
-    await recordDashboardEvent({
+    await recordEvent({
       kind: 'sync_completed',
       trigger,
       result,
@@ -542,12 +569,12 @@ async function generateCurrentPageAi(
 }
 
 // Setup auto-sync alarm listener
-setupAutoSyncListener(async () => {
-  await performBookmarkSync('auto');
+setupAutoSyncListener(async (context) => {
+  await performBookmarkSync('auto', context);
 });
 
 // Restore auto-sync alarm on service worker startup
-restoreAutoSync(() => performBookmarkSync('auto'));
+restoreAutoSync((context) => performBookmarkSync('auto', context));
 setupSyncEnrichmentRecovery();
 
 // Register context menu click listener before its connection-derived state is applied.
@@ -626,34 +653,50 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
  * token invalidates the profile cache, so other readers join this request.
  * A failed refresh never fails the sign-in itself.
  */
-async function refreshStoredEntitlements(): Promise<void> {
+async function refreshStoredEntitlements(context: AccountContext): Promise<void> {
   try {
-    const { user, isPro } = await serverAPI.getUserProfile();
-    const profile = mapAccountProfile(user, new URL(config.notion.serverUrl).origin, isPro);
-    await chrome.storage.local.set(profile.cache);
+    await serverAPI.getUserProfile({}, context);
   } catch (profileError) {
     console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
   }
 }
 
+async function messageAccountContext(req: {
+  accountRevision?: string | null;
+}): Promise<AccountContext> {
+  const context = await readAccountContext();
+  if ('accountRevision' in req && req.accountRevision !== context.revision)
+    throw new StaleAccountStateError();
+  return context;
+}
+
 addMessageListener({
-  [Messages.NOTION_OAUTH]: async () => {
+  [Messages.NOTION_OAUTH]: async (req) => {
+    const context = await messageAccountContext(req);
     try {
       // Set connecting state at the start
-      await chrome.storage.local.set({ is_connecting: true });
+      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: true }));
       const code = await launchNotionOAuth();
-      const result = await exchangeCodeForToken(code);
-      // Clear connecting state after OAuth completes
-      await chrome.storage.local.set({ is_connecting: false });
+      const result = await exchangeCodeForToken(code, context);
+      const connectedContext = await messageAccountContext({
+        accountRevision: result.accountRevision,
+      });
+      // A successful exchange advances the revision. Guard the subsequent commits too.
+      await withCurrentAccount(connectedContext, () =>
+        chrome.storage.local.set({ is_connecting: false })
+      );
 
-      await refreshStoredEntitlements();
+      await refreshStoredEntitlements(connectedContext);
 
-      await recordDashboardEvent({ kind: 'connection_checked', result: 'success' });
+      await withCurrentAccount(connectedContext, () =>
+        recordDashboardEvent({ kind: 'connection_checked', result: 'success' })
+      );
 
       return result;
     } catch (error) {
-      // Clear connecting state on error
-      await chrome.storage.local.set({ is_connecting: false });
+      if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context)))
+        return { success: false, error: 'Account state changed' };
+      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: false }));
 
       // Report OAuth errors to server
       const err = error instanceof Error ? error : new Error(String(error));
@@ -665,8 +708,9 @@ addMessageListener({
       throw error;
     }
   },
-  [Messages.SYNC_ALL_BOOKMARKS]: async () => {
-    return await performBookmarkSync('manual');
+  [Messages.SYNC_ALL_BOOKMARKS]: async (req) => {
+    const context = await messageAccountContext(req);
+    return await performBookmarkSync('manual', context);
   },
   [Messages.SAVE_CURRENT_PAGE]: async () => {
     console.log('[BG] SAVE_CURRENT_PAGE message received');
@@ -683,7 +727,7 @@ addMessageListener({
       });
       return { success: true, profile: user, isPro } as const;
     } catch (err) {
-      console.error('❌ Failed to get user profile:', err);
+      if (!isStaleAccountStateError(err)) console.error('❌ Failed to get user profile:', err);
       return { success: false, error: String(err) } as const;
     }
   },
@@ -692,7 +736,7 @@ addMessageListener({
       const dashboard = await getDashboardSnapshot(req.refreshConnection === true);
       return { success: true, dashboard } as const;
     } catch (err) {
-      console.error('❌ Failed to build dashboard state:', err);
+      if (!isStaleAccountStateError(err)) console.error('❌ Failed to build dashboard state:', err);
       return { success: false, error: String(err) } as const;
     }
   },
@@ -737,21 +781,23 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.DISCONNECT_NOTION]: async () => {
+  [Messages.DISCONNECT_NOTION]: async (req) => {
     try {
-      await serverAPI.disconnectNotion();
-      await scheduleAutoSync(false, 0);
-      return { success: true } as const;
+      const origin = await messageAccountContext(req);
+      const context = await serverAPI.disconnectNotion(origin);
+      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
+      return { success: true, accountRevision: context.revision! } as const;
     } catch (err) {
       console.error('❌ Notion disconnect failed:', err);
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
     }
   },
-  [Messages.DELETE_ACCOUNT]: async () => {
+  [Messages.DELETE_ACCOUNT]: async (req) => {
     try {
-      await serverAPI.deleteAccount();
-      await scheduleAutoSync(false, 0);
-      return { success: true } as const;
+      const origin = await messageAccountContext(req);
+      const context = await serverAPI.deleteAccount(origin);
+      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
+      return { success: true, accountRevision: context.revision! } as const;
     } catch (err) {
       console.error('❌ Account deletion failed:', err);
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
@@ -766,9 +812,10 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.SCHEDULE_AUTO_SYNC]: async (req: { enabled: boolean; intervalHours: number }) => {
+  [Messages.SCHEDULE_AUTO_SYNC]: async (req) => {
     try {
-      await scheduleAutoSync(req.enabled, req.intervalHours);
+      const context = await messageAccountContext(req);
+      await withCurrentAccount(context, () => scheduleAutoSync(req.enabled, req.intervalHours));
       return { success: true } as const;
     } catch (err) {
       console.error('❌ Failed to schedule auto-sync:', err);

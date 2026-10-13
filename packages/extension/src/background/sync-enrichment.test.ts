@@ -26,14 +26,18 @@ describe('deferred sync enrichment', () => {
   const clearAlarm = vi.fn();
 
   beforeEach(() => {
-    values = {};
+    values = { session_token: 'synthetic-session' };
     enrichBookmarks.mockReset();
     createAlarm.mockReset();
     clearAlarm.mockReset();
     globalThis.chrome = {
       storage: {
         local: {
-          get: vi.fn(async (key: string) => ({ [key]: values[key] })),
+          get: vi.fn(async (keys: string | string[]) =>
+            Object.fromEntries(
+              (Array.isArray(keys) ? keys : [keys]).map((key) => [key, values[key]])
+            )
+          ),
           set: vi.fn(async (patch: Record<string, unknown>) => Object.assign(values, patch)),
           remove: vi.fn(async (key: string) => {
             delete values[key];
@@ -57,7 +61,10 @@ describe('deferred sync enrichment', () => {
     await enqueueSyncEnrichment({ items: [item], aiBatchEligible: true });
     await processPendingSyncEnrichment();
 
-    expect(enrichBookmarks).toHaveBeenCalledWith({ items: [item], aiBatchEligible: true });
+    expect(enrichBookmarks).toHaveBeenCalledWith(
+      { items: [item], aiBatchEligible: true },
+      expect.objectContaining({ token: 'synthetic-session' })
+    );
     expect(values[SYNC_ENRICHMENT_JOB_KEY]).toBeUndefined();
     expect(values[SYNC_ENRICHMENT_STATE_KEY]).toMatchObject({
       status: 'completed',

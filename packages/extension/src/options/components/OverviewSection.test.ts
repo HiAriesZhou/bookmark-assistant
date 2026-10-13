@@ -24,6 +24,7 @@ describe('disconnectNotionDestination', () => {
       dashboard: connectedDashboard,
     });
     vi.stubGlobal('chrome', {
+      storage: { local: { get: vi.fn(async () => ({ session_token: 'account-session' })) } },
       runtime: { sendMessage: vi.fn().mockResolvedValue({ success: true }) },
     });
   });
@@ -44,7 +45,10 @@ describe('disconnectNotionDestination', () => {
 
     await disconnectNotionDestination(refreshDashboard);
 
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'DISCONNECT_NOTION' });
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'DISCONNECT_NOTION',
+      accountRevision: null,
+    });
     expect(refreshDashboard).toHaveBeenCalledWith(false);
     expect(useAppStore.getState().isConnected).toBe(false);
     expect(useAppStore.getState().isSignedIn).toBe(true);

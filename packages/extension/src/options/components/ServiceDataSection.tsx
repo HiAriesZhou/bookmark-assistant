@@ -1,3 +1,4 @@
+import { isStaleAccountStateError } from '../../utils/account-state';
 import { useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { deleteServiceAccount } from '../account-actions';
@@ -23,6 +24,7 @@ export function ServiceDataSection() {
       setConfirmOpen(false);
       show({ variant: 'success', title: t('service_data_deleted_title') });
     } catch (error) {
+      if (isStaleAccountStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),

@@ -36,15 +36,11 @@ describe('account profile mapping', () => {
     });
   });
 
-  it('retains hosted fallback capabilities and the OAuth response entitlement override', () => {
+  it('retains hosted fallback capabilities', () => {
     expect(mapAccountProfile(profile, 'https://hosted.example').state).toMatchObject({
       deploymentMode: 'hosted',
       commerceEnabled: true,
       capabilities: { autoSync: true, batchAi: true },
-    });
-    expect(mapAccountProfile(profile, 'https://hosted.example', false).cache).toMatchObject({
-      is_pro: false,
-      deployment_profile: { capabilities: { autoSync: false, batchAi: false } },
     });
   });
 });

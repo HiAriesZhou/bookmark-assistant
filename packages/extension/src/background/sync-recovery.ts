@@ -73,16 +73,16 @@ export async function runAfterSyncInitialization<T>(
  * creating duplicate Notion writes.
  */
 export function createSyncExecutionGate<T>(initialization: Promise<unknown>) {
-  let active: Promise<T> | null = null;
+  const active = new Map<string, Promise<T>>();
 
-  return (task: () => Promise<T>): Promise<T> => {
-    if (active) return active;
-
+  return (task: () => Promise<T>, accountKey = ''): Promise<T> => {
+    const existing = active.get(accountKey);
+    if (existing) return existing;
     const started = runAfterSyncInitialization(initialization, task);
     const guarded = started.finally(() => {
-      if (active === guarded) active = null;
+      if (active.get(accountKey) === guarded) active.delete(accountKey);
     });
-    active = guarded;
+    active.set(accountKey, guarded);
     return guarded;
   };
 }

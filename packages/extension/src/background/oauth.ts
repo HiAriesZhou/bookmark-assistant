@@ -1,3 +1,4 @@
+import type { AccountContext } from '../utils/account-state';
 import { config } from './config';
 import { serverAPI } from './server-api';
 
@@ -84,12 +85,12 @@ export async function launchNotionOAuth() {
   });
 }
 
-export async function exchangeCodeForToken(code: string): Promise<{ success: boolean }> {
+export async function exchangeCodeForToken(
+  code: string,
+  context?: AccountContext
+): Promise<{ success: boolean; accountRevision: string }> {
   const redirectUri = chrome.identity.getRedirectURL('callback');
 
-  const response = await serverAPI.exchangeOAuthCode(code, redirectUri);
-  if (response.sessionToken) {
-    return { success: true };
-  }
-  return { success: false };
+  const response = await serverAPI.exchangeOAuthCode(code, redirectUri, context);
+  return { success: true, accountRevision: response.accountRevision };
 }

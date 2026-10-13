@@ -1,3 +1,4 @@
+import { isStaleAccountStateError } from '../../utils/account-state';
 import { useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { deriveConnectionStatus, showsSyncStatus } from '../connection-view-model';
@@ -42,6 +43,7 @@ export function OverviewSection() {
           : t('dashboard_event_sync_completed'),
       });
     } catch (error) {
+      if (isStaleAccountStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),
@@ -69,6 +71,7 @@ export function OverviewSection() {
         description: t('disconnected_desc'),
       });
     } catch (error) {
+      if (isStaleAccountStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),

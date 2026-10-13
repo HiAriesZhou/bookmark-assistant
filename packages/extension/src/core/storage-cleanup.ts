@@ -112,8 +112,8 @@ export function planStorageCleanup(
   const removeKeys: string[] = [];
   const updateValues: Record<string, unknown> = {};
 
-  if ('page_description_cache' in storage) {
-    removeKeys.push('page_description_cache');
+  for (const key of ['page_description_cache', 'is_refreshing_entitlements']) {
+    if (key in storage) removeKeys.push(key);
   }
 
   if ('last_sync_hash' in storage) {

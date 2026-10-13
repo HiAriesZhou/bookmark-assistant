@@ -1,3 +1,10 @@
+import {
+  readAccountContext,
+  withCurrentAccount,
+  isAccountContextCurrent,
+  isStaleAccountStateError,
+  type AccountContext,
+} from '../utils/account-state';
 /// <reference types="chrome" />
 
 import {
@@ -54,30 +61,36 @@ async function scheduleRetry(attempts: number): Promise<void> {
   await chrome.alarms.create(SYNC_ENRICHMENT_ALARM, { delayInMinutes: delayMinutes });
 }
 
-export async function enqueueSyncEnrichment(input: {
-  items: BookmarkSyncEnrichmentItem[];
-  aiBatchEligible?: boolean;
-}): Promise<void> {
+export async function enqueueSyncEnrichment(
+  input: {
+    items: BookmarkSyncEnrichmentItem[];
+    aiBatchEligible?: boolean;
+  },
+  expectedContext?: AccountContext
+): Promise<void> {
   if (!input.items.length) return;
-  const stored = await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY);
-  const current = stored[SYNC_ENRICHMENT_JOB_KEY] as SyncEnrichmentJob | undefined;
-  const now = new Date().toISOString();
-  const job: SyncEnrichmentJob = {
-    id: jobId(),
-    items: mergeItems(current?.items || [], input.items),
-    aiBatchEligible: input.aiBatchEligible,
-    attempts: current?.attempts || 0,
-    createdAt: current?.createdAt || now,
-  };
-  await chrome.storage.local.set({
-    [SYNC_ENRICHMENT_JOB_KEY]: job,
-    [SYNC_ENRICHMENT_STATE_KEY]: {
-      status: 'pending',
-      total: job.items.length,
-      updatedAt: now,
-    } satisfies SyncEnrichmentState,
+  const context = expectedContext ?? (await readAccountContext());
+  await withCurrentAccount(context, async () => {
+    const stored = await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY);
+    const current = stored[SYNC_ENRICHMENT_JOB_KEY] as SyncEnrichmentJob | undefined;
+    const now = new Date().toISOString();
+    const job: SyncEnrichmentJob = {
+      id: jobId(),
+      items: mergeItems(current?.items || [], input.items),
+      aiBatchEligible: input.aiBatchEligible,
+      attempts: current?.attempts || 0,
+      createdAt: current?.createdAt || now,
+    };
+    await chrome.storage.local.set({
+      [SYNC_ENRICHMENT_JOB_KEY]: job,
+      [SYNC_ENRICHMENT_STATE_KEY]: {
+        status: 'pending',
+        total: job.items.length,
+        updatedAt: now,
+      } satisfies SyncEnrichmentState,
+    });
+    await chrome.alarms.create(SYNC_ENRICHMENT_ALARM, { when: Date.now() + 1_000 });
   });
-  await chrome.alarms.create(SYNC_ENRICHMENT_ALARM, { when: Date.now() + 1_000 });
   void processPendingSyncEnrichment();
 }
 
@@ -90,65 +103,76 @@ export function processPendingSyncEnrichment(): Promise<void> {
 }
 
 async function runPendingSyncEnrichment(): Promise<void> {
+  const context = await readAccountContext();
   const stored = await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY);
   const job = stored[SYNC_ENRICHMENT_JOB_KEY] as SyncEnrichmentJob | undefined;
   if (!job?.items?.length) return;
-  const startedAt = new Date().toISOString();
-  await chrome.storage.local.set({
-    [SYNC_ENRICHMENT_STATE_KEY]: {
-      status: 'processing',
-      total: job.items.length,
-      updatedAt: startedAt,
-    } satisfies SyncEnrichmentState,
-  });
-
   try {
-    const response = await serverAPI.enrichBookmarks({
-      items: job.items,
-      aiBatchEligible: job.aiBatchEligible,
-    });
-    const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
-      SYNC_ENRICHMENT_JOB_KEY
-    ] as SyncEnrichmentJob | undefined;
-    if (latest?.id && latest.id !== job.id) {
-      void processPendingSyncEnrichment();
-      return;
-    }
-    await chrome.alarms.clear(SYNC_ENRICHMENT_ALARM);
-    await chrome.storage.local.remove(SYNC_ENRICHMENT_JOB_KEY);
-    const completedAt = new Date().toISOString();
-    await chrome.storage.local.set({
-      [SYNC_ENRICHMENT_STATE_KEY]: {
-        status: 'completed',
-        total: response.summary.total,
-        generated: response.summary.generated,
-        alreadyPresent: response.summary.alreadyPresent,
-        unavailable: response.summary.unavailable,
-        targetSkipped: response.summary.targetSkipped,
-        failed: response.summary.failed,
-        aiPlanning: response.aiPlanning,
-        updatedAt: completedAt,
-        completedAt,
-      } satisfies SyncEnrichmentState,
+    const startedAt = new Date().toISOString();
+    await withCurrentAccount(context, () =>
+      chrome.storage.local.set({
+        [SYNC_ENRICHMENT_STATE_KEY]: {
+          status: 'processing',
+          total: job.items.length,
+          updatedAt: startedAt,
+        } satisfies SyncEnrichmentState,
+      })
+    );
+
+    const response = await serverAPI.enrichBookmarks(
+      {
+        items: job.items,
+        aiBatchEligible: job.aiBatchEligible,
+      },
+      context
+    );
+    await withCurrentAccount(context, async () => {
+      const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
+        SYNC_ENRICHMENT_JOB_KEY
+      ] as SyncEnrichmentJob | undefined;
+      if (latest?.id !== job.id) {
+        void processPendingSyncEnrichment();
+        return;
+      }
+      await chrome.alarms.clear(SYNC_ENRICHMENT_ALARM);
+      await chrome.storage.local.remove(SYNC_ENRICHMENT_JOB_KEY);
+      const completedAt = new Date().toISOString();
+      await chrome.storage.local.set({
+        [SYNC_ENRICHMENT_STATE_KEY]: {
+          status: 'completed',
+          total: response.summary.total,
+          generated: response.summary.generated,
+          alreadyPresent: response.summary.alreadyPresent,
+          unavailable: response.summary.unavailable,
+          targetSkipped: response.summary.targetSkipped,
+          failed: response.summary.failed,
+          aiPlanning: response.aiPlanning,
+          updatedAt: completedAt,
+          completedAt,
+        } satisfies SyncEnrichmentState,
+      });
     });
   } catch (error) {
-    const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
-      SYNC_ENRICHMENT_JOB_KEY
-    ] as SyncEnrichmentJob | undefined;
-    if (latest?.id && latest.id !== job.id) return;
-    const attempts = job.attempts + 1;
-    const message = error instanceof Error ? error.message : String(error);
-    await chrome.storage.local.set({
-      [SYNC_ENRICHMENT_JOB_KEY]: { ...job, attempts },
-      [SYNC_ENRICHMENT_STATE_KEY]: {
-        status: 'retrying',
-        total: job.items.length,
-        updatedAt: new Date().toISOString(),
-        lastError: message,
-      } satisfies SyncEnrichmentState,
+    if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context))) return;
+    await withCurrentAccount(context, async () => {
+      const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
+        SYNC_ENRICHMENT_JOB_KEY
+      ] as SyncEnrichmentJob | undefined;
+      if (latest?.id !== job.id) return;
+      const attempts = job.attempts + 1;
+      const message = error instanceof Error ? error.message : String(error);
+      await chrome.storage.local.set({
+        [SYNC_ENRICHMENT_JOB_KEY]: { ...job, attempts },
+        [SYNC_ENRICHMENT_STATE_KEY]: {
+          status: 'retrying',
+          total: job.items.length,
+          updatedAt: new Date().toISOString(),
+          lastError: message,
+        } satisfies SyncEnrichmentState,
+      });
+      await scheduleRetry(attempts);
+      console.warn('[Sync Enrichment] Deferred work will retry:', message);
     });
-    await scheduleRetry(attempts);
-    console.warn('[Sync Enrichment] Deferred work will retry:', message);
   }
 }
 

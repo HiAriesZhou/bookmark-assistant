@@ -1,3 +1,4 @@
+import { isStaleAccountStateError } from '../utils/account-state';
 import { ChevronRight, Cloud, Library, RefreshCw, Settings } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import logoUrl from '@product-logo';
@@ -46,6 +47,7 @@ export default function Popup() {
           : t('dashboard_event_sync_completed'),
       });
     } catch (error) {
+      if (isStaleAccountStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),

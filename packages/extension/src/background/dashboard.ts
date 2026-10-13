@@ -8,7 +8,15 @@ import { analyzeBookmarkLibrary } from '../dashboard/library-health';
 import { getReadingListItems } from '../utils/reading-list';
 import { getAutoSyncStatus } from './auto-sync';
 import { serverAPI } from './server-api';
-import { hasNotionDestination, NOTION_CONNECTED_KEY } from '../utils/account-state';
+import {
+  hasNotionDestination,
+  NOTION_CONNECTED_KEY,
+  readAccountContext,
+  assertAccountContextCurrent,
+  withCurrentAccount,
+  isStaleAccountStateError,
+  type AccountContext,
+} from '../utils/account-state';
 
 export const DASHBOARD_EVENTS_KEY = 'dashboard_recent_activity';
 export const DASHBOARD_SYNC_SUMMARY_KEY = 'dashboard_last_sync';
@@ -108,7 +116,10 @@ export function inferSyncResult(
   return classifyDashboardError(error) === 'rate_limit' ? 'limited' : 'failed';
 }
 
-async function readConnection(refresh: boolean): Promise<DashboardSnapshot['connection']> {
+async function readConnection(
+  refresh: boolean,
+  context: AccountContext
+): Promise<DashboardSnapshot['connection']> {
   const stored = await chrome.storage.local.get([
     'session_token',
     NOTION_CONNECTED_KEY,
@@ -127,7 +138,7 @@ async function readConnection(refresh: boolean): Promise<DashboardSnapshot['conn
   }
 
   try {
-    const { user } = await serverAPI.getUserProfile();
+    const { user } = await serverAPI.getUserProfile({}, context);
     const checkedAt = new Date().toISOString();
     const status = user.hasNotionAccess && user.hasNotionDatabase ? 'connected' : 'degraded';
     const connection: CachedConnection = {
@@ -137,23 +148,29 @@ async function readConnection(refresh: boolean): Promise<DashboardSnapshot['conn
       checkedAt,
       action: status === 'connected' ? undefined : 'reconnect',
     };
-    await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: connection });
-    await recordDashboardEvent({
-      kind: 'connection_checked',
-      result: status === 'connected' ? 'success' : 'failed',
-      action: status === 'connected' ? undefined : 'reconnect',
+    await withCurrentAccount(context, async () => {
+      await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: connection });
+      await recordDashboardEvent({
+        kind: 'connection_checked',
+        result: status === 'connected' ? 'success' : 'failed',
+        action: status === 'connected' ? undefined : 'reconnect',
+      });
     });
     return status === 'connected' ? connection : { ...connection, action: 'reconnect' };
   } catch (error) {
+    if (isStaleAccountStateError(error)) throw error;
+    await assertAccountContextCurrent(context);
     const checkedAt = new Date().toISOString();
     const errorCategory = classifyDashboardError(error);
     const action = errorCategory === 'authentication' ? 'connect' : 'retry';
-    await recordDashboardEvent({
-      kind: 'connection_checked',
-      result: 'failed',
-      errorCategory,
-      action,
-    });
+    await withCurrentAccount(context, () =>
+      recordDashboardEvent({
+        kind: 'connection_checked',
+        result: 'failed',
+        errorCategory,
+        action,
+      })
+    );
     if (errorCategory === 'authentication') {
       return { status: 'disconnected', checkedAt, action: 'connect' };
     }
@@ -163,13 +180,16 @@ async function readConnection(refresh: boolean): Promise<DashboardSnapshot['conn
       checkedAt,
       action: 'retry',
     };
-    await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: degraded });
+    await withCurrentAccount(context, () =>
+      chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: degraded })
+    );
     return degraded;
   }
 }
 
 export async function getDashboardSnapshot(refreshConnection = false): Promise<DashboardSnapshot> {
-  const connection = await readConnection(refreshConnection);
+  const context = await readAccountContext();
+  const connection = await readConnection(refreshConnection, context);
   const bookmarkTree = await chrome.bookmarks.getTree().catch(() => []);
   const [stored, readingList, autoSync] = await Promise.all([
     chrome.storage.local.get([
@@ -199,7 +219,7 @@ export async function getDashboardSnapshot(refreshConnection = false): Promise<D
   const legacyResult = stored.last_sync_summary === 'no_changes' ? 'no_changes' : undefined;
   const libraryHealth = analyzeBookmarkLibrary(bookmarkTree, readingList);
 
-  return {
+  const snapshot: DashboardSnapshot = {
     generatedAt: new Date().toISOString(),
     connection: {
       provider: { id: 'notion', displayName: 'Notion' },
@@ -226,4 +246,8 @@ export async function getDashboardSnapshot(refreshConnection = false): Promise<D
     },
     recentActivity: events,
   };
+  await withCurrentAccount(context, () =>
+    chrome.storage.local.set({ dashboard_snapshot: { ...snapshot, recentActivity: [] } })
+  );
+  return snapshot;
 }

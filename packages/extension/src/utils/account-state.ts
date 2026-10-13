@@ -5,6 +5,75 @@
 // recorded separately in `notion_connected`.
 
 export const NOTION_CONNECTED_KEY = 'notion_connected';
+export const ACCOUNT_REVISION_KEY = 'account_state_revision';
+
+export type AccountContext = {
+  revision: string | null;
+  token: string | null;
+  userId: string | null;
+};
+
+export class StaleAccountStateError extends Error {
+  readonly code = 'STALE_ACCOUNT_STATE';
+  constructor() {
+    super('Account state changed before the request completed');
+    this.name = 'StaleAccountStateError';
+  }
+}
+
+export function isStaleAccountStateError(error: unknown): boolean {
+  return error instanceof StaleAccountStateError;
+}
+
+export async function readAccountContext(): Promise<AccountContext> {
+  const stored = await chrome.storage.local.get(['session_token', ACCOUNT_REVISION_KEY]);
+  const token = typeof stored.session_token === 'string' ? stored.session_token : null;
+  const userId = token ? readSessionClaims(token)?.userId : null;
+  return {
+    revision:
+      typeof stored[ACCOUNT_REVISION_KEY] === 'string' ? stored[ACCOUNT_REVISION_KEY] : null,
+    token,
+    userId: typeof userId === 'string' ? userId : null,
+  };
+}
+
+export async function isAccountContextCurrent(context: AccountContext): Promise<boolean> {
+  const current = await readAccountContext();
+  return sameAccountContext(context, current);
+}
+
+export function sameAccountContext(context: AccountContext, current: AccountContext): boolean {
+  return (
+    current.revision === context.revision &&
+    (current.token === context.token ||
+      // Token renewal preserves the account lifetime. These claims identify local
+      // response ownership only; the server remains responsible for authentication.
+      (!!current.token && !!context.token && !!context.userId && current.userId === context.userId))
+  );
+}
+
+export async function assertAccountContextCurrent(context: AccountContext): Promise<void> {
+  if (!(await isAccountContextCurrent(context))) throw new StaleAccountStateError();
+}
+
+// The background owns account/cache mutations. Only short local commits enter
+// this queue; network requests must never prevent logout from completing.
+let accountMutation: Promise<unknown> = Promise.resolve();
+export function mutateAccountState<T>(action: () => Promise<T>): Promise<T> {
+  const request = accountMutation.then(action);
+  accountMutation = request.catch(() => undefined);
+  return request;
+}
+
+export function withCurrentAccount<T>(
+  context: AccountContext,
+  action: () => Promise<T>
+): Promise<T> {
+  return mutateAccountState(async () => {
+    await assertAccountContextCurrent(context);
+    return action();
+  });
+}
 
 // Sessions last 14 days; renew once a day while the extension is in use.
 const SESSION_RENEW_WHEN_REMAINING_MS = 13 * 24 * 60 * 60 * 1000;
@@ -23,12 +92,17 @@ export async function readNotionDestination(): Promise<boolean> {
 }
 
 export function readSessionExpiry(token: string): number | null {
+  const claims = readSessionClaims(token);
+  return typeof claims?.exp === 'number' ? claims.exp * 1000 : null;
+}
+
+function readSessionClaims(token: string): { userId?: unknown; exp?: unknown } | null {
   const [, payload] = token.split('.');
   if (!payload) return null;
   try {
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const claims = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')));
-    return typeof claims.exp === 'number' ? claims.exp * 1000 : null;
+    return claims;
   } catch {
     return null;
   }

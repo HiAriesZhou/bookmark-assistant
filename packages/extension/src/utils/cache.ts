@@ -10,6 +10,7 @@ import type { DeploymentProfile } from '@bookmark-assistant/types';
 export interface ChromeLocalCache {
   // Auth/session
   session_token?: string;
+  account_state_revision?: string;
   notion_connected?: boolean;
   user_id?: string;
   user_email?: string;
@@ -56,6 +57,7 @@ export interface ChromeLocalCache {
 // Optional: key literals for safer usage
 export const CACHE_KEYS = {
   session_token: 'session_token',
+  account_state_revision: 'account_state_revision',
   notion_connected: 'notion_connected',
   user_id: 'user_id',
   user_email: 'user_email',
@@ -92,6 +94,7 @@ export const CACHE_KEYS = {
 
 export const WATCHED_CACHE_KEYS = [
   CACHE_KEYS.session_token,
+  CACHE_KEYS.account_state_revision,
   CACHE_KEYS.notion_connected,
   CACHE_KEYS.is_connecting,
   CACHE_KEYS.sync_in_progress,
