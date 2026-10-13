@@ -19,45 +19,45 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
       ? 'https://www.arieszhou.com/zh/projects/bookmark-assistant'
       : 'https://www.arieszhou.com/projects/bookmark-assistant';
   return (
-    <footer className="editorial-footer border-t border-[#e8eaed] bg-[#fafafa] px-6 py-12">
+    <footer className="editorial-footer border-t border-[#dce0d4] bg-[#f9f9f5] px-6 py-12">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 md:grid-cols-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Logo className="w-8 h-8" />
-              <span className="text-base text-[#16181d]">{PRODUCT_NAME}</span>
+              <span className="text-base text-[#29352e]">{PRODUCT_NAME}</span>
             </div>
             <p className="text-sm text-[#667085]">{copy.footer.summary}</p>
           </div>
           <div>
-            <h4 className="mb-3 text-base text-[#16181d]">{copy.footer.product}</h4>
+            <h4 className="mb-3 text-base text-[#29352e]">{copy.footer.product}</h4>
             <ul className="space-y-2 text-sm text-[#667085]">
               <li>
-                <a className="hover:text-[#16181d]" href="#library">
+                <a className="hover:text-[#334f40]" href="#library">
                   {copy.navigation.features}
                 </a>
               </li>
               <li>
                 <a
-                  className="hover:text-[#16181d]"
+                  className="hover:text-[#334f40]"
                   href={COMMERCE_ENABLED ? '#pricing' : '#source'}
                 >
                   {COMMERCE_ENABLED ? copy.navigation.pricing : 'GPL-3.0-only'}
                 </a>
               </li>
               <li>
-                <a className="hover:text-[#16181d]" href="#faq">
+                <a className="hover:text-[#334f40]" href="#faq">
                   {copy.navigation.faq}
                 </a>
               </li>
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-base text-[#16181d]">{copy.footer.resources}</h4>
+            <h4 className="mb-3 text-base text-[#29352e]">{copy.footer.resources}</h4>
             <ul className="space-y-2 text-sm text-[#667085]">
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={NOTION_TEMPLATE_URL || '#source'}
                   target="_blank"
                   rel="noreferrer"
@@ -67,7 +67,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               </li>
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={CHROME_WEB_STORE_URL}
                   target="_blank"
                   rel="noreferrer"
@@ -77,7 +77,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               </li>
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={SUPPORT_EMAIL ? `mailto:${SUPPORT_EMAIL}` : '#source'}
                 >
                   {copy.footer.support}
@@ -85,7 +85,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               </li>
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={projectStoryUrl}
                   target="_blank"
                   rel="noreferrer"
@@ -96,16 +96,16 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
             </ul>
           </div>
           <div>
-            <h4 className="mb-3 text-base text-[#16181d]">{copy.footer.legal}</h4>
+            <h4 className="mb-3 text-base text-[#29352e]">{copy.footer.legal}</h4>
             <ul className="space-y-2 text-sm text-[#667085]">
               <li>
-                <a className="hover:text-gray-900" href={localePath(locale, 'privacy')}>
+                <a className="hover:text-[#334f40]" href={localePath(locale, 'privacy')}>
                   {copy.footer.privacy}
                 </a>
               </li>
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={TERMS_OF_SERVICE_URL}
                   target="_blank"
                   rel="noreferrer"
@@ -115,7 +115,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               </li>
               <li>
                 <a
-                  className="hover:text-gray-900"
+                  className="hover:text-[#334f40]"
                   href={REFUND_POLICY_URL}
                   target="_blank"
                   rel="noreferrer"
@@ -135,7 +135,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
                   href="https://www.paddle.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="underline decoration-[#b7c3b2] underline-offset-4 hover:text-[#16181d]"
+                  className="underline decoration-[#b7c3b2] underline-offset-4 hover:text-[#334f40]"
                 >
                   Paddle
                 </a>

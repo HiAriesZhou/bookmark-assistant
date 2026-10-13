@@ -72,12 +72,12 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
   return (
     <section
       id="pricing"
-      className="editorial-pricing border-b border-[#e8eaed] bg-[#f6f7f9] py-20 sm:py-28"
+      className="editorial-pricing border-b border-[#d6d8cf] bg-[#eeede8] py-20 sm:py-28"
     >
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-3xl text-center">
           <SectionEyebrow text={copy.pricing.eyebrow} color="amber" />
-          <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-[#16181d] sm:text-5xl">
+          <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] text-[#29352e] sm:text-5xl">
             {copy.pricing.title}
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[#667085]">
@@ -95,7 +95,7 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
                 aria-pressed={billing === option}
                 className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a36d00] ${
                   billing === option
-                    ? 'bg-[#181b21] text-white shadow-sm'
+                    ? 'bg-[#344a3b] text-white shadow-sm'
                     : 'text-[#667085] hover:text-[#16181d]'
                 }`}
               >
@@ -106,7 +106,7 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
                       billing === 'yearly' ? 'text-[#ffefbe]' : 'text-[#946200]'
                     }`}
                   >
-                    <Zap className="mr-1 h-3 w-3" aria-hidden="true" />
+                    <Zap className="mr-1 h-3 w-3 text-[#78906f]" aria-hidden="true" />
                     {copy.pricing.bestValue}
                   </span>
                 ) : null}
@@ -125,26 +125,26 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
             pricing || isLoading ? 'mt-8' : 'mt-12'
           }`}
         >
-          <article className="flex flex-col rounded-[1.75rem] border border-[#e8eaed] bg-white p-7 shadow-[0_18px_50px_rgba(24,27,33,0.06)]">
-            <p className="text-sm font-semibold uppercase tracking-[0.13em] text-[#667085]">
+          <article className="flex flex-col rounded-[18px] border border-[rgba(113,126,105,.22)] bg-[rgba(249,249,245,.78)] p-7 text-[#29352e] shadow-[0_18px_48px_rgba(55,66,48,.05)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.13em] text-[#29352e]">
               {copy.pricing.freeName}
             </p>
             <div className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#16181d]">$0</div>
-            <p className="mt-3 text-[#667085]">{copy.pricing.freeSummary}</p>
+            <p className="mt-3 text-[#29352e]">{copy.pricing.freeSummary}</p>
             <ul className="mt-8 flex-1 space-y-4 text-sm text-[#344054]">
               {freeFeatures.map((feature) => (
-                <li key={feature.title} className="flex gap-3">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#946200]" aria-hidden="true" />
+                <li key={feature.title} className="flex gap-3 text-[#29352e]">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#78906f]" aria-hidden="true" />
                   <span>{feature.title}</span>
                 </li>
               ))}
             </ul>
           </article>
 
-          <article className="relative flex flex-col overflow-hidden rounded-[1.75rem] border border-[#292d35] bg-[#181b21] p-7 text-white shadow-[0_24px_70px_rgba(24,27,33,0.22)]">
+          <article className="relative flex flex-col overflow-hidden rounded-[18px] border border-[#344a3b] bg-[#344a3b] p-7 text-white shadow-[0_22px_60px_rgba(47,65,52,.18)]">
             <div className="absolute right-0 top-0 h-40 w-40 translate-x-12 -translate-y-12 rounded-full bg-[#f59e0b]/20 blur-2xl" />
             <div className="relative flex items-center gap-2">
-              <Crown className="h-4 w-4 text-[#fbbf24]" aria-hidden="true" />
+              <Crown className="h-4 w-4 text-[#dce6d5]" aria-hidden="true" />
               <p className="text-sm font-semibold uppercase tracking-[0.13em] text-[#eaecf0]">
                 {copy.pricing.proName}
               </p>
@@ -174,7 +174,7 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
             <ul className="relative mt-8 flex-1 space-y-4 text-sm text-[#f9fafb]">
               {proFeatures.map((feature) => (
                 <li key={feature.title} className="flex gap-3">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#fbbf24]" aria-hidden="true" />
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#dce6d5]" aria-hidden="true" />
                   <span>{feature.title}</span>
                 </li>
               ))}

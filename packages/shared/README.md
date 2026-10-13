@@ -1,6 +1,6 @@
 # Shared resources
 
-Design tokens and Tailwind configuration are GPL-3.0-only source code.
+Shared scrollbar styles are GPL-3.0-only source code.
 `brand.json` and `assets/brand` contain the official Bookmark Assistant brand
 (GPL-3.0-only artwork; the name and logo are governed by TRADEMARKS.md). The favicon
 master is `assets/brand/paperbird-master.png`; regenerate favicons with
