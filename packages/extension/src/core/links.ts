@@ -42,7 +42,6 @@ export interface CollectBookmarkSyncItemsOptions {
   defaultPath?: string;
   now?: () => Date;
   createSyncId?: (bookmark: BookmarkTreeNodeLike) => string;
-  getDescription?: (url: string, bookmark: BookmarkTreeNodeLike) => string | Promise<string>;
   includeType?: boolean;
 }
 
@@ -101,15 +100,13 @@ export async function collectBookmarkSyncItems(
   const items: LinkItem[] = [];
   const fingerprintItems: SyncFingerprintItem[] = [];
 
-  async function traverse(nodes: BookmarkTreeNodeLike[], currentPath: string): Promise<void> {
+  function traverse(nodes: BookmarkTreeNodeLike[], currentPath: string): void {
     for (const node of nodes) {
       if (node.url) {
         const title = node.title || 'Untitled';
         const url = node.url || '';
-        const description = (await options.getDescription?.(url, node)) ?? '';
 
         const item = formatBookmarkForSync(node, currentPath, {
-          description,
           now: options.now,
           createSyncId: options.createSyncId,
           includeType: options.includeType,
@@ -126,12 +123,12 @@ export async function collectBookmarkSyncItems(
         });
       } else if (node.children) {
         const nextPath = node.title ? `${currentPath} / ${node.title}` : currentPath;
-        await traverse(node.children, nextPath);
+        traverse(node.children, nextPath);
       }
     }
   }
 
-  await traverse(bookmarkNodes, defaultPath);
+  traverse(bookmarkNodes, defaultPath);
   return { items, fingerprintItems };
 }
 

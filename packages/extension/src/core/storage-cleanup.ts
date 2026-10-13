@@ -112,6 +112,10 @@ export function planStorageCleanup(
   const removeKeys: string[] = [];
   const updateValues: Record<string, unknown> = {};
 
+  if ('page_description_cache' in storage) {
+    removeKeys.push('page_description_cache');
+  }
+
   if ('last_sync_hash' in storage) {
     removeKeys.push('last_sync_hash');
   }

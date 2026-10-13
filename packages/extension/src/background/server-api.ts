@@ -621,7 +621,7 @@ class ServerAPIClient {
     await chrome.storage.local.remove([...DESTINATION_SYNC_STATE_KEYS, ...ACCOUNT_STATE_KEYS]);
 
     // Note: We intentionally preserve:
-    // - description_cache_* keys (user's cached descriptions - expensive to rebuild)
+    // - bookmark_library_metadata_v1 (local descriptions and tags)
     // - cached_pricing (avoids unnecessary refetch)
   }
 

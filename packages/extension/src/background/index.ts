@@ -51,11 +51,6 @@ import {
 
 console.log('[BG] Service worker starting...');
 
-// Cache for page descriptions (url -> { description: string, timestamp: number })
-const pageDescriptionCache = new Map<string, { description: string; timestamp: number }>();
-const DESCRIPTION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const DESCRIPTION_CACHE_STORAGE_KEY = 'page_description_cache';
-const MAX_CACHE_SIZE = 1000; // Maximum number of cache entries before LRU eviction
 // Bump only when payload shape, fingerprint inputs, or Notion write-back semantics change.
 // This is a production sync migration gate, not a local debug switch.
 const SYNC_SCHEMA_VERSION = 13;
@@ -68,171 +63,6 @@ function createSyncId(prefix: string) {
 
 type CurrentPageCaptureSource = 'current_page' | 'context_menu';
 const CURRENT_PAGE_AI_REQUEST_TTL_MS = 5 * 60_000;
-
-// Evict least recently used entries when cache exceeds max size
-function evictLRUEntries() {
-  if (pageDescriptionCache.size <= MAX_CACHE_SIZE) {
-    return;
-  }
-
-  // Convert to array and sort by timestamp (oldest first)
-  const entries = Array.from(pageDescriptionCache.entries())
-    .map(([url, data]) => ({ url, ...data }))
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  // Remove oldest entries until we're under the limit
-  const toRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
-  let removedCount = 0;
-  for (const entry of toRemove) {
-    pageDescriptionCache.delete(entry.url);
-    removedCount++;
-  }
-
-  if (removedCount > 0) {
-    console.log(
-      `[DescriptionExtractor] Evicted ${removedCount} LRU entries (cache size: ${pageDescriptionCache.size}/${MAX_CACHE_SIZE})`
-    );
-  }
-}
-
-// Listen for page descriptions from content scripts
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-  if (message.type === 'PAGE_DESCRIPTION') {
-    const { url, description } = message.payload;
-    const normalizedUrl = normalizeUrl(url);
-    console.debug('[DescriptionExtractor] Received page description');
-
-    // Update timestamp for LRU tracking
-    pageDescriptionCache.set(normalizedUrl, {
-      description,
-      timestamp: Date.now(),
-    });
-
-    // Evict LRU entries if cache is too large
-    evictLRUEntries();
-
-    // Persist to storage
-    persistDescriptionCache().catch((error) => {
-      console.warn('[DescriptionExtractor] Failed to persist cache:', error);
-    });
-  }
-});
-
-// Persist cache to chrome.storage.local for persistence across service worker restarts
-async function persistDescriptionCache() {
-  try {
-    const cacheObject: Record<string, { description: string; timestamp: number }> = {};
-    pageDescriptionCache.forEach((value, key) => {
-      cacheObject[key] = value;
-    });
-    await chrome.storage.local.set({ [DESCRIPTION_CACHE_STORAGE_KEY]: cacheObject });
-    console.log(
-      `[DescriptionExtractor] Persisted ${Object.keys(cacheObject).length} descriptions to storage`
-    );
-  } catch (error) {
-    console.error('[DescriptionExtractor] Failed to persist cache to storage:', error);
-  }
-}
-
-// Load cache from chrome.storage.local
-async function loadDescriptionCacheFromStorage() {
-  try {
-    const result = await chrome.storage.local.get([DESCRIPTION_CACHE_STORAGE_KEY]);
-    const cacheData = result[DESCRIPTION_CACHE_STORAGE_KEY];
-    if (cacheData && typeof cacheData === 'object') {
-      const now = Date.now();
-      let loadedCount = 0;
-      let expiredCount = 0;
-      let normalizedCount = 0;
-
-      for (const [url, data] of Object.entries(cacheData)) {
-        if (
-          data &&
-          typeof data === 'object' &&
-          'description' in data &&
-          'timestamp' in data &&
-          typeof (data as any).description === 'string' &&
-          typeof (data as any).timestamp === 'number'
-        ) {
-          // Normalize URL when loading (handles migration of old cache entries)
-          const normalizedUrl = normalizeUrl(url);
-          const wasNormalized = normalizedUrl !== url;
-
-          if (now - (data as any).timestamp <= DESCRIPTION_CACHE_TTL_MS) {
-            // Use normalized URL as key
-            pageDescriptionCache.set(normalizedUrl, {
-              description: (data as any).description,
-              timestamp: (data as any).timestamp,
-            });
-            loadedCount++;
-            if (wasNormalized) {
-              normalizedCount++;
-            }
-          } else {
-            expiredCount++;
-          }
-        }
-      }
-
-      // Evict LRU entries if we loaded too many
-      evictLRUEntries();
-
-      console.log(
-        `[DescriptionExtractor] Loaded ${loadedCount} descriptions from storage (${expiredCount} expired, ${normalizedCount} normalized)`
-      );
-    }
-  } catch (error) {
-    console.error('[DescriptionExtractor] Failed to load cache from storage:', error);
-  }
-}
-
-// Clean up expired cache entries periodically
-setInterval(
-  async () => {
-    const now = Date.now();
-    let deletedCount = 0;
-    for (const [url, data] of pageDescriptionCache.entries()) {
-      if (now - data.timestamp > DESCRIPTION_CACHE_TTL_MS) {
-        pageDescriptionCache.delete(url);
-        deletedCount++;
-      }
-    }
-    if (deletedCount > 0) {
-      console.log(`[DescriptionExtractor] Cleaned up ${deletedCount} expired descriptions`);
-      await persistDescriptionCache();
-    }
-  },
-  60 * 60 * 1000
-); // Check every hour
-
-function getCachedDescription(url: string): string {
-  // Normalize URL before lookup to ensure cache hits
-  const normalizedUrl = normalizeUrl(url);
-  const cached = pageDescriptionCache.get(normalizedUrl);
-
-  if (!cached) {
-    console.debug('[DescriptionExtractor] Cache miss');
-    return '';
-  }
-
-  // Check if expired
-  if (Date.now() - cached.timestamp > DESCRIPTION_CACHE_TTL_MS) {
-    console.debug('[DescriptionExtractor] Cache entry expired');
-    pageDescriptionCache.delete(normalizedUrl);
-    return '';
-  }
-
-  // Update timestamp for LRU tracking (mark as recently used)
-  cached.timestamp = Date.now();
-
-  console.debug('[DescriptionExtractor] Cache hit');
-  return cached.description;
-}
-
-// Load cache on service worker startup
-loadDescriptionCacheFromStorage();
-
-// import './test-oauth-flow'; // Removed in production build
 
 // A new MV3 worker cannot resume an in-flight request from an earlier worker.
 async function resetStaleSyncState() {
@@ -321,17 +151,10 @@ async function performBookmarkSyncAfterInitialization(
     await recordDashboardEvent({ kind: 'sync_started', trigger });
 
     console.log('[Sync] Starting to flatten bookmarks...');
-    const collectedBookmarks = await collectBookmarkSyncItems(flat, {
-      getDescription: (url) => {
-        const description = getCachedDescription(url);
-        console.debug(`[Sync] Description cache ${description ? 'hit' : 'miss'}`);
-        return description;
-      },
-    });
+    const collectedBookmarks = await collectBookmarkSyncItems(flat);
     formatted = collectedBookmarks.items;
     const minimalForHash = [...collectedBookmarks.fingerprintItems];
     console.log(`[Sync] Flattened ${formatted.length} bookmarks`);
-    console.log(`[Sync] Cache size: ${pageDescriptionCache.size} URLs with descriptions`);
 
     // Collect reading list items
     let readingListItems: LinkItem[] = [];

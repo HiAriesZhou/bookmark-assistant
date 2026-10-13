@@ -84,7 +84,7 @@ describe('capture source and identity', () => {
     ).toMatchObject({ source: 'context_menu', syncId: 'context-1' });
   });
 
-  it('collects nested bookmarks once, preserving their hierarchy and stored descriptions', async () => {
+  it('collects nested bookmarks once, preserving their hierarchy and stable identity', async () => {
     const result = await collectBookmarkSyncItems(
       [
         {
@@ -106,11 +106,11 @@ describe('capture source and identity', () => {
           ],
         },
       ],
-      { now, getDescription: (url) => (url.endsWith('/article') ? 'Stored summary' : '') }
+      { now }
     );
 
     expect(result.items).toMatchObject([
-      { syncId: 'chrome-bookmark-3', path: 'Bookmarks / Work', description: 'Stored summary' },
+      { syncId: 'chrome-bookmark-3', path: 'Bookmarks / Work', description: '' },
       { syncId: 'chrome-bookmark-4', path: 'Bookmarks', title: 'Untitled', description: '' },
     ]);
     expect(result.fingerprintItems).toHaveLength(2);
