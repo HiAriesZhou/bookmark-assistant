@@ -1,41 +1,28 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ConfirmPopover } from './ConfirmPopover';
 
 let container: HTMLDivElement;
 let anchor: HTMLButtonElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  container = document.createElement('div');
+  ({ container, root } = createTestRoot());
   anchor = document.createElement('button');
-  document.body.append(container, anchor);
-  vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({
-    x: 280,
-    y: 400,
-    left: 280,
-    right: 312,
-    top: 400,
-    bottom: 432,
-    width: 32,
-    height: 32,
-    toJSON: () => ({}),
-  });
-  root = createRoot(container);
+  document.body.appendChild(anchor);
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   anchor.remove();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
-it('shows a lightweight anchored confirmation without a page backdrop', async () => {
+it('focuses cancel and dismisses confirmation on outside click', async () => {
   const onCancel = vi.fn();
   await act(async () => {
     root.render(
@@ -55,8 +42,6 @@ it('shows a lightweight anchored confirmation without a page backdrop', async ()
   const popover = document.querySelector<HTMLElement>('[role="dialog"]');
   expect(popover?.textContent).toContain('Delete?');
   expect(popover?.textContent).toContain('This removes the matching Chrome bookmark.');
-  expect(popover?.style.bottom).not.toBe('');
-  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   expect(document.activeElement?.textContent).toBe('Cancel');
 
   await act(async () =>

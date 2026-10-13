@@ -93,4 +93,33 @@ describe('recoverInterruptedSyncState', () => {
     ]);
     expect(run).toHaveBeenCalledTimes(1);
   });
+  it('keeps a new account sync independent while coalescing requests for that account', async () => {
+    let finishA!: () => void;
+    let finishB!: () => void;
+    const gate = createSyncExecutionGate(Promise.resolve());
+    const runA = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishA = resolve;
+        })
+    );
+    const runB = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishB = resolve;
+        })
+    );
+    const first = gate(runA, 'account-a-revision');
+    const second = gate(runB, 'account-b-revision');
+    expect(gate(runB, 'account-b-revision')).toBe(second);
+    await vi.waitFor(() => expect(runB).toHaveBeenCalledTimes(1));
+    finishA();
+    await first;
+    expect(gate(runB, 'account-b-revision')).toBe(second);
+    finishB();
+    await second;
+    await gate(vi.fn().mockResolvedValue(undefined), 'account-b-revision');
+    expect(runA).toHaveBeenCalledTimes(1);
+    expect(runB).toHaveBeenCalledTimes(1);
+  });
 });

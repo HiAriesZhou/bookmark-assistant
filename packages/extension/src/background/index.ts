@@ -13,8 +13,18 @@ import {
 } from '../core';
 import { extractPageContentFromDocument } from '../core';
 import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
-import { NOTION_CONNECTED_KEY, readNotionDestination } from '../utils/account-state';
-import { config, validateConfig, debugConfig } from './config';
+import {
+  NOTION_CONNECTED_KEY,
+  readNotionDestination,
+  withCurrentAccount,
+  isStaleAccountStateError,
+  readAccountContext,
+  assertAccountContextCurrent,
+  isAccountContextCurrent,
+  StaleAccountStateError,
+  type AccountContext,
+} from '../utils/account-state';
+import { validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
 import { addMessageListener, Messages } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
@@ -50,11 +60,6 @@ import {
 
 console.log('[BG] Service worker starting...');
 
-// Cache for page descriptions (url -> { description: string, timestamp: number })
-const pageDescriptionCache = new Map<string, { description: string; timestamp: number }>();
-const DESCRIPTION_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const DESCRIPTION_CACHE_STORAGE_KEY = 'page_description_cache';
-const MAX_CACHE_SIZE = 1000; // Maximum number of cache entries before LRU eviction
 // Bump only when payload shape, fingerprint inputs, or Notion write-back semantics change.
 // This is a production sync migration gate, not a local debug switch.
 const SYNC_SCHEMA_VERSION = 13;
@@ -67,171 +72,6 @@ function createSyncId(prefix: string) {
 
 type CurrentPageCaptureSource = 'current_page' | 'context_menu';
 const CURRENT_PAGE_AI_REQUEST_TTL_MS = 5 * 60_000;
-
-// Evict least recently used entries when cache exceeds max size
-function evictLRUEntries() {
-  if (pageDescriptionCache.size <= MAX_CACHE_SIZE) {
-    return;
-  }
-
-  // Convert to array and sort by timestamp (oldest first)
-  const entries = Array.from(pageDescriptionCache.entries())
-    .map(([url, data]) => ({ url, ...data }))
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  // Remove oldest entries until we're under the limit
-  const toRemove = entries.slice(0, entries.length - MAX_CACHE_SIZE);
-  let removedCount = 0;
-  for (const entry of toRemove) {
-    pageDescriptionCache.delete(entry.url);
-    removedCount++;
-  }
-
-  if (removedCount > 0) {
-    console.log(
-      `[DescriptionExtractor] Evicted ${removedCount} LRU entries (cache size: ${pageDescriptionCache.size}/${MAX_CACHE_SIZE})`
-    );
-  }
-}
-
-// Listen for page descriptions from content scripts
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-  if (message.type === 'PAGE_DESCRIPTION') {
-    const { url, description } = message.payload;
-    const normalizedUrl = normalizeUrl(url);
-    console.debug('[DescriptionExtractor] Received page description');
-
-    // Update timestamp for LRU tracking
-    pageDescriptionCache.set(normalizedUrl, {
-      description,
-      timestamp: Date.now(),
-    });
-
-    // Evict LRU entries if cache is too large
-    evictLRUEntries();
-
-    // Persist to storage
-    persistDescriptionCache().catch((error) => {
-      console.warn('[DescriptionExtractor] Failed to persist cache:', error);
-    });
-  }
-});
-
-// Persist cache to chrome.storage.local for persistence across service worker restarts
-async function persistDescriptionCache() {
-  try {
-    const cacheObject: Record<string, { description: string; timestamp: number }> = {};
-    pageDescriptionCache.forEach((value, key) => {
-      cacheObject[key] = value;
-    });
-    await chrome.storage.local.set({ [DESCRIPTION_CACHE_STORAGE_KEY]: cacheObject });
-    console.log(
-      `[DescriptionExtractor] Persisted ${Object.keys(cacheObject).length} descriptions to storage`
-    );
-  } catch (error) {
-    console.error('[DescriptionExtractor] Failed to persist cache to storage:', error);
-  }
-}
-
-// Load cache from chrome.storage.local
-async function loadDescriptionCacheFromStorage() {
-  try {
-    const result = await chrome.storage.local.get([DESCRIPTION_CACHE_STORAGE_KEY]);
-    const cacheData = result[DESCRIPTION_CACHE_STORAGE_KEY];
-    if (cacheData && typeof cacheData === 'object') {
-      const now = Date.now();
-      let loadedCount = 0;
-      let expiredCount = 0;
-      let normalizedCount = 0;
-
-      for (const [url, data] of Object.entries(cacheData)) {
-        if (
-          data &&
-          typeof data === 'object' &&
-          'description' in data &&
-          'timestamp' in data &&
-          typeof (data as any).description === 'string' &&
-          typeof (data as any).timestamp === 'number'
-        ) {
-          // Normalize URL when loading (handles migration of old cache entries)
-          const normalizedUrl = normalizeUrl(url);
-          const wasNormalized = normalizedUrl !== url;
-
-          if (now - (data as any).timestamp <= DESCRIPTION_CACHE_TTL_MS) {
-            // Use normalized URL as key
-            pageDescriptionCache.set(normalizedUrl, {
-              description: (data as any).description,
-              timestamp: (data as any).timestamp,
-            });
-            loadedCount++;
-            if (wasNormalized) {
-              normalizedCount++;
-            }
-          } else {
-            expiredCount++;
-          }
-        }
-      }
-
-      // Evict LRU entries if we loaded too many
-      evictLRUEntries();
-
-      console.log(
-        `[DescriptionExtractor] Loaded ${loadedCount} descriptions from storage (${expiredCount} expired, ${normalizedCount} normalized)`
-      );
-    }
-  } catch (error) {
-    console.error('[DescriptionExtractor] Failed to load cache from storage:', error);
-  }
-}
-
-// Clean up expired cache entries periodically
-setInterval(
-  async () => {
-    const now = Date.now();
-    let deletedCount = 0;
-    for (const [url, data] of pageDescriptionCache.entries()) {
-      if (now - data.timestamp > DESCRIPTION_CACHE_TTL_MS) {
-        pageDescriptionCache.delete(url);
-        deletedCount++;
-      }
-    }
-    if (deletedCount > 0) {
-      console.log(`[DescriptionExtractor] Cleaned up ${deletedCount} expired descriptions`);
-      await persistDescriptionCache();
-    }
-  },
-  60 * 60 * 1000
-); // Check every hour
-
-function getCachedDescription(url: string): string {
-  // Normalize URL before lookup to ensure cache hits
-  const normalizedUrl = normalizeUrl(url);
-  const cached = pageDescriptionCache.get(normalizedUrl);
-
-  if (!cached) {
-    console.debug('[DescriptionExtractor] Cache miss');
-    return '';
-  }
-
-  // Check if expired
-  if (Date.now() - cached.timestamp > DESCRIPTION_CACHE_TTL_MS) {
-    console.debug('[DescriptionExtractor] Cache entry expired');
-    pageDescriptionCache.delete(normalizedUrl);
-    return '';
-  }
-
-  // Update timestamp for LRU tracking (mark as recently used)
-  cached.timestamp = Date.now();
-
-  console.debug('[DescriptionExtractor] Cache hit');
-  return cached.description;
-}
-
-// Load cache on service worker startup
-loadDescriptionCacheFromStorage();
-
-// import './test-oauth-flow'; // Removed in production build
 
 // A new MV3 worker cannot resume an in-flight request from an earlier worker.
 async function resetStaleSyncState() {
@@ -284,21 +124,30 @@ const runSyncOnce = createSyncExecutionGate<BookmarkSyncResult>(backgroundInitia
 
 // Extract sync logic into a reusable function
 async function performBookmarkSync(
-  trigger: 'manual' | 'auto' = 'manual'
+  trigger: 'manual' | 'auto' = 'manual',
+  expectedContext?: AccountContext
 ): Promise<BookmarkSyncResult> {
-  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger));
+  const context = expectedContext ?? (await readAccountContext());
+  await assertAccountContextCurrent(context);
+  const accountKey = JSON.stringify([context.revision, context.userId ?? context.token]);
+  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), accountKey);
 }
 
 async function performBookmarkSyncAfterInitialization(
-  trigger: 'manual' | 'auto'
+  trigger: 'manual' | 'auto',
+  context: AccountContext
 ): Promise<BookmarkSyncResult> {
   const setState = async (patch: Record<string, any>) => {
     try {
-      await chrome.storage.local.set(patch);
+      await withCurrentAccount(context, () => chrome.storage.local.set(patch));
     } catch (e) {
+      if (isStaleAccountStateError(e)) throw e;
       console.warn('Failed to update sync state:', patch, e);
     }
   };
+
+  const recordEvent = (event: Parameters<typeof recordDashboardEvent>[0]) =>
+    withCurrentAccount(context, () => recordDashboardEvent(event));
 
   // Declare variables outside try block so they're accessible in catch
   let formatted: LinkItem[] = [];
@@ -306,6 +155,7 @@ async function performBookmarkSyncAfterInitialization(
   let latestSummary: StoredSyncSummary | undefined;
 
   try {
+    await assertAccountContextCurrent(context);
     const startedAt = Date.now();
     const MIN_PROGRESS_MS = 1200; // keep UI spinner visible to avoid flicker / rapid re-clicks
     const bookmarkTree = await chrome.bookmarks.getTree();
@@ -317,20 +167,13 @@ async function performBookmarkSyncAfterInitialization(
       sync_trigger: trigger,
       last_sync_error: null,
     });
-    await recordDashboardEvent({ kind: 'sync_started', trigger });
+    await recordEvent({ kind: 'sync_started', trigger });
 
     console.log('[Sync] Starting to flatten bookmarks...');
-    const collectedBookmarks = await collectBookmarkSyncItems(flat, {
-      getDescription: (url) => {
-        const description = getCachedDescription(url);
-        console.debug(`[Sync] Description cache ${description ? 'hit' : 'miss'}`);
-        return description;
-      },
-    });
+    const collectedBookmarks = await collectBookmarkSyncItems(flat);
     formatted = collectedBookmarks.items;
     const minimalForHash = [...collectedBookmarks.fingerprintItems];
     console.log(`[Sync] Flattened ${formatted.length} bookmarks`);
-    console.log(`[Sync] Cache size: ${pageDescriptionCache.size} URLs with descriptions`);
 
     // Collect reading list items
     let readingListItems: LinkItem[] = [];
@@ -417,7 +260,7 @@ async function performBookmarkSyncAfterInitialization(
         last_sync_payload_version: SYNC_SCHEMA_VERSION,
         [DASHBOARD_SYNC_SUMMARY_KEY]: latestSummary,
       });
-      await recordDashboardEvent({
+      await recordEvent({
         kind: 'sync_completed',
         trigger,
         result: 'no_changes',
@@ -437,7 +280,12 @@ async function performBookmarkSyncAfterInitialization(
     );
 
     console.log('[Sync] Sending bookmarks to server...');
-    const syncResponse = await serverAPI.syncBookmarks(allItems, { deferEnhancements: true });
+    await assertAccountContextCurrent(context);
+    const syncResponse = await serverAPI.syncBookmarks(
+      allItems,
+      { deferEnhancements: true },
+      context
+    );
     console.log('[Sync] Server sync summary:', syncResponse.summary);
     if (syncResponse.summary?.readingListTotal !== undefined) {
       console.log(
@@ -480,7 +328,7 @@ async function performBookmarkSyncAfterInitialization(
       last_sync_payload_version: SYNC_SCHEMA_VERSION,
       [DASHBOARD_SYNC_SUMMARY_KEY]: latestSummary,
     });
-    await recordDashboardEvent({
+    await recordEvent({
       kind: 'sync_completed',
       trigger,
       result: 'success',
@@ -494,10 +342,11 @@ async function performBookmarkSyncAfterInitialization(
 
     if (syncResponse.enrichment?.items.length) {
       try {
-        await enqueueSyncEnrichment(syncResponse.enrichment);
+        await enqueueSyncEnrichment(syncResponse.enrichment, context);
       } catch (error) {
         // The base sync and fingerprint are already durable. Surface enrichment
         // separately without turning a successful Notion sync into a failure.
+        if (isStaleAccountStateError(error)) throw error;
         console.warn('[Sync Enrichment] Failed to persist deferred work:', error);
       }
     }
@@ -510,6 +359,8 @@ async function performBookmarkSyncAfterInitialization(
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
     return { success: true } as const;
   } catch (err) {
+    if (isStaleAccountStateError(err) || !(await isAccountContextCurrent(context)))
+      return { success: false, error: 'Account state changed' };
     console.error('❌ Server-side bookmark sync failed:', err);
 
     // Report error to server for monitoring
@@ -545,7 +396,7 @@ async function performBookmarkSyncAfterInitialization(
       [DASHBOARD_SYNC_SUMMARY_KEY]: failedSummary,
       ...summary,
     });
-    await recordDashboardEvent({
+    await recordEvent({
       kind: 'sync_completed',
       trigger,
       result,
@@ -564,6 +415,21 @@ async function performBookmarkSyncAfterInitialization(
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
     return { success: false, error: String(err) } as const;
   }
+}
+
+// Both capture surfaces share only the base save; current-page AI stays below.
+async function syncCapturedLink(bookmark: LinkItem, invalidCaptureMessage: string) {
+  const mapping = prepareLegacyLinkItemForSync(bookmark, {
+    now: () => new Date(),
+    createId: createDefaultKnowledgeItemId,
+    normalizeUrl,
+  });
+  if (!mapping.success) throw new Error(invalidCaptureMessage);
+  const syncResponse = await serverAPI.syncBookmarks([mapping.item], {
+    aiBatchEligible: false,
+    requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
+  });
+  return { item: mapping.item, syncResponse };
 }
 
 // Save the base capture first. AI is a separate, explicitly bounded message so
@@ -600,19 +466,10 @@ async function saveCurrentPage(
             { createSyncId: () => createSyncId('quick-save'), source: 'context_menu' }
           );
 
-    const legacyMapping = prepareLegacyLinkItemForSync(bookmark, {
-      now: () => new Date(),
-      createId: createDefaultKnowledgeItemId,
-      normalizeUrl,
-    });
-    if (!legacyMapping.success) {
-      throw new Error('Current page capture cannot be synced');
-    }
-
-    const syncResponse = await serverAPI.syncBookmarks([legacyMapping.item], {
-      aiBatchEligible: false,
-      requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-    });
+    const { item, syncResponse } = await syncCapturedLink(
+      bookmark,
+      'Current page capture cannot be synced'
+    );
 
     await recordDashboardSave(source).catch((dashboardError) => {
       console.warn(
@@ -624,8 +481,8 @@ async function saveCurrentPage(
     if (
       source !== 'current_page' ||
       tab.id === undefined ||
-      !legacyMapping.item.syncId ||
-      !wasCurrentPageCreated(syncResponse.results || [], legacyMapping.item.syncId)
+      !item.syncId ||
+      !wasCurrentPageCreated(syncResponse.results || [], item.syncId)
     ) {
       return { success: true, aiStatus: 'not_started' };
     }
@@ -635,7 +492,7 @@ async function saveCurrentPage(
         {
           tabId: tab.id,
           url: tab.url,
-          syncId: legacyMapping.item.syncId,
+          syncId: item.syncId,
           knowledgeItemId: createDefaultKnowledgeItemId({
             source: 'current_page',
             canonicalUrl: normalizeUrl(tab.url),
@@ -712,12 +569,12 @@ async function generateCurrentPageAi(
 }
 
 // Setup auto-sync alarm listener
-setupAutoSyncListener(async () => {
-  await performBookmarkSync('auto');
+setupAutoSyncListener(async (context) => {
+  await performBookmarkSync('auto', context);
 });
 
 // Restore auto-sync alarm on service worker startup
-restoreAutoSync(() => performBookmarkSync('auto'));
+restoreAutoSync((context) => performBookmarkSync('auto', context));
 setupSyncEnrichmentRecovery();
 
 // Register context menu click listener before its connection-derived state is applied.
@@ -768,19 +625,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         }
       );
 
-      const legacyMapping = prepareLegacyLinkItemForSync(bookmark, {
-        now: () => new Date(),
-        createId: createDefaultKnowledgeItemId,
-        normalizeUrl,
-      });
-      if (!legacyMapping.success) {
-        throw new Error('Context menu capture cannot be synced');
-      }
-
-      await serverAPI.syncBookmarks([legacyMapping.item], {
-        aiBatchEligible: false,
-        requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-      });
+      await syncCapturedLink(bookmark, 'Context menu capture cannot be synced');
       await recordDashboardSave('context_menu');
       console.log('[Context Menu] Page saved successfully');
     } catch (error) {
@@ -808,45 +653,50 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
  * token invalidates the profile cache, so other readers join this request.
  * A failed refresh never fails the sign-in itself.
  */
-async function refreshStoredEntitlements(): Promise<void> {
+async function refreshStoredEntitlements(context: AccountContext): Promise<void> {
   try {
-    const { user, isPro } = await serverAPI.getUserProfile();
-    await chrome.storage.local.set({
-      is_pro: isPro,
-      purchase_type: user.purchaseType,
-      subscription_source: user.subscriptionSource,
-      subscription_expires_at: user.expiresAt,
-      deployment_profile: {
-        deploymentMode: user.deploymentMode || 'hosted',
-        commerceEnabled: user.commerceEnabled ?? true,
-        capabilities: user.capabilities || { autoSync: isPro, batchAi: isPro },
-        apiOrigin: new URL(config.notion.serverUrl).origin,
-      },
-      entitlements_cached_at: Date.now(),
-    });
+    await serverAPI.getUserProfile({}, context);
   } catch (profileError) {
     console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
   }
 }
 
+async function messageAccountContext(req: {
+  accountRevision?: string | null;
+}): Promise<AccountContext> {
+  const context = await readAccountContext();
+  if ('accountRevision' in req && req.accountRevision !== context.revision)
+    throw new StaleAccountStateError();
+  return context;
+}
+
 addMessageListener({
-  [Messages.NOTION_OAUTH]: async () => {
+  [Messages.NOTION_OAUTH]: async (req) => {
+    const context = await messageAccountContext(req);
     try {
       // Set connecting state at the start
-      await chrome.storage.local.set({ is_connecting: true });
+      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: true }));
       const code = await launchNotionOAuth();
-      const result = await exchangeCodeForToken(code);
-      // Clear connecting state after OAuth completes
-      await chrome.storage.local.set({ is_connecting: false });
+      const result = await exchangeCodeForToken(code, context);
+      const connectedContext = await messageAccountContext({
+        accountRevision: result.accountRevision,
+      });
+      // A successful exchange advances the revision. Guard the subsequent commits too.
+      await withCurrentAccount(connectedContext, () =>
+        chrome.storage.local.set({ is_connecting: false })
+      );
 
-      await refreshStoredEntitlements();
+      await refreshStoredEntitlements(connectedContext);
 
-      await recordDashboardEvent({ kind: 'connection_checked', result: 'success' });
+      await withCurrentAccount(connectedContext, () =>
+        recordDashboardEvent({ kind: 'connection_checked', result: 'success' })
+      );
 
       return result;
     } catch (error) {
-      // Clear connecting state on error
-      await chrome.storage.local.set({ is_connecting: false });
+      if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context)))
+        return { success: false, error: 'Account state changed' };
+      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: false }));
 
       // Report OAuth errors to server
       const err = error instanceof Error ? error : new Error(String(error));
@@ -858,8 +708,9 @@ addMessageListener({
       throw error;
     }
   },
-  [Messages.SYNC_ALL_BOOKMARKS]: async () => {
-    return await performBookmarkSync('manual');
+  [Messages.SYNC_ALL_BOOKMARKS]: async (req) => {
+    const context = await messageAccountContext(req);
+    return await performBookmarkSync('manual', context);
   },
   [Messages.SAVE_CURRENT_PAGE]: async () => {
     console.log('[BG] SAVE_CURRENT_PAGE message received');
@@ -876,7 +727,7 @@ addMessageListener({
       });
       return { success: true, profile: user, isPro } as const;
     } catch (err) {
-      console.error('❌ Failed to get user profile:', err);
+      if (!isStaleAccountStateError(err)) console.error('❌ Failed to get user profile:', err);
       return { success: false, error: String(err) } as const;
     }
   },
@@ -885,7 +736,7 @@ addMessageListener({
       const dashboard = await getDashboardSnapshot(req.refreshConnection === true);
       return { success: true, dashboard } as const;
     } catch (err) {
-      console.error('❌ Failed to build dashboard state:', err);
+      if (!isStaleAccountStateError(err)) console.error('❌ Failed to build dashboard state:', err);
       return { success: false, error: String(err) } as const;
     }
   },
@@ -930,21 +781,23 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.DISCONNECT_NOTION]: async () => {
+  [Messages.DISCONNECT_NOTION]: async (req) => {
     try {
-      await serverAPI.disconnectNotion();
-      await scheduleAutoSync(false, 0);
-      return { success: true } as const;
+      const origin = await messageAccountContext(req);
+      const context = await serverAPI.disconnectNotion(origin);
+      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
+      return { success: true, accountRevision: context.revision! } as const;
     } catch (err) {
       console.error('❌ Notion disconnect failed:', err);
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
     }
   },
-  [Messages.DELETE_ACCOUNT]: async () => {
+  [Messages.DELETE_ACCOUNT]: async (req) => {
     try {
-      await serverAPI.deleteAccount();
-      await scheduleAutoSync(false, 0);
-      return { success: true } as const;
+      const origin = await messageAccountContext(req);
+      const context = await serverAPI.deleteAccount(origin);
+      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
+      return { success: true, accountRevision: context.revision! } as const;
     } catch (err) {
       console.error('❌ Account deletion failed:', err);
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
@@ -959,9 +812,10 @@ addMessageListener({
       return { success: false, error: String(err) } as const;
     }
   },
-  [Messages.SCHEDULE_AUTO_SYNC]: async (req: { enabled: boolean; intervalHours: number }) => {
+  [Messages.SCHEDULE_AUTO_SYNC]: async (req) => {
     try {
-      await scheduleAutoSync(req.enabled, req.intervalHours);
+      const context = await messageAccountContext(req);
+      await withCurrentAccount(context, () => scheduleAutoSync(req.enabled, req.intervalHours));
       return { success: true } as const;
     } catch (err) {
       console.error('❌ Failed to schedule auto-sync:', err);

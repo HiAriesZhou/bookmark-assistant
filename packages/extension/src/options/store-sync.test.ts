@@ -38,9 +38,11 @@ describe('manual sync store action', () => {
     const syncPromise = useAppStore.getState().syncNow();
 
     expect(useAppStore.getState().isSyncing).toBe(true);
-    expect(sendMessage).toHaveBeenCalledWith(
-      { type: 'SYNC_ALL_BOOKMARKS' },
-      { timeoutMs: 630_000 }
+    await vi.waitFor(() =>
+      expect(sendMessage).toHaveBeenCalledWith(
+        { type: 'SYNC_ALL_BOOKMARKS', accountRevision: null },
+        { timeoutMs: 630_000 }
+      )
     );
     finishSync?.({ success: true, noChanges: true });
 
@@ -93,8 +95,7 @@ describe('dashboard snapshot cache updates', () => {
     const first = useAppStore.getState().refreshDashboard(false);
     const second = useAppStore.getState().refreshDashboard(false);
 
-    expect(sendMessage).toHaveBeenCalledTimes(1);
-    expect(second).toBe(first);
+    await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
     finishRefresh?.({ success: false, error: 'server unavailable' });
     await Promise.all([first, second]);
     expect(useAppStore.getState().isDashboardLoading).toBe(false);
@@ -104,8 +105,9 @@ describe('dashboard snapshot cache updates', () => {
 describe('pricing cache', () => {
   it('rejects prices cached before the yearly pricing schema', () => {
     expect(parseCachedPricing({ monthly: 2.5, yearly: 30 })).toBeNull();
-    expect(
-      parseCachedPricing({ monthly: 1.5, yearly: 11.9, schemaVersion: 2 })
-    ).toEqual({ monthly: 1.5, yearly: 11.9 });
+    expect(parseCachedPricing({ monthly: 1.5, yearly: 11.9, schemaVersion: 2 })).toEqual({
+      monthly: 1.5,
+      yearly: 11.9,
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { createThrottledTask } from './throttled-task';
 import { prisma } from '../services/userPrisma';
 
 export const AI_DIAGNOSTIC_OPPORTUNISTIC_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -15,36 +16,30 @@ export async function cleanupExpiredAiDiagnostics(): Promise<void> {
         },
       }),
     ]);
-    if (diagnostics.count) console.log(`[AIDiagnostics] Removed ${diagnostics.count} expired diagnostic records`);
-    if (domainLeases.count) console.log(`[AIDiagnostics] Removed ${domainLeases.count} stale domain leases`);
-  } catch { console.error('[AIDiagnostics] Cleanup failed'); }
+    if (diagnostics.count)
+      console.log(`[AIDiagnostics] Removed ${diagnostics.count} expired diagnostic records`);
+    if (domainLeases.count)
+      console.log(`[AIDiagnostics] Removed ${domainLeases.count} stale domain leases`);
+  } catch {
+    console.error('[AIDiagnostics] Cleanup failed');
+  }
 }
 
 export function scheduleAiDiagnosticCleanup(): void {
   const daily = 24 * 60 * 60 * 1000;
-  setTimeout(() => { void cleanupExpiredAiDiagnostics(); }, 60_000);
-  setInterval(() => { void cleanupExpiredAiDiagnostics(); }, daily);
+  setTimeout(() => {
+    void cleanupExpiredAiDiagnostics();
+  }, 60_000);
+  setInterval(() => {
+    void cleanupExpiredAiDiagnostics();
+  }, daily);
 }
 
 export function createOpportunisticAiDiagnosticCleanup(
   cleanup: () => Promise<void> = cleanupExpiredAiDiagnostics,
   intervalMs = AI_DIAGNOSTIC_OPPORTUNISTIC_CLEANUP_INTERVAL_MS
 ): (now?: number) => Promise<void> {
-  let lastStartedAt: number | undefined;
-  let inFlight: Promise<void> | undefined;
-
-  return async (now = Date.now()): Promise<void> => {
-    if (inFlight) return inFlight;
-    if (lastStartedAt !== undefined && now - lastStartedAt < intervalMs) return;
-
-    lastStartedAt = now;
-    inFlight = cleanup()
-      .catch(() => undefined)
-      .finally(() => {
-        inFlight = undefined;
-      });
-    return inFlight;
-  };
+  return createThrottledTask(cleanup, intervalMs);
 }
 
 /**

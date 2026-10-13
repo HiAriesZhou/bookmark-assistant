@@ -4,14 +4,10 @@
  */
 
 import {
-  extractContentFromStructuredElements,
   extractDescriptionFromHtml,
   isFetchableHttpUrl,
   isValidUrl,
-  isValidDescription,
-  looksLikeDescription,
   normalizeUrlForSync,
-  sanitizeDescription,
 } from '../core';
 import { descriptionCache } from './description-cache';
 import { fetchPublicHtml, PublicPageFetchError } from './public-page-fetcher';
@@ -54,7 +50,7 @@ export class DescriptionExtractor {
       console.debug('[DescriptionExtractor] Cache miss, fetching');
 
       // Validate URL
-      if (!this.isValidUrl(normalizedUrl)) {
+      if (!isValidUrl(normalizedUrl)) {
         return {
           description: '',
           source: 'empty',
@@ -66,7 +62,7 @@ export class DescriptionExtractor {
       }
 
       // Skip non-HTTP URLs
-      if (!this.isFetchableUrl(normalizedUrl)) {
+      if (!isFetchableHttpUrl(normalizedUrl)) {
         return {
           description: '',
           source: 'empty',
@@ -91,7 +87,7 @@ export class DescriptionExtractor {
       }
 
       // Extract description
-      const description = this.extractDescription(fetchResult.html);
+      const description = extractDescriptionFromHtml(fetchResult.html);
 
       // Cache the result (async, don't wait)
       if (description.text) {
@@ -120,13 +116,6 @@ export class DescriptionExtractor {
   }
 
   /**
-   * Extract description from HTML string
-   */
-  private extractDescription(html: string): { text: string; source: ExtractionResult['source'] } {
-    return extractDescriptionFromHtml(html);
-  }
-
-  /**
    * Fetch HTML from a public URL. Private addresses, non-standard ports and
    * redirects into private networks are rejected; only the first part of large
    * pages is downloaded.
@@ -143,50 +132,6 @@ export class DescriptionExtractor {
       console.warn(`[DescriptionExtractor] Skipped description fetch: ${reason}`);
       return { html: null, error: reason };
     }
-  }
-
-  /**
-   * Validate URL
-   */
-  private isValidUrl(url: string): boolean {
-    return isValidUrl(url);
-  }
-
-  /**
-   * Check if URL is fetchable (HTTP/HTTPS only)
-   */
-  private isFetchableUrl(url: string): boolean {
-    return isFetchableHttpUrl(url);
-  }
-
-  /**
-   * Extract content from structured elements (main, article, section)
-   */
-  private extractContentFromStructuredElements(
-    html: string
-  ): { text: string; source: ExtractionResult['source'] } | null {
-    return extractContentFromStructuredElements(html);
-  }
-
-  /**
-   * Check if text looks like a description (not just a title or navigation)
-   */
-  private looksLikeDescription(text: string): boolean {
-    return looksLikeDescription(text);
-  }
-
-  /**
-   * Check if a description is valid (not a title, not just branding)
-   */
-  private isValidDescription(text: string): boolean {
-    return isValidDescription(text);
-  }
-
-  /**
-   * Sanitize description text
-   */
-  private sanitizeDescription(text: string): string {
-    return sanitizeDescription(text);
   }
 
   /**

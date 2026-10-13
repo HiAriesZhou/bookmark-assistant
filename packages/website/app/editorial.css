@@ -1,8 +1,5 @@
 .editorial-site {
   --editorial-ink: #29352e;
-  --editorial-green: #334f40;
-  --editorial-muted: #687065;
-  --editorial-line: #d6d8cf;
   background: #eeede8;
   color: var(--editorial-ink);
 }

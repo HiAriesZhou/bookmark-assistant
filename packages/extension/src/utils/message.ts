@@ -4,9 +4,12 @@ import type { DashboardSnapshot } from '../dashboard/types';
 // Define request/response contracts as a discriminated union
 
 export type MessageMap = {
-  NOTION_OAUTH: { req: {}; res: { success: boolean; error?: string } };
+  NOTION_OAUTH: {
+    req: { accountRevision?: string | null };
+    res: { success: boolean; error?: string; accountRevision?: string };
+  };
   SYNC_ALL_BOOKMARKS: {
-    req: {};
+    req: { accountRevision?: string | null };
     res: { success: boolean; error?: string; noChanges?: boolean };
   };
   GET_USER_PROFILE: {
@@ -22,8 +25,14 @@ export type MessageMap = {
       error?: string;
     };
   };
-  DISCONNECT_NOTION: { req: {}; res: { success: boolean; error?: string } };
-  DELETE_ACCOUNT: { req: {}; res: { success: boolean; error?: string } };
+  DISCONNECT_NOTION: {
+    req: { accountRevision?: string | null };
+    res: { success: boolean; error?: string; accountRevision?: string };
+  };
+  DELETE_ACCOUNT: {
+    req: { accountRevision?: string | null };
+    res: { success: boolean; error?: string; accountRevision?: string };
+  };
   RESTORE_PURCHASE: {
     req: { email: string };
     res: { success: boolean; message?: string; error?: string };
@@ -35,7 +44,7 @@ export type MessageMap = {
     res: { success: boolean; nextBillingDate?: string; status?: string; error?: string };
   };
   SCHEDULE_AUTO_SYNC: {
-    req: { enabled: boolean; intervalHours: number };
+    req: { enabled: boolean; intervalHours: number; accountRevision?: string | null };
     res: { success: boolean; error?: string };
   };
   SAVE_CURRENT_PAGE: {

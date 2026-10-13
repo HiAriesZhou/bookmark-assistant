@@ -1,14 +1,13 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot } from '../testing/react-root';
 import { expect, it, vi } from 'vitest';
 import { normalizeHash, useHashRoute } from './router';
 
 it('guards history changes with the latest draft state and restores the URL on rejection', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   window.history.replaceState(null, '', '#/library');
-  const container = document.createElement('div');
-  const root = createRoot(container);
+  const { container, root } = createTestRoot(false);
   const cleanGuard = vi.fn(() => true);
   const dirtyGuard = vi.fn(() => false);
   function Harness({ guard }: { guard: () => boolean }) {
@@ -38,7 +37,7 @@ it('guards history changes with the latest draft state and restores the URL on r
     expect(window.location.hash).toBe('#/settings');
     expect(dirtyGuard).toHaveBeenCalledTimes(3);
   } finally {
-    await act(async () => root.unmount());
+    await cleanupTestRoot(root, container);
     vi.unstubAllGlobals();
   }
 });

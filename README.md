@@ -39,7 +39,7 @@ must never be passed as Vite variables. See [self-hosting](deploy/README.md).
 ## Workspace
 
 Extension: React/Vite/MV3. Server: Express/Prisma/PostgreSQL. Website: Next.js.
-Shared types own the KnowledgeItem capture contract; shared styles supply UI tokens.
+Shared types own the KnowledgeItem capture contract; shared styles supply scrollbar rules.
 The marketing workspace contains public example copy and headless rendering tools.
 
 The root package version is the product version source. Localized copy lives in

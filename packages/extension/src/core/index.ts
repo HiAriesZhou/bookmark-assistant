@@ -27,10 +27,8 @@ export type {
 } from './knowledge-item';
 
 export {
-  buildBookmarkPath,
   collectBookmarkSyncItems,
   createSyncFingerprint,
-  flattenBookmarks,
   formatBookmarkForSync,
   formatCurrentPageForSync,
   formatSavedLinkForSync,

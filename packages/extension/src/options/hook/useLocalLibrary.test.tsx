@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot } from '../../testing/react-root';
 import { afterEach, expect, it, vi } from 'vitest';
 import { readLibrary } from '../../library/read-library';
 import { useLocalLibrary } from './useLocalLibrary';
@@ -39,8 +39,7 @@ it('refreshes on local metadata changes only and removes the listener on unmount
     const { library } = useLocalLibrary();
     return <div>{library?.bookmarks[0].metadata.description}</div>;
   }
-  const container = document.createElement('div');
-  const root = createRoot(container);
+  const { container, root } = createTestRoot(false);
   try {
     await act(async () => root.render(<Harness />));
     const changed = (key: string, area = 'local') =>
@@ -70,7 +69,7 @@ it('refreshes on local metadata changes only and removes the listener on unmount
     });
     expect(container.textContent).toBe('Updated elsewhere');
   } finally {
-    await act(async () => root.unmount());
+    await cleanupTestRoot(root, container);
   }
   expect(listeners.size).toBe(0);
 });
@@ -106,8 +105,7 @@ it('ignores stale reads and keeps the last local snapshot after a refresh fails'
       </div>
     );
   }
-  const container = document.createElement('div');
-  const root = createRoot(container);
+  const { container, root } = createTestRoot(false);
   try {
     await act(async () => {
       root.render(<Harness />);
@@ -125,9 +123,7 @@ it('ignores stale reads and keeps the last local snapshot after a refresh fails'
     });
     expect(container.textContent).toBe('2:true');
   } finally {
-    await act(async () => {
-      root.unmount();
-    });
+    await cleanupTestRoot(root, container);
   }
   expect(callbacks.size).toBe(0);
 });

@@ -1,22 +1,8 @@
-import type { LinkItem } from '@bookmark-assistant/types';
+import type { BookmarkSyncResult, LinkItem } from '@bookmark-assistant/types';
 
 export type NotionLinkWriteAction = 'created' | 'updated';
 
-export type NotionLinkWriteResult =
-  | {
-      success: true;
-      bookmark: string;
-      action: NotionLinkWriteAction;
-      syncId?: string;
-      /** Present when the Notion API returned the page created by this write. */
-      notionPageId?: string;
-    }
-  | {
-      success: false;
-      bookmark: string;
-      error: string;
-      syncId?: string;
-    };
+export type NotionLinkWriteResult = Exclude<BookmarkSyncResult, { action: 'skipped' }>;
 
 export interface NotionLinkWriter {
   buildPropertiesFromDataSource(

@@ -27,7 +27,7 @@ describe('ServerAPI - Logout Selective Cleanup', () => {
       last_sync_results: { total: 1 },
       last_reading_list_debug: { returnedCount: 0 },
       oauth_template_database_id: 'template-abc-123', // Should be preserved
-      description_cache_url1: { description: 'Test 1', timestamp: Date.now() }, // Should be preserved
+      bookmark_library_metadata_v1: { schemaVersion: 1, byBookmarkId: {} }, // Should be preserved
       cached_pricing: { monthly: 1.5, yearly: 11.9, schemaVersion: 2 }, // Should be preserved
       auto_sync_enabled: true,
       dashboard_snapshot: { generatedAt: '2025-12-27T10:00:00Z' },
@@ -98,7 +98,7 @@ describe('ServerAPI - Logout Selective Cleanup', () => {
     expect(mockChromeStorage.oauth_template_database_id).toBeUndefined(); // Now removed
 
     // Should be preserved
-    expect(mockChromeStorage.description_cache_url1).toBeDefined();
+    expect(mockChromeStorage.bookmark_library_metadata_v1).toBeDefined();
     expect(mockChromeStorage.cached_pricing).toEqual({
       monthly: 1.5,
       yearly: 11.9,
@@ -138,20 +138,22 @@ describe('ServerAPI - Logout Selective Cleanup', () => {
     });
   });
 
-  it('should preserve description cache keys', async () => {
-    // Add multiple description cache entries
-    mockChromeStorage['description_cache_url1'] = { description: 'Test 1', timestamp: Date.now() };
-    mockChromeStorage['description_cache_url2'] = { description: 'Test 2', timestamp: Date.now() };
-    mockChromeStorage['description_cache_storage'] = {
-      /* cached data */
+  it('preserves local descriptions and tags after account logout', async () => {
+    const metadata = {
+      schemaVersion: 1,
+      byBookmarkId: {
+        'bookmark-1': {
+          description: 'User summary',
+          tags: ['Reference'],
+          updatedAt: '2026-10-13T00:00:00.000Z',
+        },
+      },
     };
+    mockChromeStorage.bookmark_library_metadata_v1 = metadata;
 
     await serverAPI.logout();
 
-    // All description cache should be preserved
-    expect(mockChromeStorage['description_cache_url1']).toBeDefined();
-    expect(mockChromeStorage['description_cache_url2']).toBeDefined();
-    expect(mockChromeStorage['description_cache_storage']).toBeDefined();
+    expect(mockChromeStorage.bookmark_library_metadata_v1).toEqual(metadata);
   });
 
   it('should clear sessionToken in memory', async () => {

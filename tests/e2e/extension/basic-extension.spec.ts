@@ -485,9 +485,19 @@ test.describe('Bookmark Assistant Pro extension', () => {
           }),
         })
       );
-      await page.evaluate(async () => {
+      const profileResult = await page.evaluate(async () => {
         await chrome.storage.local.set({ session_token: 'fixture-session' });
-        await chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true });
+        return chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true });
+      });
+      expect(profileResult.success).toBe(true);
+      const profileCache = await page.evaluate(() =>
+        chrome.storage.local.get(['is_pro', 'deployment_profile'])
+      );
+      expect(profileCache.is_pro).toBe(true);
+      expect(profileCache.deployment_profile).toMatchObject({
+        deploymentMode: 'self-hosted',
+        commerceEnabled: false,
+        capabilities: { autoSync: true, batchAi: true },
       });
       expect(new URL((await profileRequest).url()).origin).toBe(expectedApiOrigin);
       await context.unroute('**/api/user/profile');
@@ -509,6 +519,139 @@ test.describe('Bookmark Assistant Pro extension', () => {
       .click();
 
     expect(new URL((await pricingRequest).url()).origin).toBe(expectedApiOrigin);
+  });
+
+  test('account deletion discards pending profile and sync replies in the actual extension', async () => {
+    const page = await openExtensionPage(context, extensionId, 'options.html');
+    const gate = () => {
+      let release!: () => void;
+      let notify!: () => void;
+      return {
+        ready: new Promise<void>((resolve) => {
+          notify = resolve;
+        }),
+        wait: new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+        release: () => release(),
+        notify: () => notify(),
+      };
+    };
+    const profileGate = gate(),
+      syncGate = gate();
+    const revision = 'synthetic-account-deletion-race';
+    await context.route('**/api/user/profile', async (route) => {
+      profileGate.notify();
+      await profileGate.wait;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          profile: {
+            userId: 'synthetic-account',
+            email: 'account@example.invalid',
+            isPro: true,
+            plan: 'pro',
+            hasNotionAccess: true,
+            hasNotionDatabase: true,
+            deploymentMode: 'self-hosted',
+            commerceEnabled: false,
+            capabilities: { autoSync: true, batchAi: true },
+            subscriptionSource: null,
+            expiresAt: null,
+          },
+        }),
+      });
+    });
+    await context.route('**/api/bookmarks/sync', async (route) => {
+      syncGate.notify();
+      await syncGate.wait;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ summary: { total: 1, success: 1, failed: 0 }, results: [] }),
+      });
+    });
+    await context.route('**/api/user/account', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' })
+    );
+    let bookmarkId: string | undefined;
+    try {
+      bookmarkId = await page.evaluate(async (revision) => {
+        await chrome.storage.local.clear();
+        await chrome.storage.local.set({
+          session_token: 'synthetic-session',
+          user_id: 'synthetic-account',
+          user_email: 'account@example.invalid',
+          account_state_revision: revision,
+          notion_connected: true,
+        });
+        return (
+          await chrome.bookmarks.create({
+            title: 'Synthetic account race item',
+            url: 'https://example.invalid/account-race',
+          })
+        ).id;
+      }, revision);
+      await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
+      await expect(page.locator('#service-data')).toBeVisible();
+      const profileReply = page.evaluate(() =>
+        chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true })
+      );
+      const syncReply = page.evaluate(
+        (accountRevision) =>
+          chrome.runtime.sendMessage({ type: 'SYNC_ALL_BOOKMARKS', accountRevision }),
+        revision
+      );
+      await Promise.all([profileGate.ready, syncGate.ready]);
+      const labels = await getLocalizedMessages(page, ['service_data_delete_action'] as const);
+      await page
+        .locator('#service-data')
+        .getByRole('button', { name: labels.service_data_delete_action })
+        .click();
+      await page
+        .getByRole('alertdialog')
+        .getByRole('button', { name: labels.service_data_delete_action })
+        .click();
+      await expect(page.locator('#service-data')).toHaveCount(0);
+      const keys = [
+        'session_token',
+        'is_pro',
+        'auto_sync_enabled',
+        'last_sync_error',
+        'dashboard_last_sync',
+        'dashboard_recent_activity',
+        'last_sync_fingerprint',
+        'sync_enrichment_job',
+      ];
+      const cleared = await page.evaluate((keys) => chrome.storage.local.get(keys), keys);
+      expect(cleared.session_token).toBeUndefined();
+      const obsoleteSchedule = await page.evaluate(
+        (accountRevision) =>
+          chrome.runtime.sendMessage({
+            type: 'SCHEDULE_AUTO_SYNC',
+            enabled: true,
+            intervalHours: 6,
+            accountRevision,
+          }),
+        revision
+      );
+      expect(obsoleteSchedule.success).toBe(false);
+      profileGate.release();
+      syncGate.release();
+      expect((await profileReply).success).toBe(false);
+      expect((await syncReply).success).toBe(false);
+      await expect(page.locator('#service-data')).toHaveCount(0);
+      expect(await page.evaluate((keys) => chrome.storage.local.get(keys), keys)).toEqual(cleared);
+    } finally {
+      profileGate.release();
+      syncGate.release();
+      await context.unroute('**/api/user/profile');
+      await context.unroute('**/api/bookmarks/sync');
+      await context.unroute('**/api/user/account');
+      if (bookmarkId) await page.evaluate((id) => chrome.bookmarks.remove(id), bookmarkId);
+      await page.close();
+    }
   });
 
   test('does not request protected AI data before connection', async () => {

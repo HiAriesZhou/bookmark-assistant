@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot } from '../testing/react-root';
 import { afterEach, expect, it, vi } from 'vitest';
 import { sendMessage } from '../utils/message';
 import { AppProvider } from './store';
@@ -34,8 +34,7 @@ it('hydrates local state without requesting account, pricing, or destination dat
     },
   });
 
-  const container = document.createElement('div');
-  const root = createRoot(container);
+  const { container, root } = createTestRoot(false);
   await act(async () => {
     root.render(
       <StrictMode>
@@ -47,6 +46,6 @@ it('hydrates local state without requesting account, pricing, or destination dat
   });
 
   expect(sendMessage).not.toHaveBeenCalled();
-  await act(async () => root.unmount());
+  await cleanupTestRoot(root, container);
   expect(listeners.size).toBe(0);
 });

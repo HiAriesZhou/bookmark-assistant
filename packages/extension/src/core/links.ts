@@ -42,7 +42,6 @@ export interface CollectBookmarkSyncItemsOptions {
   defaultPath?: string;
   now?: () => Date;
   createSyncId?: (bookmark: BookmarkTreeNodeLike) => string;
-  getDescription?: (url: string, bookmark: BookmarkTreeNodeLike) => string | Promise<string>;
   includeType?: boolean;
 }
 
@@ -66,61 +65,6 @@ export interface FormatSavedLinkOptions {
 }
 
 export type FormatCurrentPageOptions = Omit<FormatSavedLinkOptions, 'source'>;
-
-export function buildBookmarkPath(bookmarkTree: BookmarkTreeNodeLike[], targetId: string): string {
-  function findBookmarkPath(
-    nodes: BookmarkTreeNodeLike[],
-    currentTargetId: string,
-    currentPath: string[] = []
-  ): string[] | null {
-    for (const node of nodes) {
-      if (node.id === currentTargetId) {
-        return currentPath;
-      }
-
-      if (node.children) {
-        const nodePath = node.title ? [...currentPath, node.title] : currentPath;
-        const result = findBookmarkPath(node.children, currentTargetId, nodePath);
-        if (result !== null) {
-          return result;
-        }
-      }
-    }
-    return null;
-  }
-
-  const path = findBookmarkPath(bookmarkTree, targetId);
-  if (!path) {
-    return 'Bookmarks';
-  }
-
-  const filteredPath = path.filter((part) => part && part.trim() !== '');
-  return filteredPath.length > 0 ? filteredPath.join(' / ') : 'Bookmarks';
-}
-
-export function flattenBookmarks(bookmarkNodes: BookmarkTreeNodeLike[]): BookmarkTreeNodeLike[] {
-  const flattened: BookmarkTreeNodeLike[] = [];
-
-  function traverse(nodes: BookmarkTreeNodeLike[]) {
-    for (const node of nodes) {
-      if (node.url) {
-        flattened.push({
-          id: node.id,
-          title: node.title,
-          url: node.url,
-          parentId: node.parentId,
-          dateAdded: node.dateAdded,
-          dateGroupModified: node.dateGroupModified,
-        });
-      } else if (node.children) {
-        traverse(node.children);
-      }
-    }
-  }
-
-  traverse(bookmarkNodes);
-  return flattened;
-}
 
 export function formatBookmarkForSync(
   bookmark: BookmarkTreeNodeLike,
@@ -156,15 +100,13 @@ export async function collectBookmarkSyncItems(
   const items: LinkItem[] = [];
   const fingerprintItems: SyncFingerprintItem[] = [];
 
-  async function traverse(nodes: BookmarkTreeNodeLike[], currentPath: string): Promise<void> {
+  function traverse(nodes: BookmarkTreeNodeLike[], currentPath: string): void {
     for (const node of nodes) {
       if (node.url) {
         const title = node.title || 'Untitled';
         const url = node.url || '';
-        const description = (await options.getDescription?.(url, node)) ?? '';
 
         const item = formatBookmarkForSync(node, currentPath, {
-          description,
           now: options.now,
           createSyncId: options.createSyncId,
           includeType: options.includeType,
@@ -181,12 +123,12 @@ export async function collectBookmarkSyncItems(
         });
       } else if (node.children) {
         const nextPath = node.title ? `${currentPath} / ${node.title}` : currentPath;
-        await traverse(node.children, nextPath);
+        traverse(node.children, nextPath);
       }
     }
   }
 
-  await traverse(bookmarkNodes, defaultPath);
+  traverse(bookmarkNodes, defaultPath);
   return { items, fingerprintItems };
 }
 

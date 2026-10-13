@@ -48,7 +48,7 @@ export function AccordionTrigger({
       aria-expanded={open}
       onClick={toggle}
       className={cn(
-        'flex w-full items-center justify-between rounded-md py-4 text-left text-base font-medium text-[#16181d] hover:text-[#946200] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a36d00] focus-visible:ring-offset-2',
+        'flex w-full items-center justify-between rounded-md py-4 text-left text-base font-medium text-[#16181d] hover:text-[#4d684d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a36d00] focus-visible:ring-offset-2',
         className
       )}
     >

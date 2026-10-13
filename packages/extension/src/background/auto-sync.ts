@@ -16,6 +16,13 @@
  */
 
 import { serverAPI } from './server-api';
+import {
+  readAccountContext,
+  isAccountContextCurrent,
+  withCurrentAccount,
+  isStaleAccountStateError,
+  type AccountContext,
+} from '../utils/account-state';
 
 const ALARM_NAME = 'bookmarks-auto-sync';
 
@@ -89,49 +96,61 @@ export async function getAutoSyncStatus(): Promise<{
  * Setup alarm listener to trigger syncs
  * Should be called once during background script initialization
  */
-export function setupAutoSyncListener(onSync: () => Promise<void>): void {
+export function setupAutoSyncListener(onSync: (context: AccountContext) => Promise<void>): void {
   chrome.alarms.onAlarm.addListener(async (alarm) => {
     if (alarm.name !== ALARM_NAME) return;
 
+    const context = await readAccountContext();
     console.log('⏰ Auto-sync alarm triggered:', new Date().toISOString());
 
     // Double-check that auto-sync is still enabled
     const { auto_sync_enabled } = await chrome.storage.local.get('auto_sync_enabled');
     if (!auto_sync_enabled) {
       console.log('⚠️ Auto-sync disabled in storage, skipping sync');
-      await chrome.alarms.clear(ALARM_NAME);
+      await withCurrentAccount(context, () => chrome.alarms.clear(ALARM_NAME));
       return;
     }
 
     // Security: Verify Pro status with server before syncing
     // Users cannot bypass payment by modifying localStorage
     try {
-      const profile = await serverAPI.getUserProfile();
+      const profile = await serverAPI.getUserProfile({}, context);
+      if (!(await isAccountContextCurrent(context))) return;
       if (!profile.isPro) {
         console.warn('🚫 Auto-sync blocked: User is not Pro (server-verified)');
-        await chrome.alarms.clear(ALARM_NAME);
-        await chrome.storage.local.set({ auto_sync_enabled: false });
+        await withCurrentAccount(context, async () => {
+          await chrome.alarms.clear(ALARM_NAME);
+          await chrome.storage.local.set({ auto_sync_enabled: false });
+        });
         return;
       }
       if (!profile.user.hasNotionAccess) {
         // Notion may have been unlinked from another device; there is nothing to sync to.
         console.warn('🚫 Auto-sync skipped: no Notion destination is linked');
-        await chrome.alarms.clear(ALARM_NAME);
-        await chrome.storage.local.set({ auto_sync_enabled: false });
+        await withCurrentAccount(context, async () => {
+          await chrome.alarms.clear(ALARM_NAME);
+          await chrome.storage.local.set({ auto_sync_enabled: false });
+        });
         return;
       }
     } catch (error) {
+      if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context))) return;
       console.error('❌ Failed to verify Pro status for auto-sync:', error);
       // On error, don't sync and disable auto-sync to prevent potential abuse
-      await chrome.alarms.clear(ALARM_NAME);
-      await chrome.storage.local.set({ auto_sync_enabled: false });
+      await withCurrentAccount(context, async () => {
+        await chrome.alarms.clear(ALARM_NAME);
+        await chrome.storage.local.set({ auto_sync_enabled: false });
+      });
       return;
     }
 
     try {
+      if (!(await isAccountContextCurrent(context))) return;
+      const current = await chrome.storage.local.get('auto_sync_enabled');
+      if (!current.auto_sync_enabled) return;
       // The background sync entry point waits for startup recovery and joins an
       // existing manual/alarm/catch-up request if necessary.
-      await onSync();
+      await onSync(context);
       console.log('✅ Auto-sync completed successfully');
     } catch (err) {
       console.error('❌ Auto-sync failed:', err);
@@ -146,8 +165,11 @@ export function setupAutoSyncListener(onSync: () => Promise<void>): void {
  * Restore auto-sync alarm on startup, handling catch-up if needed
  * @param onSyncNeeded Callback to execute the actual sync
  */
-export async function restoreAutoSync(onSyncNeeded: () => Promise<any>): Promise<void> {
+export async function restoreAutoSync(
+  onSyncNeeded: (context: AccountContext) => Promise<any>
+): Promise<void> {
   try {
+    const context = await readAccountContext();
     const { auto_sync_enabled, auto_sync_interval_minutes, last_sync } =
       await chrome.storage.local.get([
         'auto_sync_enabled',
@@ -159,16 +181,22 @@ export async function restoreAutoSync(onSyncNeeded: () => Promise<any>): Promise
       // Security: Verify Pro status with server before restoring auto-sync
       // Users cannot bypass payment by modifying localStorage
       try {
-        const profile = await serverAPI.getUserProfile();
+        const profile = await serverAPI.getUserProfile({}, context);
+        if (!(await isAccountContextCurrent(context))) return;
         if (!profile.isPro) {
           console.warn('🚫 Auto-sync restore blocked: User is not Pro (server-verified)');
-          await chrome.storage.local.set({ auto_sync_enabled: false });
+          await withCurrentAccount(context, () =>
+            chrome.storage.local.set({ auto_sync_enabled: false })
+          );
           return;
         }
       } catch (error) {
+        if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context))) return;
         console.error('❌ Failed to verify Pro status on restore:', error);
         // On error, disable auto-sync to prevent potential abuse
-        await chrome.storage.local.set({ auto_sync_enabled: false });
+        await withCurrentAccount(context, () =>
+          chrome.storage.local.set({ auto_sync_enabled: false })
+        );
         return;
       }
 
@@ -184,7 +212,7 @@ export async function restoreAutoSync(onSyncNeeded: () => Promise<any>): Promise
         if (elapsedMinutes >= auto_sync_interval_minutes) {
           console.log('⏰ Catch-up sync triggered on startup (missed schedule)');
           // Run immediately
-          onSyncNeeded().catch((e) => console.error('Catch-up sync failed:', e));
+          onSyncNeeded(context).catch((e) => console.error('Catch-up sync failed:', e));
           // Schedule next one for full interval
           initialDelay = auto_sync_interval_minutes;
         } else {
@@ -194,7 +222,17 @@ export async function restoreAutoSync(onSyncNeeded: () => Promise<any>): Promise
         }
       }
 
-      await scheduleAutoSync(true, intervalHours, initialDelay);
+      await withCurrentAccount(context, async () => {
+        const current = await chrome.storage.local.get([
+          'auto_sync_enabled',
+          'auto_sync_interval_minutes',
+        ]);
+        if (
+          current.auto_sync_enabled &&
+          current.auto_sync_interval_minutes === auto_sync_interval_minutes
+        )
+          await scheduleAutoSync(true, intervalHours, initialDelay);
+      });
     }
   } catch (err) {
     console.warn('⚠️ Failed to restore auto-sync alarm on startup:', err);

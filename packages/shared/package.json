@@ -4,17 +4,13 @@
   "private": true,
   "license": "GPL-3.0-only",
   "type": "commonjs",
-  "main": "tokens.js",
   "exports": {
-    ".": "./tokens.js",
-    "./tokens": "./tokens.js",
-    "./tailwind-preset": "./tailwind-preset.js",
+    "./scrollbar.css": "./scrollbar.css",
     "./brand": "./brand.json"
   },
   "files": [
     "assets/brand",
-    "tokens.js",
-    "tailwind-preset.js",
+    "scrollbar.css",
     "brand.json",
     "README.md"
   ]

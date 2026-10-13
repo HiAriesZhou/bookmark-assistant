@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot } from '../testing/react-root';
 import { expect, it, vi } from 'vitest';
 import Options from './options';
 
@@ -42,8 +42,7 @@ it('keeps a visited settings page mounted while navigating between sections', as
     },
   });
   window.history.replaceState(null, '', '#/library');
-  const container = document.createElement('div');
-  const root = createRoot(container);
+  const { container, root } = createTestRoot(false);
   const navigate = async (hash: string) => {
     await act(async () => {
       window.history.replaceState(null, '', hash);
@@ -68,7 +67,7 @@ it('keeps a visited settings page mounted while navigating between sections', as
       (container.querySelector('[aria-label="Settings draft"]') as HTMLInputElement).value
     ).toBe('unsaved local value');
   } finally {
-    await act(async () => root.unmount());
+    await cleanupTestRoot(root, container);
     vi.unstubAllGlobals();
   }
 });

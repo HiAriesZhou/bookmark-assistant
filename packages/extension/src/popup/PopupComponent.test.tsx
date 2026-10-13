@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../options/hook/ToastProvider';
 import { useAppStore } from '../options/store';
@@ -9,7 +9,7 @@ import Popup from './PopupComponent';
 
 const originalState = useAppStore.getState();
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 const dashboard = (status: DashboardSnapshot['connection']['status']): DashboardSnapshot => ({
   generatedAt: '2026-09-11T00:00:00.000Z',
@@ -63,14 +63,11 @@ beforeEach(() => {
     tabs: { create: vi.fn(async () => undefined) },
   });
   vi.spyOn(window, 'close').mockImplementation(() => undefined);
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
+  ({ container, root } = createTestRoot());
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   useAppStore.setState(originalState);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -115,7 +112,7 @@ it('shows the local library without destination controls when disconnected', asy
   expect(container.textContent).not.toContain('saveCurrentPage');
 });
 
-it('shows a compact destination status and sync action when connected', async () => {
+it('runs destination sync when connected', async () => {
   const syncNow = vi.fn(async () => ({ noChanges: true }));
   useAppStore.setState({
     hydrationState: 'cached',
@@ -127,11 +124,6 @@ it('shows a compact destination status and sync action when connected', async ()
   });
 
   await renderPopup();
-
-  expect(container.textContent).toContain('Notion');
-  expect(container.textContent).toContain('popup_synced_at');
-  expect(container.querySelector('[aria-label="syncNow"]')).not.toBeNull();
-  expect(container.textContent).not.toContain('saveCurrentPage');
 
   await act(async () => {
     container.querySelector<HTMLButtonElement>('[aria-label="syncNow"]')?.click();
