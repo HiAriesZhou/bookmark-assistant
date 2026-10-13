@@ -21,6 +21,13 @@ vi.mock('./public-page-fetcher', async (importOriginal) => ({
 
 import { DescriptionExtractor } from './description-extractor';
 import { PublicPageFetchError } from './public-page-fetcher';
+import { descriptionCache } from './description-cache';
+import {
+  extractDescriptionFromHtml,
+  isValidDescription,
+  looksLikeDescription,
+  sanitizeDescription,
+} from '../core/descriptions';
 
 describe('DescriptionExtractor', () => {
   let extractor: DescriptionExtractor;
@@ -31,6 +38,25 @@ describe('DescriptionExtractor', () => {
   });
 
   describe('extractFromUrl', () => {
+    it('uses cached descriptions under the normalized URL without fetching', async () => {
+      vi.mocked(descriptionCache.get).mockResolvedValueOnce({
+        description: 'Cached description',
+        source: 'meta_description',
+        url: 'https://example.com/page?a=1&b=2',
+        createdAt: new Date(0),
+        hits: 1,
+        fromCache: true,
+      });
+      expect(await extractor.extractFromUrl('https://example.com/page/?b=2&a=1#fragment')).toEqual({
+        description: 'Cached description',
+        source: 'meta_description',
+        success: true,
+        url: 'https://example.com/page?a=1&b=2',
+        fromCache: true,
+      });
+      expect(descriptionCache.get).toHaveBeenCalledWith('https://example.com/page?a=1&b=2');
+      expect(fetchPublicHtmlMock).not.toHaveBeenCalled();
+    });
     it('should extract description from valid HTTP URL', async () => {
       fetchPublicHtmlMock.mockResolvedValue(`
         <html>
@@ -45,6 +71,11 @@ describe('DescriptionExtractor', () => {
       expect(result.success).toBe(true);
       expect(result.description).toBe('Test description content');
       expect(result.source).toBe('meta_description');
+      expect(descriptionCache.set).toHaveBeenCalledWith(
+        'https://example.com/',
+        'Test description content',
+        'meta_description'
+      );
       expect(fetchPublicHtmlMock).toHaveBeenCalledWith('https://example.com/', {
         maxBytes: 512 * 1024,
         timeoutMs: 5000,
@@ -96,600 +127,149 @@ describe('DescriptionExtractor', () => {
       expect(result.error).toBe('unsupported_content_type');
     });
   });
+});
 
-  describe('extractDescription - meta description priority', () => {
-    it('should extract from meta name="description" first', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="Meta description" />
-            <meta property="og:description" content="OG description" />
-          </head>
-        </html>
-      `;
+const descriptiveTitle = 'How to build a REST API in Node.js - A comprehensive guide';
+const descriptiveMeta =
+  'Learn how to build modern web applications with React and TypeScript. A comprehensive guide for developers.';
+const content = 'This is the main content of the page with substantial information.';
+const longContent = 'A'.repeat(300);
+const empty = { text: '', source: 'empty' };
 
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('Meta description');
-      expect(result.source).toBe('meta_description');
-    });
-
-    it('should fall back to og:description if meta description not found', () => {
-      const html = `
-        <html>
-          <head>
-            <meta property="og:description" content="OG description" />
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('OG description');
-      expect(result.source).toBe('og_description');
-    });
-
-    it('should prefer meta description over og:description', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="First description" />
-            <meta property="og:description" content="Second description" />
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('First description');
-      expect(result.source).toBe('meta_description');
-    });
+describe('HTML description selection', () => {
+  it.each([
+    [
+      'meta before OG',
+      '<meta name="description" content="Meta description"><meta property="og:description" content="OG description">',
+      'Meta description',
+      'meta_description',
+    ],
+    [
+      'OG fallback',
+      '<meta property="og:description" content="OG description">',
+      'OG description',
+      'og_description',
+    ],
+    [
+      'valid meta',
+      `<meta name="description" content="${descriptiveMeta}">`,
+      descriptiveMeta,
+      'meta_description',
+    ],
+    ...['main', 'article', 'section'].map((tag) => [
+      tag,
+      `<${tag}><p>${content}</p></${tag}>`,
+      content,
+      'content',
+    ]),
+    ['nested section', `<main><section><p>${content}</p></section></main>`, content, 'content'],
+    [
+      'structured truncation',
+      `<main><p>${longContent}</p></main>`,
+      'A'.repeat(200) + '...',
+      'content',
+    ],
+    ['descriptive title', `<title>${descriptiveTitle}</title>`, descriptiveTitle, 'title'],
+    [
+      'question title',
+      '<title>What is Docker and how does it work? An introduction to containerization</title>',
+      'What is Docker and how does it work? An introduction to containerization',
+      'title',
+    ],
+    [
+      'learning title',
+      '<title>Learn the best practices for React development in 2024</title>',
+      'Learn the best practices for React development in 2024',
+      'title',
+    ],
+    [
+      'body first paragraph',
+      `<body><p>${content}</p><p>Another paragraph.</p></body>`,
+      content,
+      'content',
+    ],
+    ['body truncation', `<body><p>${longContent}</p></body>`, 'A'.repeat(200) + '...', 'content'],
+  ])('%s', (_name, html, text, source) => {
+    expect(extractDescriptionFromHtml(html)).toEqual({ text, source });
   });
 
-  describe('extractDescription - validation', () => {
-    it('should reject empty meta description', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="" />
-          </head>
-        </html>
-      `;
+  it.each([
+    '<meta name="description" content="">',
+    '<meta name="description" content="Home - ACME Corp">',
+    '<meta name="description" content="ACME CORPORATION">',
+    '<main><p>Too short</p></main>',
+    '<body><p>Too short</p></body>',
+    ...['Home - ACME Corp', 'Login - MySite', 'Untitled Document', 'Short', 'A'.repeat(250)].map(
+      (title) => `<title>${title}</title>`
+    ),
+    '<title>No Description</title><body><p></p></body>',
+  ])('rejects %s', (html) => {
+    expect(extractDescriptionFromHtml(html)).toEqual(empty);
+  });
+});
 
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should reject meta description that looks like a title', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="Home - ACME Corp" />
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should reject all-caps meta description', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="ACME CORPORATION" />
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should accept valid meta description', () => {
-      const html = `
-        <html>
-          <head>
-            <meta name="description" content="Learn how to build modern web applications with React and TypeScript. A comprehensive guide for developers." />
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe(
-        'Learn how to build modern web applications with React and TypeScript. A comprehensive guide for developers.'
-      );
-      expect(result.source).toBe('meta_description');
-    });
+describe('description validation', () => {
+  it.each([
+    ['Learn how to build modern web applications', true] as const,
+    ['This comprehensive guide covers everything', true] as const,
+    ...[
+      'Short',
+      'A',
+      'A'.repeat(501),
+      'Home - Brand',
+      'Brand | Name',
+      'Brand: Name',
+      'ACME CORPORATION',
+      'COMPANY NAME',
+      'Home',
+      'Login',
+      '',
+    ].map((text) => [text, false] as const),
+  ])('%s is valid: %s', (text, valid) => {
+    expect(isValidDescription(text)).toBe(valid);
   });
 
-  describe('extractDescription - structured content', () => {
-    it('should extract from main/article sections', () => {
-      const html = `
-        <html>
-          <body>
-            <main>
-              <p>This is the main content of the page with substantial information.</p>
-            </main>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe(
-        'This is the main content of the page with substantial information.'
-      );
-      expect(result.source).toBe('content');
-    });
-
-    it('should extract from article section', () => {
-      const html = `
-        <html>
-          <body>
-            <article>
-              <p>Article content describing the main topic of this page.</p>
-            </article>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('Article content describing the main topic of this page.');
-      expect(result.source).toBe('content');
-    });
-
-    it('should extract from section within main', () => {
-      const html = `
-        <html>
-          <body>
-            <main>
-              <section>
-                <p>Section content within main tag providing page description.</p>
-              </section>
-            </main>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('Section content within main tag providing page description.');
-      expect(result.source).toBe('content');
-    });
-
-    it('should reject short content from structured elements', () => {
-      const html = `
-        <html>
-          <body>
-            <main>
-              <p>Too short</p>
-            </main>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should truncate long content to 200 chars', () => {
-      const longContent = 'A'.repeat(300);
-      const html = `
-        <html>
-          <body>
-            <main>
-              <p>${longContent}</p>
-            </main>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text.length).toBe(203); // 200 + '...'
-      expect(result.text.endsWith('...')).toBe(true);
-      expect(result.source).toBe('content');
-    });
+  it.each([
+    ...[
+      'How to build a REST API in Node.js',
+      'Learn the best practices for React development',
+      'What is Docker and how does it work?',
+      'How to build modern apps',
+      'What is React and why use it',
+      'Learn best practices',
+      'Top 10 JavaScript frameworks',
+      'This is a comprehensive guide. Learn everything.',
+      'What is Docker? An introduction.',
+      'How to build modern web applications',
+    ].map((text) => [text, true] as const),
+    ...[
+      'Home - ACME Corp',
+      'Brand | Page',
+      'Brand :: Page',
+      'Login',
+      'Sign up',
+      'Register',
+      'Contact',
+      'Home',
+      '404',
+      'Error',
+      'Page Not Found',
+      'Short',
+      'A'.repeat(201),
+      'One Two',
+      'Single Word',
+    ].map((text) => [text, false] as const),
+  ])('%s looks descriptive: %s', (text, valid) => {
+    expect(looksLikeDescription(text)).toBe(valid);
   });
 
-  describe('extractDescription - title fallback', () => {
-    it('should use title if it looks like a description', () => {
-      const html = `
-        <html>
-          <head>
-            <title>How to build a REST API in Node.js - A comprehensive guide</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('How to build a REST API in Node.js - A comprehensive guide');
-      expect(result.source).toBe('title');
-    });
-
-    it('should reject title with brand pattern', () => {
-      const html = `
-        <html>
-          <head>
-            <title>Home - ACME Corp</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should reject navigation titles', () => {
-      const html = `
-        <html>
-          <head>
-            <title>Login - MySite</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should reject generic titles', () => {
-      const html = `
-        <html>
-          <head>
-            <title>Untitled Document</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should accept title with descriptive indicators', () => {
-      const html = `
-        <html>
-          <head>
-            <title>What is Docker and how does it work? An introduction to containerization</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe(
-        'What is Docker and how does it work? An introduction to containerization'
-      );
-      expect(result.source).toBe('title');
-    });
-
-    it('should accept title with question words', () => {
-      const html = `
-        <html>
-          <head>
-            <title>Learn the best practices for React development in 2024</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('Learn the best practices for React development in 2024');
-      expect(result.source).toBe('title');
-    });
-
-    it('should reject title that is too short', () => {
-      const html = `
-        <html>
-          <head>
-            <title>Short</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should reject title that is too long', () => {
-      const longTitle = 'A'.repeat(250);
-      const html = `
-        <html>
-          <head>
-            <title>${longTitle}</title>
-          </head>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-  });
-
-  describe('extractDescription - body paragraph fallback', () => {
-    it('should extract first paragraph from body', () => {
-      const html = `
-        <html>
-          <body>
-            <p>This is the first paragraph with substantial content describing the page.</p>
-            <p>This is the second paragraph.</p>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe(
-        'This is the first paragraph with substantial content describing the page.'
-      );
-      expect(result.source).toBe('content');
-    });
-
-    it('should reject short paragraph from body', () => {
-      const html = `
-        <html>
-          <body>
-            <p>Too short</p>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-
-    it('should truncate long body paragraph', () => {
-      const longContent = 'A'.repeat(300);
-      const html = `
-        <html>
-          <body>
-            <p>${longContent}</p>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text.length).toBe(203);
-      expect(result.text.endsWith('...')).toBe(true);
-    });
-  });
-
-  describe('extractDescription - empty fallback', () => {
-    it('should return empty if no description found', () => {
-      const html = `
-        <html>
-          <head>
-            <title>No Description</title>
-          </head>
-          <body>
-            <p></p>
-          </body>
-        </html>
-      `;
-
-      const result = extractor['extractDescription'](html);
-
-      expect(result.text).toBe('');
-      expect(result.source).toBe('empty');
-    });
-  });
-
-  describe('normalizeUrl', () => {
-    it('should remove trailing slash from pathname', () => {
-      const result = extractor.normalizeUrl('https://example.com/page/');
-
-      expect(result).toBe('https://example.com/page');
-    });
-
-    it('should preserve root path trailing slash', () => {
-      const result = extractor.normalizeUrl('https://example.com/');
-
-      expect(result).toBe('https://example.com/');
-    });
-
-    it('should remove fragments', () => {
-      const result = extractor.normalizeUrl('https://example.com/page#section');
-
-      expect(result).toBe('https://example.com/page');
-    });
-
-    it('should sort query parameters', () => {
-      const result1 = extractor.normalizeUrl('https://example.com/page?b=2&a=1');
-      const result2 = extractor.normalizeUrl('https://example.com/page?a=1&b=2');
-
-      expect(result1).toBe(result2);
-      expect(result1).toBe('https://example.com/page?a=1&b=2');
-    });
-
-    it('should handle URLs without query parameters', () => {
-      const result = extractor.normalizeUrl('https://example.com/page');
-
-      expect(result).toBe('https://example.com/page');
-    });
-
-    it('should normalize complex URLs', () => {
-      const result = extractor.normalizeUrl('https://example.com/path/?b=2&a=1#fragment');
-
-      expect(result).toBe('https://example.com/path?a=1&b=2');
-    });
-
-    it('should handle URLs with ports', () => {
-      const result = extractor.normalizeUrl('https://example.com:8080/page/');
-
-      expect(result).toBe('https://example.com:8080/page');
-    });
-
-    it('should handle http URLs', () => {
-      const result = extractor.normalizeUrl('http://example.com/page/');
-
-      expect(result).toBe('http://example.com/page');
-    });
-
-    it('should handle invalid URLs gracefully', () => {
-      const invalidUrl = 'not-a-valid-url';
-      const result = extractor.normalizeUrl(invalidUrl);
-
-      expect(result).toBe(invalidUrl);
-    });
-  });
-
-  describe('isValidDescription', () => {
-    it('should accept valid descriptions', () => {
-      expect(extractor['isValidDescription']('Learn how to build modern web applications')).toBe(
-        true
-      );
-      expect(extractor['isValidDescription']('This comprehensive guide covers everything')).toBe(
-        true
-      );
-    });
-
-    it('should reject descriptions that are too short', () => {
-      expect(extractor['isValidDescription']('Short')).toBe(false);
-      expect(extractor['isValidDescription']('A')).toBe(false);
-    });
-
-    it('should reject descriptions that are too long', () => {
-      expect(extractor['isValidDescription']('A'.repeat(501))).toBe(false);
-    });
-
-    it('should reject brand patterns with separators', () => {
-      expect(extractor['isValidDescription']('Home - Brand')).toBe(false);
-      expect(extractor['isValidDescription']('Brand | Name')).toBe(false);
-      expect(extractor['isValidDescription']('Brand: Name')).toBe(false);
-    });
-
-    it('should reject all-caps descriptions', () => {
-      expect(extractor['isValidDescription']('ACME CORPORATION')).toBe(false);
-      expect(extractor['isValidDescription']('COMPANY NAME')).toBe(false);
-    });
-
-    it('should reject single words', () => {
-      expect(extractor['isValidDescription']('Home')).toBe(false);
-      expect(extractor['isValidDescription']('Login')).toBe(false);
-    });
-
-    it('should handle empty strings', () => {
-      expect(extractor['isValidDescription']('')).toBe(false);
-    });
-  });
-
-  describe('looksLikeDescription', () => {
-    it('should accept descriptive titles', () => {
-      expect(extractor['looksLikeDescription']('How to build a REST API in Node.js')).toBe(true);
-      expect(
-        extractor['looksLikeDescription']('Learn the best practices for React development')
-      ).toBe(true);
-      expect(extractor['looksLikeDescription']('What is Docker and how does it work?')).toBe(true);
-    });
-
-    it('should reject brand patterns', () => {
-      expect(extractor['looksLikeDescription']('Home - ACME Corp')).toBe(false);
-      expect(extractor['looksLikeDescription']('Brand | Page')).toBe(false);
-      expect(extractor['looksLikeDescription']('Brand :: Page')).toBe(false);
-    });
-
-    it('should reject navigation words', () => {
-      expect(extractor['looksLikeDescription']('Login')).toBe(false);
-      expect(extractor['looksLikeDescription']('Sign up')).toBe(false);
-      expect(extractor['looksLikeDescription']('Register')).toBe(false);
-      expect(extractor['looksLikeDescription']('Contact')).toBe(false);
-    });
-
-    it('should reject generic titles', () => {
-      expect(extractor['looksLikeDescription']('Home')).toBe(false);
-      expect(extractor['looksLikeDescription']('404')).toBe(false);
-      expect(extractor['looksLikeDescription']('Error')).toBe(false);
-      expect(extractor['looksLikeDescription']('Page Not Found')).toBe(false);
-    });
-
-    it('should accept titles with descriptive indicators', () => {
-      expect(extractor['looksLikeDescription']('How to build modern apps')).toBe(true);
-      expect(extractor['looksLikeDescription']('What is React and why use it')).toBe(true);
-      expect(extractor['looksLikeDescription']('Learn best practices')).toBe(true);
-      expect(extractor['looksLikeDescription']('Top 10 JavaScript frameworks')).toBe(true);
-    });
-
-    it('should accept titles with punctuation', () => {
-      expect(
-        extractor['looksLikeDescription']('This is a comprehensive guide. Learn everything.')
-      ).toBe(true);
-      expect(extractor['looksLikeDescription']('What is Docker? An introduction.')).toBe(true);
-    });
-
-    it('should reject titles that are too short', () => {
-      expect(extractor['looksLikeDescription']('Short')).toBe(false);
-      expect(extractor['looksLikeDescription']('Home')).toBe(false);
-    });
-
-    it('should reject titles that are too long', () => {
-      expect(extractor['looksLikeDescription']('A'.repeat(201))).toBe(false);
-    });
-
-    it('should reject titles with too few words', () => {
-      expect(extractor['looksLikeDescription']('One Two')).toBe(false);
-      expect(extractor['looksLikeDescription']('Single Word')).toBe(false);
-    });
-
-    it('should accept titles with sufficient words', () => {
-      expect(extractor['looksLikeDescription']('How to build modern web applications')).toBe(true);
-    });
-  });
-
-  describe('sanitizeDescription', () => {
-    it('should remove HTML tags', () => {
-      const result = extractor['sanitizeDescription']('<p>Text content</p>');
-
-      expect(result).toBe('Text content');
-    });
-
-    it('should replace HTML entities with spaces', () => {
-      const result = extractor['sanitizeDescription']('Text &amp; content &lt;tag&gt;');
-
-      expect(result).toBe('Text content tag');
-    });
-
-    it('should normalize whitespace', () => {
-      const result = extractor['sanitizeDescription']('  Text   with    spaces  ');
-
-      expect(result).toBe('Text with spaces');
-    });
-
-    it('should trim text', () => {
-      const result = extractor['sanitizeDescription']('  trimmed  ');
-
-      expect(result).toBe('trimmed');
-    });
-
-    it('should limit length to 500 characters', () => {
-      const longText = 'A'.repeat(600);
-      const result = extractor['sanitizeDescription'](longText);
-
-      expect(result.length).toBe(500);
-    });
+  it.each([
+    ['<p>Text content</p>', 'Text content'],
+    ['Text &amp; content &lt;tag&gt;', 'Text content tag'],
+    ['  Text   with    spaces  ', 'Text with spaces'],
+    ['  trimmed  ', 'trimmed'],
+    ['A'.repeat(600), 'A'.repeat(500)],
+  ])('sanitizes %s', (text, expected) => {
+    expect(sanitizeDescription(text)).toBe(expected);
   });
 });

@@ -14,6 +14,7 @@ import {
 import { extractPageContentFromDocument } from '../core';
 import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
 import { NOTION_CONNECTED_KEY, readNotionDestination } from '../utils/account-state';
+import { mapAccountProfile } from '../utils/account-profile';
 import { config, validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
 import { addMessageListener, Messages } from '../utils/message';
@@ -566,6 +567,21 @@ async function performBookmarkSyncAfterInitialization(
   }
 }
 
+// Both capture surfaces share only the base save; current-page AI stays below.
+async function syncCapturedLink(bookmark: LinkItem, invalidCaptureMessage: string) {
+  const mapping = prepareLegacyLinkItemForSync(bookmark, {
+    now: () => new Date(),
+    createId: createDefaultKnowledgeItemId,
+    normalizeUrl,
+  });
+  if (!mapping.success) throw new Error(invalidCaptureMessage);
+  const syncResponse = await serverAPI.syncBookmarks([mapping.item], {
+    aiBatchEligible: false,
+    requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
+  });
+  return { item: mapping.item, syncResponse };
+}
+
 // Save the base capture first. AI is a separate, explicitly bounded message so
 // the popup can acknowledge a successful Notion write immediately.
 async function saveCurrentPage(
@@ -600,19 +616,10 @@ async function saveCurrentPage(
             { createSyncId: () => createSyncId('quick-save'), source: 'context_menu' }
           );
 
-    const legacyMapping = prepareLegacyLinkItemForSync(bookmark, {
-      now: () => new Date(),
-      createId: createDefaultKnowledgeItemId,
-      normalizeUrl,
-    });
-    if (!legacyMapping.success) {
-      throw new Error('Current page capture cannot be synced');
-    }
-
-    const syncResponse = await serverAPI.syncBookmarks([legacyMapping.item], {
-      aiBatchEligible: false,
-      requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-    });
+    const { item, syncResponse } = await syncCapturedLink(
+      bookmark,
+      'Current page capture cannot be synced'
+    );
 
     await recordDashboardSave(source).catch((dashboardError) => {
       console.warn(
@@ -624,8 +631,8 @@ async function saveCurrentPage(
     if (
       source !== 'current_page' ||
       tab.id === undefined ||
-      !legacyMapping.item.syncId ||
-      !wasCurrentPageCreated(syncResponse.results || [], legacyMapping.item.syncId)
+      !item.syncId ||
+      !wasCurrentPageCreated(syncResponse.results || [], item.syncId)
     ) {
       return { success: true, aiStatus: 'not_started' };
     }
@@ -635,7 +642,7 @@ async function saveCurrentPage(
         {
           tabId: tab.id,
           url: tab.url,
-          syncId: legacyMapping.item.syncId,
+          syncId: item.syncId,
           knowledgeItemId: createDefaultKnowledgeItemId({
             source: 'current_page',
             canonicalUrl: normalizeUrl(tab.url),
@@ -768,19 +775,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         }
       );
 
-      const legacyMapping = prepareLegacyLinkItemForSync(bookmark, {
-        now: () => new Date(),
-        createId: createDefaultKnowledgeItemId,
-        normalizeUrl,
-      });
-      if (!legacyMapping.success) {
-        throw new Error('Context menu capture cannot be synced');
-      }
-
-      await serverAPI.syncBookmarks([legacyMapping.item], {
-        aiBatchEligible: false,
-        requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-      });
+      await syncCapturedLink(bookmark, 'Context menu capture cannot be synced');
       await recordDashboardSave('context_menu');
       console.log('[Context Menu] Page saved successfully');
     } catch (error) {
@@ -811,19 +806,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 async function refreshStoredEntitlements(): Promise<void> {
   try {
     const { user, isPro } = await serverAPI.getUserProfile();
-    await chrome.storage.local.set({
-      is_pro: isPro,
-      purchase_type: user.purchaseType,
-      subscription_source: user.subscriptionSource,
-      subscription_expires_at: user.expiresAt,
-      deployment_profile: {
-        deploymentMode: user.deploymentMode || 'hosted',
-        commerceEnabled: user.commerceEnabled ?? true,
-        capabilities: user.capabilities || { autoSync: isPro, batchAi: isPro },
-        apiOrigin: new URL(config.notion.serverUrl).origin,
-      },
-      entitlements_cached_at: Date.now(),
-    });
+    const profile = mapAccountProfile(user, new URL(config.notion.serverUrl).origin, isPro);
+    await chrome.storage.local.set(profile.cache);
   } catch (profileError) {
     console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
   }

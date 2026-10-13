@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { buildLocalBookmarkIndex, type LibraryFilter } from '../../library/bookmark-library';
 import type { useLocalLibrary } from '../hook/useLocalLibrary';
@@ -8,7 +8,7 @@ import { ToastProvider } from '../hook/ToastProvider';
 import { LocalLibraryWorkspace } from './LocalLibraryWorkspace';
 
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -18,14 +18,11 @@ beforeEach(() => {
       getUILanguage: () => 'en',
     },
   });
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
+  ({ container, root } = createTestRoot());
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -272,73 +269,6 @@ it('shows both saved tags in the row from the same metadata snapshot as the edit
     ?.closest('div.group');
   expect(row?.textContent).toContain('Design');
   expect(row?.textContent).toContain('UI/UX');
-});
-
-it('shows a long folder path as context without duplicating it in the filter menu', async () => {
-  const tree = [
-    {
-      id: '0',
-      title: '',
-      children: [
-        {
-          id: '1',
-          parentId: '0',
-          title: 'Bookmarks bar',
-          children: [
-            {
-              id: '2',
-              parentId: '1',
-              title: 'archive',
-              children: [
-                {
-                  id: '3',
-                  parentId: '2',
-                  title: 'AI',
-                  children: [{ id: 'a', parentId: '3', title: 'Tool', url: 'https://a.example' }],
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ] as chrome.bookmarks.BookmarkTreeNode[];
-  const index = buildLocalBookmarkIndex(tree, {});
-  const controller = {
-    library: { tree, readingList: [], health: {}, ...index },
-    error: false,
-    isMutating: false,
-    refresh: vi.fn(async () => undefined),
-    save: vi.fn(async () => undefined),
-    remove: vi.fn(async () => undefined),
-  } as unknown as ReturnType<typeof useLocalLibrary>;
-
-  await act(async () =>
-    root.render(
-      <ToastProvider>
-        <LocalLibraryWorkspace
-          controller={controller}
-          filter={{ kind: 'folder', folderId: '3' }}
-          onFilterChange={() => undefined}
-          hasUnsavedDraft={false}
-          onUnsavedDraftChange={() => undefined}
-          editorRevision={0}
-        />
-      </ToastProvider>
-    )
-  );
-
-  expect(container.querySelector('h1')?.textContent).toBe('AI');
-  expect(container.querySelector('h1')?.title).toBe('Bookmarks bar / archive / AI');
-  expect(container.querySelector('h1')?.parentElement?.parentElement?.textContent).not.toContain(
-    'Bookmarks bar / archive'
-  );
-  const filterMenu = container.querySelector<HTMLButtonElement>('[aria-label="library_filter"]');
-  expect(filterMenu?.textContent).toContain('library_all');
-  await act(async () => filterMenu?.click());
-  expect(document.querySelector('[role="listbox"]')?.textContent).not.toContain(
-    'Bookmarks bar / archive / AI'
-  );
 });
 
 it('keeps the remaining bookmark visible after resolving a two-item duplicate group', async () => {

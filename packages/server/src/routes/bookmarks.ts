@@ -1,6 +1,11 @@
 // 📚 Bookmark Management Routes
 
 import { Router, Response } from 'express';
+import type {
+  BookmarkSyncResult as SyncResult,
+  BookmarkSyncResponse,
+  BookmarkSyncEnrichmentResponse,
+} from '@bookmark-assistant/types';
 import {
   buildGoogleS2FaviconUrl,
   belongsToSyncTarget,
@@ -34,7 +39,7 @@ import { PrismaAiCredentialStore } from '../services/prisma-ai-credential-store'
 import { createCredentialCipher } from '../services/credential-cipher';
 import { AiBatchService } from '../services/ai-batch-service';
 import { PrismaAiBatchStore } from '../services/prisma-ai-batch-store';
-import { AiTaskQueue } from '../services/ai-task-queue';
+import { AiTaskQueue, type EnqueueAiBatchTasksInput } from '../services/ai-task-queue';
 import { PrismaAiTaskStore } from '../services/prisma-ai-task-store';
 import { resolveProEntitlement } from '../utils';
 import { createDescriptionBaselineHash } from '../services/notion-ai-writer';
@@ -48,18 +53,6 @@ import { canStartDescriptionExtraction, canStartNotionWrite } from '../core/sync
 const router: import('express').Router = Router();
 const NOTION_WRITE_CONCURRENCY = 3;
 const SYNC_RESPONSE_RESERVE_MS = 10_000;
-
-// Result type definitions
-type SyncResult =
-  | NotionLinkWriteResult
-  | {
-      success: true;
-      bookmark: string;
-      action: 'skipped';
-      reason: 'duplicate_exists';
-      syncId?: string;
-    }
-  | { success: false; bookmark: string; error: string; syncId?: string };
 
 type CreatedNotionSyncResult = Extract<NotionLinkWriteResult, { success: true }> & {
   action: 'created';
@@ -259,17 +252,25 @@ function createdItemsFromResults(items: BookmarkItem[], results: SyncResult[]): 
   );
 }
 
-async function planDeferredAiBatch(
-  userId: string,
-  userData: NonNullable<Awaited<ReturnType<typeof userPrisma.find>>>,
-  dataSourceId: string,
-  items: BookmarkSyncEnrichmentItem[],
-  descriptionBySyncId: Map<string, string>,
-  aiBatchEligible: boolean | undefined
-): Promise<{
-  aiBatch?: { id: string; status: string; eligibleCount: number };
-  aiPlanning: { status: 'planned' | 'not_eligible' | 'failed'; taskCount?: number };
-}> {
+type AiBatchPlan = Pick<BookmarkSyncEnrichmentResponse, 'aiBatch' | 'aiPlanning'>;
+
+async function planAiBatch({
+  userId,
+  userData,
+  dataSourceId,
+  eligibilityItems,
+  planningItems,
+  aiBatchEligible,
+  deduplicateExisting = false,
+}: {
+  userId: string;
+  userData: NonNullable<Awaited<ReturnType<typeof userPrisma.find>>>;
+  dataSourceId: string;
+  eligibilityItems: Array<Pick<BookmarkItem, 'source'>>;
+  planningItems: EnqueueAiBatchTasksInput['items'];
+  aiBatchEligible: boolean | undefined;
+  deduplicateExisting?: boolean;
+}): Promise<AiBatchPlan> {
   const notEligible = { aiPlanning: { status: 'not_eligible' as const } };
   const settings = await new AiSettingsService(new PrismaAiSettingsStore()).get(userId);
   const credentialService = new AiCredentialService(
@@ -284,34 +285,30 @@ async function planDeferredAiBatch(
           'batch'
         )
       : false;
-  const createdItems = items.filter(
-    (item) => item.action === 'created' && descriptionBySyncId.has(item.syncId)
-  );
-  const eligible =
-    isBatchAiEligibleCapture(aiBatchEligible, createdItems) &&
-    resolveProEntitlement(userData).isPro &&
-    !!settings?.batchEnabled &&
-    !!settings.properties &&
-    credential?.status === 'verified' &&
-    providerAllowed &&
-    createdItems.length > 0;
-  if (!eligible) return notEligible;
+  if (
+    !(
+      isBatchAiEligibleCapture(aiBatchEligible, eligibilityItems) &&
+      resolveProEntitlement(userData).isPro &&
+      settings?.batchEnabled &&
+      settings.properties &&
+      credential?.status === 'verified' &&
+      providerAllowed &&
+      planningItems.length > 0
+    )
+  )
+    return notEligible;
 
   const internalUserId = await userPrisma.resolveInternalUserId(userId);
   if (!internalUserId) return notEligible;
-  const planningItems = createdItems.map((item) => ({
-    knowledgeItemId: item.syncId,
-    notionPageId: item.notionPageId,
-    sourceUrl: item.url,
-    descriptionBaselineHash: createDescriptionBaselineHash(
-      descriptionBySyncId.get(item.syncId) || item.description || ''
-    ),
-  }));
   const taskStore = new PrismaAiTaskStore();
-  const existingKnowledgeItemIds = await taskStore.findExistingKnowledgeItemIds(
-    internalUserId,
-    planningItems.map((item) => item.knowledgeItemId)
-  );
+  // Deferred enrichment is retried across worker restarts. Its preliminary lookup
+  // avoids empty replacement batches; durable queue uniqueness remains authoritative.
+  const existingKnowledgeItemIds = deduplicateExisting
+    ? await taskStore.findExistingKnowledgeItemIds(
+        internalUserId,
+        planningItems.map((item) => item.knowledgeItemId)
+      )
+    : new Set<string>();
   const newPlanningItems = planningItems.filter(
     (item) => !existingKnowledgeItemIds.has(item.knowledgeItemId)
   );
@@ -325,10 +322,9 @@ async function planDeferredAiBatch(
   );
   const aiBatch = { id: batch.id, status: batch.status, eligibleCount: batch.eligibleCount };
   if (batch.status !== 'queued' && batch.status !== 'awaiting_confirmation') {
-    return { aiBatch, aiPlanning: { status: 'not_eligible' } };
+    return { aiBatch, ...notEligible };
   }
-  const queue = new AiTaskQueue(taskStore, credentialService);
-  const queued = await queue.enqueueBatch({
+  const queued = await new AiTaskQueue(taskStore, credentialService).enqueueBatch({
     externalUserId: userId,
     batchId: batch.id,
     initialStatus: batch.status,
@@ -337,11 +333,37 @@ async function planDeferredAiBatch(
   });
   return {
     aiBatch,
-    aiPlanning: {
-      status: 'planned',
-      taskCount: existingKnowledgeItemIds.size + queued.created,
-    },
+    aiPlanning: { status: 'planned', taskCount: existingKnowledgeItemIds.size + queued.created },
   };
+}
+
+async function planDeferredAiBatch(
+  userId: string,
+  userData: NonNullable<Awaited<ReturnType<typeof userPrisma.find>>>,
+  dataSourceId: string,
+  items: BookmarkSyncEnrichmentItem[],
+  descriptionBySyncId: Map<string, string>,
+  aiBatchEligible: boolean | undefined
+): Promise<AiBatchPlan> {
+  const createdItems = items.filter(
+    (item) => item.action === 'created' && descriptionBySyncId.has(item.syncId)
+  );
+  return planAiBatch({
+    userId,
+    userData,
+    dataSourceId,
+    aiBatchEligible,
+    eligibilityItems: createdItems,
+    deduplicateExisting: true,
+    planningItems: createdItems.map((item) => ({
+      knowledgeItemId: item.syncId,
+      notionPageId: item.notionPageId,
+      sourceUrl: item.url,
+      descriptionBaselineHash: createDescriptionBaselineHash(
+        descriptionBySyncId.get(item.syncId) || item.description || ''
+      ),
+    })),
+  });
 }
 
 /**
@@ -548,6 +570,28 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
         reserveForResponseMs: SYNC_RESPONSE_RESERVE_MS,
       });
 
+    // Each phase shares result accounting, deadline handling and the creation index.
+    const applyItems = async (items: BookmarkItem[]): Promise<SyncWriteOutcome> => {
+      const diff = diffLinkItems(items, existingRecords, urls, syncIds);
+      const outcome = await applySyncPlanToNotion(
+        diff,
+        verifiedDatabaseId,
+        verifiedDataSourceId,
+        userData,
+        canStartWrite
+      );
+      results.push(...outcome.results);
+      deferredNotionWrites += outcome.deferred;
+      notionWritesDeferred ||= outcome.deferred > 0;
+      addCreatedLinksToExistingIndex(
+        createdItemsFromResults(diff.toCreate as BookmarkItem[], outcome.results),
+        urls,
+        syncIds,
+        existingRecords
+      );
+      return outcome;
+    };
+
     // Generate descriptions for bookmarks without them (if enabled)
     const deferEnhancements = options.deferEnhancements === true;
     const generateDescriptions = options.generateDescriptions !== false && !deferEnhancements;
@@ -575,16 +619,13 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
         // Create a map to track updated bookmarks by their identifier
         const updatedBookmarksMap = new Map<string, BookmarkItem>();
 
-        // Helper function to get a unique key for a bookmark
-        const getBookmarkKey = (bookmark: BookmarkItem): string => {
-          return (
-            bookmark.url || bookmark.syncId || `bookmark-${Math.random().toString(36).substr(2, 9)}`
-          );
-        };
-
         const normalizeBookmark = (bookmark: BookmarkItem): BookmarkItem =>
           normalizeBookmarkForSyncPlanning(bookmark) as BookmarkItem;
 
+        // Capture identity keeps bookmark and reading-list rows separate even
+        // when they point at the same URL.
+        const getCaptureKey = (bookmark: BookmarkItem) =>
+          `${bookmark.type || 'bookmark'}:${bookmark.syncId || bookmark.url}`;
         const processedDescriptionBookmarks = new Set<string>();
 
         // Process each batch sequentially. Description extraction is optional:
@@ -624,7 +665,7 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
                   ...bookmark,
                   description: result.description,
                 });
-                updatedBookmarksMap.set(getBookmarkKey(bookmark), updated);
+                updatedBookmarksMap.set(getCaptureKey(bookmark), updated);
                 return updated;
               } else {
                 console.debug('[Bookmark Sync] Description unavailable');
@@ -640,43 +681,15 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
 
           const batchWithDescriptions = await Promise.all(batchPromises);
           for (const bookmark of batch) {
-            processedDescriptionBookmarks.add(getBookmarkKey(bookmark));
+            processedDescriptionBookmarks.add(getCaptureKey(bookmark));
           }
 
-          // IMMEDIATELY sync this batch to Notion after description extraction completes
-          const batchDiff = diffLinkItems(batchWithDescriptions, existingRecords, urls, syncIds);
-
-          if (batchDiff.toCreate.length > 0 || (batchDiff.toUpdate?.length || 0) > 0) {
-            console.debug(
-              `[Bookmark Sync] Syncing batch ${i + 1}: ${batchDiff.toCreate.length} new, ${batchDiff.toUpdate?.length || 0} updates to Notion...`
-            );
-            const batchOutcome = await applySyncPlanToNotion(
-              batchDiff,
-              verifiedDatabaseId,
-              verifiedDataSourceId,
-              userData,
-              canStartWrite
-            );
-            results.push(...batchOutcome.results);
-            deferredNotionWrites += batchOutcome.deferred;
-            notionWritesDeferred ||= batchOutcome.deferred > 0;
-
-            addCreatedLinksToExistingIndex(
-              createdItemsFromResults(batchDiff.toCreate as BookmarkItem[], batchOutcome.results),
-              urls,
-              syncIds,
-              existingRecords
-            );
-            if (batchOutcome.deferred > 0) {
-              descriptionSkippedByBudget += descriptionBatches
-                .slice(i + 1)
-                .reduce((count, pendingBatch) => count + pendingBatch.length, 0);
-              break;
-            }
-          } else {
-            console.debug(
-              `[Bookmark Sync] Batch ${i + 1}: all bookmarks already exist in Notion, skipping sync`
-            );
+          const batchOutcome = await applyItems(batchWithDescriptions);
+          if (batchOutcome.deferred > 0) {
+            descriptionSkippedByBudget += descriptionBatches
+              .slice(i + 1)
+              .reduce((count, pendingBatch) => count + pendingBatch.length, 0);
+            break;
           }
 
           // Add delay between batches to prevent overwhelming the connection pool
@@ -687,7 +700,7 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
 
         // Update enrichedBookmarks with extracted descriptions
         enrichedBookmarks = enrichedBookmarks.map((bm) => {
-          const updated = updatedBookmarksMap.get(getBookmarkKey(bm));
+          const updated = updatedBookmarksMap.get(getCaptureKey(bm));
           return updated ? normalizeBookmark(updated) : normalizeBookmark(bm);
         });
 
@@ -695,134 +708,30 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
 
         // After description extraction, sync bookmarks that were NOT in bookmarksNeedingDescriptions
         // (they already had descriptions and were not processed in the batch loop)
-        const bookmarksWithDescriptions = enrichedBookmarks.filter((bookmark) =>
-          bookmark.description?.trim()
+        const bookmarksWithDescriptions = enrichedBookmarks.filter(
+          (bookmark) =>
+            bookmark.description?.trim() &&
+            !processedDescriptionBookmarks.has(getCaptureKey(bookmark))
         ) as BookmarkItem[];
 
         if (!notionWritesDeferred && bookmarksWithDescriptions.length > 0) {
-          console.debug(
-            `[Bookmark Sync] Syncing ${bookmarksWithDescriptions.length} bookmarks that already had descriptions...`
-          );
-          const remainingDiff = diffLinkItems(
-            bookmarksWithDescriptions,
-            existingRecords,
-            urls,
-            syncIds
-          );
-          if (remainingDiff.toCreate.length > 0 || (remainingDiff.toUpdate?.length || 0) > 0) {
-            const remainingOutcome = await applySyncPlanToNotion(
-              remainingDiff,
-              verifiedDatabaseId,
-              verifiedDataSourceId,
-              userData,
-              canStartWrite
-            );
-            results.push(...remainingOutcome.results);
-            deferredNotionWrites += remainingOutcome.deferred;
-            notionWritesDeferred ||= remainingOutcome.deferred > 0;
-
-            addCreatedLinksToExistingIndex(
-              createdItemsFromResults(
-                remainingDiff.toCreate as BookmarkItem[],
-                remainingOutcome.results
-              ),
-              urls,
-              syncIds,
-              existingRecords
-            );
-          }
+          await applyItems(bookmarksWithDescriptions);
         }
 
         // Every capture still reaches Notion if optional extraction had to stop.
         // Only process items that were never included in a description batch to
         // avoid repeating an update that already ran above.
         const deferredDescriptionBookmarks = bookmarksNeedingDescriptions.filter(
-          (bookmark) => !processedDescriptionBookmarks.has(getBookmarkKey(bookmark))
+          (bookmark) => !processedDescriptionBookmarks.has(getCaptureKey(bookmark))
         );
         if (!notionWritesDeferred && deferredDescriptionBookmarks.length > 0) {
-          const deferredDiff = diffLinkItems(
-            deferredDescriptionBookmarks,
-            existingRecords,
-            urls,
-            syncIds
-          );
-          if (deferredDiff.toCreate.length > 0 || (deferredDiff.toUpdate?.length || 0) > 0) {
-            const deferredOutcome = await applySyncPlanToNotion(
-              deferredDiff,
-              verifiedDatabaseId,
-              verifiedDataSourceId,
-              userData,
-              canStartWrite
-            );
-            results.push(...deferredOutcome.results);
-            deferredNotionWrites += deferredOutcome.deferred;
-            notionWritesDeferred ||= deferredOutcome.deferred > 0;
-            addCreatedLinksToExistingIndex(
-              createdItemsFromResults(
-                deferredDiff.toCreate as BookmarkItem[],
-                deferredOutcome.results
-              ),
-              urls,
-              syncIds,
-              existingRecords
-            );
-          }
+          await applyItems(deferredDescriptionBookmarks);
         }
       } else {
-        console.log('[Bookmark Sync] All bookmarks already have descriptions, skipping extraction');
-        // Sync all bookmarks immediately since no description extraction was needed
-        const diff = diffLinkItems(
-          enrichedBookmarks as BookmarkItem[],
-          existingRecords,
-          urls,
-          syncIds
-        );
-        if (diff.toCreate.length > 0 || (diff.toUpdate?.length || 0) > 0) {
-          const batchOutcome = await applySyncPlanToNotion(
-            diff,
-            verifiedDatabaseId,
-            verifiedDataSourceId,
-            userData,
-            canStartWrite
-          );
-          results.push(...batchOutcome.results);
-          deferredNotionWrites += batchOutcome.deferred;
-          notionWritesDeferred ||= batchOutcome.deferred > 0;
-
-          addCreatedLinksToExistingIndex(
-            createdItemsFromResults(diff.toCreate as BookmarkItem[], batchOutcome.results),
-            urls,
-            syncIds,
-            existingRecords
-          );
-        }
+        await applyItems(enrichedBookmarks as BookmarkItem[]);
       }
     } else {
-      console.log('[Bookmark Sync] Description generation disabled; syncing received items');
-      const diff = diffLinkItems(
-        enrichedBookmarks as BookmarkItem[],
-        existingRecords,
-        urls,
-        syncIds
-      );
-      if (diff.toCreate.length > 0 || (diff.toUpdate?.length || 0) > 0) {
-        const batchOutcome = await applySyncPlanToNotion(
-          diff,
-          verifiedDatabaseId,
-          verifiedDataSourceId,
-          userData,
-          canStartWrite
-        );
-        results.push(...batchOutcome.results);
-        deferredNotionWrites += batchOutcome.deferred;
-        notionWritesDeferred ||= batchOutcome.deferred > 0;
-        addCreatedLinksToExistingIndex(
-          createdItemsFromResults(diff.toCreate as BookmarkItem[], batchOutcome.results),
-          urls,
-          syncIds,
-          existingRecords
-        );
-      }
+      await applyItems(enrichedBookmarks as BookmarkItem[]);
     }
 
     // Compute summary against the Notion state observed at the start of the request.
@@ -916,87 +825,40 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
 
     // AI never blocks the base sync. Batch AI only applies to newly created pages;
     // existing entries must not be overwritten or reprocessed automatically.
-    let aiBatch: { id: string; status: string; eligibleCount: number } | undefined;
-    let aiPlanning:
-      | { status: 'planned' | 'not_eligible' | 'failed'; taskCount?: number }
-      | undefined;
+    let aiBatch: AiBatchPlan['aiBatch'];
+    let aiPlanning: AiBatchPlan['aiPlanning'] | undefined;
     if (!deferEnhancements) {
       aiPlanning = { status: 'not_eligible' };
       try {
-        const settings = await new AiSettingsService(new PrismaAiSettingsStore()).get(userId);
-        const credentialService = new AiCredentialService(
-          new PrismaAiCredentialStore(),
-          createCredentialCipher(config.aiCredentialEncryption)
+        const itemsBySyncId = new Map(
+          enrichedBookmarks.filter((item) => item.syncId).map((item) => [item.syncId!, item])
         );
-        const credential = await credentialService.getCredentialSummary(userId);
-        const providerAllowed =
-          credential?.status === 'verified'
-            ? await new AiProviderControlService(new PrismaAiProviderControlStore()).isAllowed(
-                credential.provider,
-                'batch'
-              )
-            : false;
-        const eligibleResults: CreatedNotionSyncResult[] = results.filter(
+        const eligibleResults = results.filter(
           (result): result is CreatedNotionSyncResult =>
             result.success && result.action === 'created' && !!result.syncId
         );
-        const isPro = resolveProEntitlement(userData).isPro;
-        const batchAiEligible =
-          isBatchAiEligibleCapture(aiBatchEligible, enrichedBookmarks) &&
-          isPro &&
-          !!settings?.batchEnabled &&
-          !!settings.properties &&
-          credential?.status === 'verified' &&
-          providerAllowed &&
-          eligibleResults.length > 0;
-        if (batchAiEligible) {
-          const internalUserId = await userPrisma.resolveInternalUserId(userId);
-          if (internalUserId) {
-            const itemsBySyncId = new Map(
-              enrichedBookmarks.filter((item) => item.syncId).map((item) => [item.syncId!, item])
-            );
-            const planningItems = eligibleResults.flatMap((result) => {
-              const item = itemsBySyncId.get(result.syncId!);
-              if (!item?.url || !result.notionPageId) return [];
-              return [
-                {
-                  knowledgeItemId: result.syncId!,
-                  notionPageId: result.notionPageId,
-                  sourceUrl: item.url,
-                  descriptionBaselineHash: createDescriptionBaselineHash(item.description || ''),
-                },
-              ];
-            });
-            if (planningItems.length > 0) {
-              const batch = await new AiBatchService(new PrismaAiBatchStore()).create(
-                internalUserId,
-                verifiedDataSourceId,
-                planningItems.length
-              );
-              aiBatch = { id: batch.id, status: batch.status, eligibleCount: batch.eligibleCount };
-              if (batch.status === 'queued' || batch.status === 'awaiting_confirmation') {
-                const queue = new AiTaskQueue(new PrismaAiTaskStore(), credentialService);
-                const queued = await queue.enqueueBatch({
-                  externalUserId: userId,
-                  batchId: batch.id,
-                  initialStatus: batch.status,
-                  credential,
-                  items: planningItems,
-                });
-                aiPlanning = { status: 'planned', taskCount: queued.created };
-                console.log(
-                  `[AI Batch] Planned batch: eligible=${planningItems.length}, queued=${queued.created}, existing=${queued.skipped}`
-                );
-              }
-            } else {
-              console.warn(
-                '[AI Batch] No task was planned because the created page IDs were unavailable'
-              );
-            }
-          } else {
-            console.warn('[AI Batch] Skipped planning: internal user could not be resolved');
-          }
-        }
+        const planningItems = eligibleResults.flatMap((result) => {
+          const item = itemsBySyncId.get(result.syncId);
+          if (!item?.url || !result.notionPageId) return [];
+          return [
+            {
+              knowledgeItemId: result.syncId,
+              notionPageId: result.notionPageId,
+              sourceUrl: item.url,
+              descriptionBaselineHash: createDescriptionBaselineHash(item.description || ''),
+            },
+          ];
+        });
+        // Inline eligibility includes every incoming capture; deferred eligibility
+        // includes only successfully enriched creations. Keep these inputs distinct.
+        ({ aiBatch, aiPlanning } = await planAiBatch({
+          userId,
+          userData,
+          dataSourceId: verifiedDataSourceId,
+          eligibilityItems: enrichedBookmarks,
+          planningItems,
+          aiBatchEligible,
+        }));
       } catch (error) {
         // Base sync is already complete and must remain successful if optional AI planning fails.
         console.error('[AI Batch] Planning failed:', sanitizeError(error));
@@ -1038,7 +900,7 @@ router.post('/sync', validateSession, async (req: AuthenticatedRequest, res: Res
             },
           }
         : {}),
-    });
+    } satisfies BookmarkSyncResponse);
   } catch (error) {
     const errorMessage = sanitizeError(error);
     auditLog('bookmark_sync_error', req.user?.userId || 'unknown', {
@@ -1177,8 +1039,8 @@ router.post('/enrich', validateSession, async (req: AuthenticatedRequest, res: R
       });
     }
 
-    let aiBatch: { id: string; status: string; eligibleCount: number } | undefined;
-    let aiPlanning: { status: 'planned' | 'not_eligible' | 'failed'; taskCount?: number } = {
+    let aiBatch: AiBatchPlan['aiBatch'];
+    let aiPlanning: AiBatchPlan['aiPlanning'] = {
       status: 'not_eligible',
     };
     try {
@@ -1198,7 +1060,12 @@ router.post('/enrich', validateSession, async (req: AuthenticatedRequest, res: R
     }
 
     auditLog('bookmark_sync_enrichment_success', userId, summary);
-    return res.json({ success: true, summary, aiBatch, aiPlanning });
+    return res.json({
+      success: true,
+      summary,
+      aiBatch,
+      aiPlanning,
+    } satisfies BookmarkSyncEnrichmentResponse);
   } catch (error) {
     const message = sanitizeError(error);
     auditLog('bookmark_sync_enrichment_error', userId, { error: message });

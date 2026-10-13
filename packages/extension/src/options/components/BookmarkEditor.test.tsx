@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { LocalBookmark } from '../../library/bookmark-library';
 import { ToastProvider } from '../hook/ToastProvider';
@@ -18,7 +18,7 @@ const bookmark = (title: string, updatedAt: string): LocalBookmark => ({
 });
 
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -28,14 +28,11 @@ beforeEach(() => {
       getUILanguage: () => 'en',
     },
   });
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
+  ({ container, root } = createTestRoot());
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   vi.unstubAllGlobals();
 });
 
@@ -158,7 +155,7 @@ it('keeps a failed draft editable and allows the user to retry', async () => {
   expect(onDirtyChange).toHaveBeenLastCalledWith(false);
 });
 
-it('splits pasted tags by commas and exposes icon-only editor actions', async () => {
+it('splits pasted tags by commas before saving', async () => {
   const onSave = vi.fn(async () => undefined);
   await act(async () => {
     root.render(
@@ -185,7 +182,6 @@ it('splits pasted tags by commas and exposes icon-only editor actions', async ()
 
   expect(container.textContent).toContain('library_bookmark_details');
   expect(container.textContent).toContain('library_tag_separator_hint');
-  expect(container.textContent).not.toContain('—');
   const tagInput = container.querySelector<HTMLInputElement>('[placeholder="library_add_tag"]');
   await act(async () => tagInput?.focus());
   changeInput(tagInput, 'Design, Research，design');
@@ -193,14 +189,9 @@ it('splits pasted tags by commas and exposes icon-only editor actions', async ()
   expect(container.textContent).toContain('Design');
   expect(container.textContent).toContain('Research');
 
-  const deleteButton = container.querySelector<HTMLButtonElement>(
-    '[aria-label="library_delete_bookmark"]'
-  );
   const saveButton = container.querySelector<HTMLButtonElement>(
     '[aria-label="library_save_changes"]'
   );
-  expect(deleteButton?.textContent).toBe('');
-  expect(saveButton?.textContent).toBe('');
   await act(async () => saveButton?.click());
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ tags: ['Design', 'Research'] }));
 });

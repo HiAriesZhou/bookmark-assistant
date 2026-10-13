@@ -1,6 +1,7 @@
 /// <reference types="chrome" />
 /// <reference types="vite/client" />
 import { hasNotionDestination } from '../utils/account-state';
+import { mapAccountProfile } from '../utils/account-profile';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { create } from 'zustand';
 import { CACHE_KEYS, WATCHED_CACHE_KEYS } from '../utils/cache';
@@ -482,27 +483,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
 
       if (response.success && response.profile) {
-        const isPro = response.profile.isPro === true;
-        const plan = response.profile.plan === 'pro' ? 'pro' : 'free';
-        const subscriptionSource = response.profile.subscriptionSource as
-          | SubscriptionSource
-          | null
-          | undefined;
-        const subscriptionExpiresAt = response.profile.expiresAt ?? null;
-        const purchaseType = response.profile.purchaseType as 'monthly' | 'yearly' | undefined;
-        const deploymentMode: DeploymentMode =
-          response.profile.deploymentMode === 'self-hosted' ? 'self-hosted' : 'hosted';
-        const commerceEnabled =
-          deploymentMode === 'hosted' && (response.profile.commerceEnabled ?? true);
-        const capabilities = response.profile.capabilities || { autoSync: isPro, batchAi: isPro };
-        const deployment = { deploymentMode, commerceEnabled, capabilities };
+        const profile = mapAccountProfile(response.profile, productConfig.apiUrl);
         set({
-          ...deployment,
-          isPro,
-          plan,
-          purchaseType,
-          subscriptionSource,
-          subscriptionExpiresAt,
+          ...profile.state,
           isSignedIn: true,
           isConnected: response.profile.hasNotionAccess === true,
           ...(typeof response.profile.email === 'string'
@@ -511,14 +494,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
 
         // Cache with timestamp for performance
-        await chrome.storage.local.set({
-          deployment_profile: { ...deployment, apiOrigin: productConfig.apiUrl },
-          is_pro: isPro,
-          purchase_type: purchaseType,
-          subscription_source: subscriptionSource,
-          subscription_expires_at: subscriptionExpiresAt,
-          entitlements_cached_at: Date.now(),
-        });
+        await chrome.storage.local.set(profile.cache);
       }
     } catch (error: any) {
       console.error('Failed to refresh user profile:', error);

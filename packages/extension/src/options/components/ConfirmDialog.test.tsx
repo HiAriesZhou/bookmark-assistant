@@ -1,22 +1,19 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ConfirmDialog } from './ConfirmDialog';
 
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
+  ({ container, root } = createTestRoot());
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   vi.unstubAllGlobals();
 });
 

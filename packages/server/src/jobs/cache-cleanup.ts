@@ -1,3 +1,4 @@
+import { createThrottledTask } from './throttled-task';
 /**
  * Cleanup job for expired description cache entries
  * Runs periodically to remove expired entries and maintain cache health
@@ -58,21 +59,7 @@ export function createOpportunisticDescriptionCacheCleanup(
   cleanup: () => Promise<void> = cleanupExpiredDescriptions,
   intervalMs = DESCRIPTION_CACHE_OPPORTUNISTIC_CLEANUP_INTERVAL_MS
 ): (now?: number) => Promise<void> {
-  let lastStartedAt: number | undefined;
-  let inFlight: Promise<void> | undefined;
-
-  return async (now = Date.now()): Promise<void> => {
-    if (inFlight) return inFlight;
-    if (lastStartedAt !== undefined && now - lastStartedAt < intervalMs) return;
-
-    lastStartedAt = now;
-    inFlight = cleanup()
-      .catch(() => undefined)
-      .finally(() => {
-        inFlight = undefined;
-      });
-    return inFlight;
-  };
+  return createThrottledTask(cleanup, intervalMs);
 }
 
 /** Vercel has no resident process, so public requests provide cleanup opportunities. */

@@ -33,6 +33,8 @@ unrelated changes.
 - Entitlements are decided by the server. CORS and extension ID headers are not user
   authentication. Test hosted Free/Pro and self-hosted capability boundaries.
 - Basic sync never depends on AI success; user edits take priority over AI results.
+- Async Express route handlers must forward rejected promises to error middleware;
+  use the shared `asyncHandler` when errors are not fully handled in the route.
 - For non-trivial bug fixes, add the smallest durable prevention such as a regression
   test, validation or type constraint. Do not add settings or services unnecessarily.
 

@@ -6,7 +6,18 @@ import {
   readSessionExpiry,
   shouldRenewSession,
 } from '../utils/account-state';
-import type { DeploymentProfile } from '@bookmark-assistant/types';
+import type {
+  BookmarkSyncResponse,
+  BookmarkSyncEnrichmentRequest,
+  BookmarkSyncEnrichmentResponse,
+  DeploymentProfile,
+  LinkItem,
+} from '@bookmark-assistant/types';
+export type {
+  BookmarkSyncResult as BookmarkSyncWriteResult,
+  BookmarkSyncEnrichmentItem,
+  BookmarkSyncEnrichmentResponse,
+} from '@bookmark-assistant/types';
 export interface ServerResponse<T = any> {
   success: boolean;
   data?: T;
@@ -14,58 +25,13 @@ export interface ServerResponse<T = any> {
   message?: string;
 }
 
-export interface BookmarkData {
-  title: string;
-  url: string;
-  description?: string;
-  path?: string;
-  tags?: string[];
-  dateAdded?: string;
-  syncId?: string;
-  type?: 'bookmark' | 'reading_list';
-  readState?: 'UNREAD' | 'READ';
-  source?: 'chrome_bookmark' | 'reading_list' | 'current_page' | 'context_menu' | 'import';
-}
+export type BookmarkData = LinkItem;
 
 export interface LinkSyncPayload {
   bookmarks: BookmarkData[];
   readingList?: BookmarkData[];
   items?: BookmarkData[];
 }
-
-export type BookmarkSyncWriteResult = {
-  success: boolean;
-  bookmark: string;
-  action?: 'created' | 'updated' | 'skipped';
-  syncId?: string;
-  notionPageId?: string;
-  error?: string;
-};
-
-export type BookmarkSyncEnrichmentItem = {
-  title: string;
-  url: string;
-  syncId: string;
-  notionPageId: string;
-  action: 'created' | 'updated';
-  description?: string;
-  source?: BookmarkData['source'];
-};
-
-export type BookmarkSyncEnrichmentResponse = {
-  summary: {
-    total: number;
-    generated: number;
-    alreadyPresent: number;
-    unavailable: number;
-    targetSkipped: number;
-    failed: number;
-  };
-  aiPlanning: {
-    status: 'planned' | 'not_eligible' | 'failed';
-    taskCount?: number;
-  };
-};
 
 export type SubscriptionSource = 'paddle' | 'developer' | 'gift' | 'trial';
 
@@ -107,10 +73,21 @@ export function parsePublicPricing(value: unknown): PublicPricing | null {
 const USER_PROFILE_CACHE_MS = 30_000;
 const SESSION_RENEWAL_ENDPOINT = '/api/oauth/session';
 
-// Sync progress belongs to one Notion destination and is reset whenever that
-// destination changes, is disconnected, or the account is deleted.
-const DESTINATION_SYNC_STATE_KEYS = [
-  'oauth_template_database_id',
+const ENRICHMENT_STATE_KEYS = ['sync_enrichment_job', 'sync_enrichment_state'];
+const AUTO_SYNC_KEYS = ['auto_sync_enabled', 'auto_sync_interval_minutes', 'sync_interval_hours'];
+const ACCOUNT_STATE_KEYS = [
+  'session_token',
+  'user_id',
+  'user_email',
+  NOTION_CONNECTED_KEY,
+  'is_pro',
+  'purchase_type',
+  'subscription_source',
+  'subscription_expires_at',
+  'entitlements_cached_at',
+  'deployment_profile',
+];
+const SYNC_PROGRESS_KEYS = [
   'last_sync',
   'last_sync_at',
   'last_sync_summary',
@@ -119,16 +96,18 @@ const DESTINATION_SYNC_STATE_KEYS = [
   'last_sync_payload_version',
   'last_sync_hash',
   'sync_in_progress',
-  'sync_enrichment_job',
-  'sync_enrichment_state',
+  ...ENRICHMENT_STATE_KEYS,
   'sync_started_at',
   'sync_trigger',
-  'is_connecting',
-  'auto_sync_enabled',
-  'auto_sync_interval_minutes',
-  'sync_interval_hours',
   'last_bulk_sync',
   'last_sync_results',
+];
+// A destination change resets its sync progress; disconnect retains account and plan.
+const DESTINATION_SYNC_STATE_KEYS = [
+  'oauth_template_database_id',
+  ...SYNC_PROGRESS_KEYS,
+  'is_connecting',
+  ...AUTO_SYNC_KEYS,
   'last_reading_list_debug',
   'dashboard_snapshot',
 ];
@@ -354,21 +333,8 @@ class ServerAPIClient {
       // is not evidence that this database has received those items, so it must
       // never short-circuit the first sync after connecting or reconnecting.
       await chrome.storage.local.remove([
-        'last_sync',
-        'last_sync_at',
-        'last_sync_summary',
-        'last_sync_count',
-        'last_sync_fingerprint',
-        'last_sync_payload_version',
-        'last_sync_hash',
-        'sync_in_progress',
-        'sync_enrichment_job',
-        'sync_enrichment_state',
-        'sync_started_at',
-        'sync_trigger',
+        ...SYNC_PROGRESS_KEYS,
         'last_sync_error',
-        'last_bulk_sync',
-        'last_sync_results',
         'dashboard_last_sync',
         'dashboard_recent_activity',
         'dashboard_saved_today',
@@ -395,39 +361,7 @@ class ServerAPIClient {
       deferEnhancements?: boolean;
       requestTimeoutMs?: number;
     } = {}
-  ): Promise<{
-    summary: {
-      total: number;
-      success: number;
-      failed: number;
-      skippedExisting?: number;
-      duplicatesBySyncId?: number;
-      duplicatesByUrl?: number;
-      updated?: number;
-      readingListTotal?: number;
-      readingListSuccess?: number;
-      readingListFailed?: number;
-      readingListSkippedExisting?: number;
-      descriptionSkippedByBudget?: number;
-      deferred?: number;
-    };
-    results: BookmarkSyncWriteResult[];
-    aiPlanning?: {
-      status: 'planned' | 'not_eligible' | 'failed';
-      taskCount?: number;
-    };
-    partialSync?: {
-      applied: number;
-      requested: number;
-      processed: number;
-      skipped: number;
-      message: string;
-    };
-    enrichment?: {
-      items: BookmarkSyncEnrichmentItem[];
-      aiBatchEligible?: boolean;
-    };
-  }> {
+  ): Promise<BookmarkSyncResponse> {
     // A first sync can legitimately take several minutes while the server
     // extracts descriptions and writes each Notion page. Keep a bounded
     // watchdog so a stalled request still reaches the normal recovery path.
@@ -439,7 +373,7 @@ class ServerAPIClient {
     const payload = Array.isArray(bookmarksOrPayload)
       ? buildLinkSyncPayload(bookmarksOrPayload)
       : bookmarksOrPayload;
-    return await this.makeRequest<any>('/api/bookmarks/sync', {
+    return await this.makeRequest<BookmarkSyncResponse>('/api/bookmarks/sync', {
       method: 'POST',
       body: JSON.stringify({
         ...payload,
@@ -450,10 +384,9 @@ class ServerAPIClient {
     });
   }
 
-  async enrichBookmarks(input: {
-    items: BookmarkSyncEnrichmentItem[];
-    aiBatchEligible?: boolean;
-  }): Promise<BookmarkSyncEnrichmentResponse> {
+  async enrichBookmarks(
+    input: BookmarkSyncEnrichmentRequest
+  ): Promise<BookmarkSyncEnrichmentResponse> {
     return this.makeRequest('/api/bookmarks/enrich', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -685,19 +618,7 @@ class ServerAPIClient {
     this.clearUserProfileCache();
     this.sessionToken = null;
 
-    await chrome.storage.local.remove([
-      ...DESTINATION_SYNC_STATE_KEYS,
-      'session_token',
-      'user_id',
-      'user_email',
-      NOTION_CONNECTED_KEY,
-      'is_pro',
-      'purchase_type',
-      'subscription_source',
-      'subscription_expires_at',
-      'entitlements_cached_at', // Clear entitlements cache on logout
-      'deployment_profile',
-    ]);
+    await chrome.storage.local.remove([...DESTINATION_SYNC_STATE_KEYS, ...ACCOUNT_STATE_KEYS]);
 
     // Note: We intentionally preserve:
     // - description_cache_* keys (user's cached descriptions - expensive to rebuild)
@@ -708,23 +629,11 @@ class ServerAPIClient {
     this.clearUserProfileCache();
     this.sessionToken = null;
     await chrome.storage.local.remove([
-      'session_token',
-      'user_id',
-      'user_email',
-      NOTION_CONNECTED_KEY,
+      ...ACCOUNT_STATE_KEYS,
       'oauth_template_database_id',
-      'is_pro',
-      'purchase_type',
-      'subscription_source',
-      'subscription_expires_at',
-      'deployment_profile',
-      'entitlements_cached_at',
       'is_connecting',
-      'sync_enrichment_job',
-      'sync_enrichment_state',
-      'auto_sync_enabled',
-      'auto_sync_interval_minutes',
-      'sync_interval_hours',
+      ...ENRICHMENT_STATE_KEYS,
+      ...AUTO_SYNC_KEYS,
       'dashboard_snapshot',
     ]);
     await chrome.storage.local.set({

@@ -4,6 +4,11 @@ export type {
   ApiErrorBody,
   ApiResponse,
   ApiSuccessBody,
+  BookmarkSyncAiBatch,
+  BookmarkSyncAiPlanning,
+  BookmarkSyncEnrichmentItem,
+  BookmarkSyncEnrichmentRequest,
+  BookmarkSyncEnrichmentResponse,
   BookmarkSyncOptions,
   BookmarkSyncRequest,
   BookmarkSyncResponse,
@@ -63,3 +68,5 @@ export type {
   KnowledgeItemValidationIssueCode,
   KnowledgeItemValidationResult,
 } from './knowledge-item.js';
+
+export { normalizeLinkUrl } from './urls.js';

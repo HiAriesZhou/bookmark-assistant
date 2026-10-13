@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot } from '../../testing/react-root';
 import { expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
 
@@ -12,9 +12,7 @@ it('collapses descendants without navigating and preserves nested collapse state
       getUILanguage: () => 'en',
     },
   });
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  const root = createRoot(container);
+  const { container, root } = createTestRoot();
   const navigate = vi.fn();
   const click = async (label: string) => {
     const button = container.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
@@ -58,8 +56,7 @@ it('collapses descendants without navigating and preserves nested collapse state
     await click('library_expand_folder Child');
     expect(container.textContent).toContain('Leaf');
   } finally {
-    await act(async () => root.unmount());
-    container.remove();
+    await cleanupTestRoot(root, container);
     vi.unstubAllGlobals();
   }
 });

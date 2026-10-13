@@ -67,61 +67,6 @@ export interface FormatSavedLinkOptions {
 
 export type FormatCurrentPageOptions = Omit<FormatSavedLinkOptions, 'source'>;
 
-export function buildBookmarkPath(bookmarkTree: BookmarkTreeNodeLike[], targetId: string): string {
-  function findBookmarkPath(
-    nodes: BookmarkTreeNodeLike[],
-    currentTargetId: string,
-    currentPath: string[] = []
-  ): string[] | null {
-    for (const node of nodes) {
-      if (node.id === currentTargetId) {
-        return currentPath;
-      }
-
-      if (node.children) {
-        const nodePath = node.title ? [...currentPath, node.title] : currentPath;
-        const result = findBookmarkPath(node.children, currentTargetId, nodePath);
-        if (result !== null) {
-          return result;
-        }
-      }
-    }
-    return null;
-  }
-
-  const path = findBookmarkPath(bookmarkTree, targetId);
-  if (!path) {
-    return 'Bookmarks';
-  }
-
-  const filteredPath = path.filter((part) => part && part.trim() !== '');
-  return filteredPath.length > 0 ? filteredPath.join(' / ') : 'Bookmarks';
-}
-
-export function flattenBookmarks(bookmarkNodes: BookmarkTreeNodeLike[]): BookmarkTreeNodeLike[] {
-  const flattened: BookmarkTreeNodeLike[] = [];
-
-  function traverse(nodes: BookmarkTreeNodeLike[]) {
-    for (const node of nodes) {
-      if (node.url) {
-        flattened.push({
-          id: node.id,
-          title: node.title,
-          url: node.url,
-          parentId: node.parentId,
-          dateAdded: node.dateAdded,
-          dateGroupModified: node.dateGroupModified,
-        });
-      } else if (node.children) {
-        traverse(node.children);
-      }
-    }
-  }
-
-  traverse(bookmarkNodes);
-  return flattened;
-}
-
 export function formatBookmarkForSync(
   bookmark: BookmarkTreeNodeLike,
   path: string,

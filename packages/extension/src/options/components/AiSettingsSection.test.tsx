@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { serverAPI } from '../../background/server-api';
 import { ToastProvider } from '../hook/ToastProvider';
@@ -26,16 +26,14 @@ function getEnglishMessage(key: string, substitutions?: string | string[]) {
 describe('AiSettingsSection', () => {
   const originalChrome = globalThis.chrome;
   let container: HTMLDivElement;
-  let root: ReturnType<typeof createRoot>;
+  let root: TestRoot;
   const originalState = useAppStore.getState();
 
   beforeEach(() => {
     (
       globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
     ).IS_REACT_ACT_ENVIRONMENT = true;
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
+    ({ container, root } = createTestRoot());
     vi.stubGlobal('chrome', {
       ...originalChrome,
       i18n: { getMessage: getEnglishMessage, getUILanguage: () => 'en' },
@@ -72,8 +70,7 @@ describe('AiSettingsSection', () => {
   });
 
   afterEach(async () => {
-    await act(async () => root.unmount());
-    container.remove();
+    await cleanupTestRoot(root, container);
     useAppStore.setState(originalState);
     vi.stubGlobal('chrome', originalChrome);
     vi.restoreAllMocks();

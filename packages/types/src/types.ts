@@ -41,6 +41,8 @@ export interface BookmarkSyncOptions {
   batchSize?: number;
   duplicateHandling?: 'update' | 'skip' | 'create_new';
   generateDescriptions?: boolean;
+  /** Base writes may finish before optional description and AI enrichment. */
+  deferEnhancements?: boolean;
 }
 
 export interface BookmarkSyncRequest {
@@ -50,19 +52,38 @@ export interface BookmarkSyncRequest {
   readingList?: LinkItem[];
   items?: LinkItem[];
   options?: BookmarkSyncOptions;
+  /** Current-page saves handle AI separately from bulk sync. */
+  aiBatchEligible?: boolean;
 }
 
+type BookmarkSyncWriteSuccess = {
+  success: true;
+  bookmark: string;
+  syncId?: string;
+  notionPageId?: string;
+  error?: never;
+};
+
 export type BookmarkSyncResult =
-  | { success: true; bookmark: string; action: 'created'; syncId?: string }
-  | { success: true; bookmark: string; action: 'updated'; syncId?: string }
+  | (BookmarkSyncWriteSuccess & { action: 'created' })
+  | (BookmarkSyncWriteSuccess & { action: 'updated' })
   | {
       success: true;
       bookmark: string;
       action: 'skipped';
       reason: 'duplicate_exists';
       syncId?: string;
+      notionPageId?: never;
+      error?: never;
     }
-  | { success: false; bookmark: string; error: string; syncId?: string };
+  | {
+      success: false;
+      bookmark: string;
+      error: string;
+      syncId?: string;
+      action?: never;
+      notionPageId?: never;
+    };
 
 export interface BookmarkSyncSummary {
   total: number;
@@ -73,19 +94,68 @@ export interface BookmarkSyncSummary {
   duplicatesBySyncId?: number;
   duplicatesByUrl?: number;
   updated?: number;
+  readingListTotal?: number;
+  readingListSuccess?: number;
+  readingListFailed?: number;
+  readingListSkippedExisting?: number;
+  descriptionSkippedByBudget?: number;
+  deferred?: number;
 }
 
 export interface BookmarkSyncResponse {
   success: true;
   results: BookmarkSyncResult[];
   summary: BookmarkSyncSummary;
+  aiBatch?: BookmarkSyncAiBatch;
+  aiPlanning?: BookmarkSyncAiPlanning;
+  enrichment?: BookmarkSyncEnrichmentRequest;
   partialSync?: {
-    applied: boolean;
+    applied: number;
     requested: number;
     processed: number;
     skipped: number;
     message: string;
   };
+}
+
+export interface BookmarkSyncAiBatch {
+  id: string;
+  status: string;
+  eligibleCount: number;
+}
+
+export interface BookmarkSyncAiPlanning {
+  status: 'planned' | 'not_eligible' | 'failed';
+  taskCount?: number;
+}
+
+export interface BookmarkSyncEnrichmentItem {
+  title: string;
+  url: string;
+  syncId: string;
+  notionPageId: string;
+  action: 'created' | 'updated';
+  description?: string;
+  source?: LinkItem['source'];
+}
+
+export interface BookmarkSyncEnrichmentRequest {
+  items: BookmarkSyncEnrichmentItem[];
+  aiBatchEligible?: boolean;
+}
+
+export interface BookmarkSyncEnrichmentResponse {
+  success: true;
+  summary: {
+    total: number;
+    generated: number;
+    alreadyPresent: number;
+    unavailable: number;
+    targetSkipped: number;
+    failed: number;
+  };
+  aiBatch?: BookmarkSyncAiBatch;
+  aiPlanning: BookmarkSyncAiPlanning;
 }
 
 export interface ApiSuccessBody<T = unknown> {

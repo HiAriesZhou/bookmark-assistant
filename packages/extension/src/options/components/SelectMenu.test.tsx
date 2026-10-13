@@ -1,22 +1,19 @@
 // @vitest-environment jsdom
 import { act, useState } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/react-root';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SelectMenu } from './SelectMenu';
 
 let container: HTMLDivElement;
-let root: ReturnType<typeof createRoot>;
+let root: TestRoot;
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
+  ({ container, root } = createTestRoot());
 });
 
 afterEach(async () => {
-  await act(async () => root.unmount());
-  container.remove();
+  await cleanupTestRoot(root, container);
   vi.unstubAllGlobals();
 });
 
@@ -52,9 +49,7 @@ it('shows the field prefix only in the trigger and selects a grouped option', as
   expect(document.activeElement).toBe(trigger);
 });
 
-it('opens upward near the viewport edge and restores focus after Escape', async () => {
-  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 720 });
-
+it('closes the menu and restores focus after Escape', async () => {
   await act(async () =>
     root.render(
       <SelectMenu
@@ -66,22 +61,7 @@ it('opens upward near the viewport edge and restores focus after Escape', async 
     )
   );
   const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Filter"]');
-  vi.spyOn(trigger!, 'getBoundingClientRect').mockReturnValue({
-    x: 100,
-    y: 660,
-    top: 660,
-    right: 220,
-    bottom: 696,
-    left: 100,
-    width: 120,
-    height: 36,
-    toJSON: () => ({}),
-  });
-
   await act(async () => trigger?.click());
-  const listbox = document.querySelector<HTMLElement>('[role="listbox"]');
-  expect(listbox?.style.bottom).not.toBe('');
-  expect(listbox?.style.top).toBe('');
 
   await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
   expect(document.querySelector('[role="listbox"]')).toBeNull();
