@@ -553,8 +553,24 @@
     "description": "当前页面 AI 因内容不足跳过时的 Popup 状态"
   },
   "popup_ai_not_started": {
-    "message": "页面已保存，但 AI 未启动；请在“选项”的最近处理中查看状态。",
-    "description": "当前页面 AI 无法启动或失败时的 Popup 状态"
+    "message": "页面已保存，但 AI 未启动。",
+    "description": "Popup status when current-page AI did not start"
+  },
+  "popup_ai_skipped_page": {
+    "message": "页面已保存，AI 已跳过此页面。",
+    "description": "Popup status when current-page AI skipped the page"
+  },
+  "popup_ai_processing": {
+    "message": "页面已保存，AI 仍在处理，结果稍后写入 Notion。",
+    "description": "Popup status when current-page AI is still running"
+  },
+  "popup_ai_failed": {
+    "message": "页面已保存，但 AI 未能完成；请在设置的 AI 记录中查看。",
+    "description": "Popup status when current-page AI started but did not finish"
+  },
+  "popup_ai_check_key": {
+    "message": "页面已保存，但 AI 未运行；请在设置中验证 AI Key。",
+    "description": "Popup status when the saved AI key is not verified"
   },
   "popup_title": {
     "message": "Bookmark Assistant",

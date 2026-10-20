@@ -3,13 +3,24 @@ import { BookmarkPlus, ChevronRight, Cloud, Library, RefreshCw, Settings } from 
 import { useEffect, useRef, useState } from 'react';
 import logoUrl from '@product-logo';
 import { deriveConnectionStatus } from '../options/connection-view-model';
-import { useToast } from '../options/hook/useToast';
+import { useToast, type ToastVariant } from '../options/hook/useToast';
 import { useAppStore } from '../options/store';
 import { relativeTime } from '../utils/common';
 import { createTranslator } from '../utils/i18n';
-import { saveCurrentPageWithAi } from './save-current-page';
+import { saveCurrentPageWithAi, type CurrentPageSaveMessage } from './save-current-page';
 
 type OptionsRoute = 'library' | 'settings';
+
+const SAVE_TOAST_VARIANTS: Record<CurrentPageSaveMessage, ToastVariant> = {
+  saveSuccess: 'success',
+  popup_ai_succeeded: 'success',
+  popup_ai_skipped: 'info',
+  popup_ai_skipped_page: 'info',
+  popup_ai_processing: 'info',
+  popup_ai_not_started: 'info',
+  popup_ai_failed: 'warning',
+  popup_ai_check_key: 'warning',
+};
 
 export default function Popup() {
   const { t, locale } = createTranslator();
@@ -67,7 +78,7 @@ export default function Popup() {
         show({ variant: 'error', title: t('saveFailed'), description: outcome.error });
       } else {
         show({
-          variant: outcome.message === 'popup_ai_not_started' ? 'info' : 'success',
+          variant: SAVE_TOAST_VARIANTS[outcome.message],
           title: t(outcome.message),
         });
       }

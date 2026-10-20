@@ -3,17 +3,27 @@ import {
   Messages,
   SAVE_CURRENT_PAGE_MESSAGE_TIMEOUT_MS,
   sendMessage,
+  type CurrentPageAiStatus,
 } from '../utils/message';
 
 export type CurrentPageSaveOutcome =
   | { status: 'saved'; message: CurrentPageSaveMessage }
   | { status: 'failed'; error?: string };
 
-type CurrentPageSaveMessage =
-  | 'saveSuccess'
-  | 'popup_ai_succeeded'
-  | 'popup_ai_skipped'
-  | 'popup_ai_not_started';
+// Shown through a lookup, so scripts/check-i18n.js cannot see them; the tests
+// check that every locale translates each one.
+export const CURRENT_PAGE_SAVE_MESSAGES = [
+  'saveSuccess',
+  'popup_ai_succeeded',
+  'popup_ai_skipped',
+  'popup_ai_skipped_page',
+  'popup_ai_processing',
+  'popup_ai_failed',
+  'popup_ai_check_key',
+  'popup_ai_not_started',
+] as const;
+
+export type CurrentPageSaveMessage = (typeof CURRENT_PAGE_SAVE_MESSAGES)[number];
 
 export function requestCurrentPageSave() {
   return sendMessage(
@@ -29,14 +39,29 @@ export function requestCurrentPageAi(aiRequestId: string) {
   );
 }
 
-// AI that is not set up, or a page it may not read, is not a failure to report.
-const AI_NOT_APPLICABLE = new Set(['not_configured', 'skipped_ineligible_page']);
+// Exhaustive so a new status cannot fall through to a misleading message. AI
+// that is not set up, or a page it may not read, is not a failure to report.
+const AI_RESULT_MESSAGES: Record<CurrentPageAiStatus, CurrentPageSaveMessage> = {
+  not_configured: 'saveSuccess',
+  skipped_ineligible_page: 'saveSuccess',
+  needs_attention: 'popup_ai_check_key',
+  succeeded: 'popup_ai_succeeded',
+  skipped_insufficient_content: 'popup_ai_skipped',
+  skipped: 'popup_ai_skipped_page',
+  skipped_fetch_disallowed: 'popup_ai_skipped_page',
+  awaiting_confirmation: 'popup_ai_processing',
+  queued: 'popup_ai_processing',
+  processing: 'popup_ai_processing',
+  failed: 'popup_ai_failed',
+  needs_action: 'popup_ai_failed',
+  service_unavailable: 'popup_ai_failed',
+  paused: 'popup_ai_failed',
+  skipped_navigation_changed: 'popup_ai_not_started',
+  not_started: 'popup_ai_not_started',
+};
 
-function aiResultMessage(aiStatus: string | undefined): CurrentPageSaveMessage {
-  if (aiStatus && AI_NOT_APPLICABLE.has(aiStatus)) return 'saveSuccess';
-  if (aiStatus === 'succeeded') return 'popup_ai_succeeded';
-  if (aiStatus === 'skipped_insufficient_content') return 'popup_ai_skipped';
-  return 'popup_ai_not_started';
+function aiResultMessage(aiStatus: CurrentPageAiStatus | undefined): CurrentPageSaveMessage {
+  return (aiStatus && AI_RESULT_MESSAGES[aiStatus]) || 'popup_ai_not_started';
 }
 
 /**
@@ -49,7 +74,9 @@ export async function saveCurrentPageWithAi(
   const saved = await requestCurrentPageSave();
   if (!saved?.success) return { status: 'failed', error: saved?.error };
   if (saved.aiStatus !== 'pending' || !saved.aiRequestId) {
-    return { status: 'saved', message: 'saveSuccess' };
+    // Without a handoff only a key that needs attention is worth mentioning.
+    const message = saved.aiStatus === 'needs_attention' ? 'popup_ai_check_key' : 'saveSuccess';
+    return { status: 'saved', message };
   }
 
   onAiStarted();

@@ -36,7 +36,7 @@ export {
   withBookmarkType,
 } from './links';
 
-export { normalizeUrl } from './urls';
+export { isWebPageUrl, normalizeUrl } from './urls';
 
 export {
   createFallbackPageContent,

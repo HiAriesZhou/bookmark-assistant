@@ -655,8 +655,24 @@
     "description": "Popup status when current-page AI has insufficient content"
   },
   "popup_ai_not_started": {
-    "message": "Page saved. AI did not start; check Recent processing in Options.",
-    "description": "Popup status when current-page AI cannot start or fails"
+    "message": "Page saved. AI did not start.",
+    "description": "Popup status when current-page AI did not start"
+  },
+  "popup_ai_skipped_page": {
+    "message": "Page saved. AI skipped this page.",
+    "description": "Popup status when current-page AI skipped the page"
+  },
+  "popup_ai_processing": {
+    "message": "Page saved. AI is still working; results will appear in Notion.",
+    "description": "Popup status when current-page AI is still running"
+  },
+  "popup_ai_failed": {
+    "message": "Page saved. AI could not finish; see AI History in Settings.",
+    "description": "Popup status when current-page AI started but did not finish"
+  },
+  "popup_ai_check_key": {
+    "message": "Page saved. AI did not run; verify your AI key in Settings.",
+    "description": "Popup status when the saved AI key is not verified"
   },
   "popup_settings_billing": {
     "message": "Settings & Billing",

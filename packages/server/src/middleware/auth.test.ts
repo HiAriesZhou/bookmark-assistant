@@ -16,6 +16,7 @@ import {
 } from './auth';
 
 import { config } from '../config';
+import { auditLog } from '../utils';
 
 // Mock config
 vi.mock('../config', () => ({
@@ -284,6 +285,11 @@ describe('Auth Middleware', () => {
       errorHandler(error, mockRequest as Request, response, nextFunction);
 
       expect(nextFunction).toHaveBeenCalledWith(error);
+      expect(auditLog).toHaveBeenCalledWith(
+        'server_error',
+        'unknown',
+        expect.objectContaining({ error: 'Late failure' })
+      );
       expect(response.status).not.toHaveBeenCalled();
       expect(response.json).not.toHaveBeenCalled();
     });

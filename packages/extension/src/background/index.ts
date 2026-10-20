@@ -6,6 +6,7 @@ import {
   createSyncFingerprint,
   formatCurrentPageForSync,
   formatSavedLinkForSync,
+  isWebPageUrl,
   normalizeUrl,
   prepareLegacyLinkItemForSync,
   toSyncFingerprintItems,
@@ -26,7 +27,7 @@ import {
 } from '../utils/account-state';
 import { validateConfig, debugConfig } from './config';
 import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
-import { addMessageListener, Messages } from '../utils/message';
+import { addMessageListener, Messages, type MessageResponse } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
 import { reportError } from '../utils/error-reporter';
 import { cleanupStorage } from '../utils/storage-cleanup';
@@ -41,7 +42,7 @@ import {
   recordDashboardEvent,
   recordDashboardSave,
 } from './dashboard';
-import { canSendCurrentPageToAi } from './ai-page-policy';
+import { currentPageAiReadiness, type CurrentPageAiReadiness } from './ai-page-policy';
 import {
   canCommitSyncFingerprint,
   createSyncExecutionGate,
@@ -444,7 +445,7 @@ async function syncCapturedLink(
 // the popup can acknowledge a successful Notion write immediately.
 async function saveCurrentPage(
   source: CurrentPageCaptureSource = 'current_page'
-): Promise<{ success: boolean; error?: string; aiStatus?: string; aiRequestId?: string }> {
+): Promise<MessageResponse<'SAVE_CURRENT_PAGE'>> {
   const context = await readAccountContext();
   try {
     // Saving the current page needs a linked Notion destination.
@@ -459,8 +460,7 @@ async function saveCurrentPage(
       return { success: false, error: 'No active tab found' };
     }
 
-    // Skip chrome:// and other internal URLs
-    if (tab.url.startsWith('chrome://') || tab.url.startsWith('about:')) {
+    if (!isWebPageUrl(tab.url)) {
       return { success: false, error: 'Cannot save internal page' };
     }
 
@@ -498,6 +498,11 @@ async function saveCurrentPage(
     ) {
       return { success: true, aiStatus: 'not_started' };
     }
+
+    // Register an AI handoff only when AI will run, so a plain save stays plain.
+    // If the check is unavailable, the handoff checks again before reading the page.
+    const readiness = await readCurrentPageAiReadiness(tab.url).catch(() => 'ready' as const);
+    if (readiness !== 'ready') return { success: true, aiStatus: readiness };
 
     try {
       const aiRequestId = await createPendingCurrentPageAi(
@@ -538,9 +543,18 @@ async function saveCurrentPage(
   }
 }
 
+// Reads AI settings only; page content stays in the tab until AI is ready.
+async function readCurrentPageAiReadiness(url: string): Promise<CurrentPageAiReadiness> {
+  const [settingsResult, credentialResult] = await Promise.all([
+    serverAPI.getAiSettings(),
+    serverAPI.getAiCredential(),
+  ]);
+  return currentPageAiReadiness(url, settingsResult?.settings, credentialResult?.credential);
+}
+
 async function generateCurrentPageAi(
   aiRequestId: string
-): Promise<{ success: boolean; error?: string; aiStatus?: string }> {
+): Promise<MessageResponse<'GENERATE_CURRENT_PAGE_AI'>> {
   const pending = await consumePendingCurrentPageAi(aiRequestId);
   if (!pending || pending.expiresAt <= Date.now()) {
     return { success: true, aiStatus: 'not_started' };
@@ -548,22 +562,8 @@ async function generateCurrentPageAi(
 
   try {
     // Privacy and entitlement checks happen before page content is read.
-    const [settingsResult, credentialResult] = await Promise.all([
-      serverAPI.getAiSettings(),
-      serverAPI.getAiCredential(),
-    ]);
-    const settings = settingsResult?.settings;
-    const credential = credentialResult?.credential;
-    if (
-      credential?.status !== 'verified' ||
-      !settings?.properties?.descriptionPropertyId ||
-      !settings.properties.tagsPropertyId
-    ) {
-      return { success: true, aiStatus: 'not_configured' };
-    }
-    if (!canSendCurrentPageToAi(pending.url, settings)) {
-      return { success: true, aiStatus: 'skipped_ineligible_page' };
-    }
+    const readiness = await readCurrentPageAiReadiness(pending.url);
+    if (readiness !== 'ready') return { success: true, aiStatus: readiness };
 
     const extracted = await chrome.scripting.executeScript({
       target: { tabId: pending.tabId },
@@ -625,9 +625,8 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       return;
     }
 
-    // Skip internal URLs
-    if (url.startsWith('chrome://') || url.startsWith('about:')) {
-      console.log('[Context Menu] Skipping internal URL');
+    if (!isWebPageUrl(url)) {
+      console.log('[Context Menu] Skipping a link that is not a web page');
       return;
     }
 

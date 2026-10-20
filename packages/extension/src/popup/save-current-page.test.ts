@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  CURRENT_PAGE_SAVE_MESSAGES,
   requestCurrentPageAi,
   requestCurrentPageSave,
   saveCurrentPageWithAi,
@@ -59,16 +61,30 @@ describe('requestCurrentPageSave', () => {
   });
 });
 
+describe('current-page save messages', () => {
+  it.each(['en', 'zh_CN'])('are translated in %s', (locale) => {
+    const catalog = JSON.parse(
+      readFileSync(new URL(`../../_locales/${locale}/messages.json`, import.meta.url), 'utf8')
+    ) as Record<string, { message?: string }>;
+    for (const key of [...CURRENT_PAGE_SAVE_MESSAGES, 'saveCurrentPage', 'saveFailed']) {
+      expect(catalog[key]?.message, `${locale}.${key}`).toBeTruthy();
+    }
+  });
+});
+
 describe('saveCurrentPageWithAi', () => {
-  it('confirms a plain save without starting AI', async () => {
-    const sendMessage = stubMessages({
-      SAVE_CURRENT_PAGE: { success: true, aiStatus: 'not_started' },
-    });
+  it.each([
+    ['not_started', 'saveSuccess'],
+    ['not_configured', 'saveSuccess'],
+    ['skipped_ineligible_page', 'saveSuccess'],
+    ['needs_attention', 'popup_ai_check_key'],
+  ])('confirms a save without starting AI when it is %s', async (aiStatus, message) => {
+    const sendMessage = stubMessages({ SAVE_CURRENT_PAGE: { success: true, aiStatus } });
     const onAiStarted = vi.fn();
 
     await expect(saveCurrentPageWithAi(onAiStarted)).resolves.toEqual({
       status: 'saved',
-      message: 'saveSuccess',
+      message,
     });
     expect(onAiStarted).not.toHaveBeenCalled();
     expect(sendMessage).toHaveBeenCalledTimes(1);
@@ -77,8 +93,18 @@ describe('saveCurrentPageWithAi', () => {
   it.each([
     ['succeeded', 'popup_ai_succeeded'],
     ['skipped_insufficient_content', 'popup_ai_skipped'],
+    ['skipped', 'popup_ai_skipped_page'],
+    ['skipped_fetch_disallowed', 'popup_ai_skipped_page'],
+    ['queued', 'popup_ai_processing'],
+    ['processing', 'popup_ai_processing'],
+    ['failed', 'popup_ai_failed'],
+    ['needs_action', 'popup_ai_failed'],
+    ['service_unavailable', 'popup_ai_failed'],
+    ['paused', 'popup_ai_failed'],
+    ['needs_attention', 'popup_ai_check_key'],
+    ['not_configured', 'saveSuccess'],
     ['skipped_navigation_changed', 'popup_ai_not_started'],
-    ['failed', 'popup_ai_not_started'],
+    ['not_started', 'popup_ai_not_started'],
   ])('hands a pending save to AI and reports %s', async (aiStatus, message) => {
     const sendMessage = stubMessages({
       SAVE_CURRENT_PAGE: { success: true, aiStatus: 'pending', aiRequestId: 'request-1' },
@@ -96,21 +122,6 @@ describe('saveCurrentPageWithAi', () => {
       aiRequestId: 'request-1',
     });
   });
-
-  it.each(['not_configured', 'skipped_ineligible_page'])(
-    'confirms a plain save when AI is %s',
-    async (aiStatus) => {
-      stubMessages({
-        SAVE_CURRENT_PAGE: { success: true, aiStatus: 'pending', aiRequestId: 'request-1' },
-        GENERATE_CURRENT_PAGE_AI: { success: true, aiStatus },
-      });
-
-      await expect(saveCurrentPageWithAi(vi.fn())).resolves.toEqual({
-        status: 'saved',
-        message: 'saveSuccess',
-      });
-    }
-  );
 
   it('keeps the save successful when the AI channel fails', async () => {
     stubMessages({

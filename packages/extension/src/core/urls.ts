@@ -8,6 +8,17 @@ import { normalizeLinkUrl } from '@bookmark-assistant/types';
  * - fragment removal
  * - URL encoding normalization
  */
+// Captures are limited to web pages; local files and browser or extension pages
+// stay on the device.
+export function isWebPageUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export function normalizeUrl(url: string): string {
   try {
     return normalizeLinkUrl(url);

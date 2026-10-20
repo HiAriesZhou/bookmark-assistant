@@ -7,6 +7,32 @@ export interface CurrentPageAiSettings {
   };
 }
 
+export type CurrentPageAiReadiness =
+  | 'ready'
+  | 'not_configured'
+  | 'needs_attention'
+  | 'skipped_ineligible_page';
+
+/**
+ * Decides from settings alone whether current-page AI may run, so page content
+ * is read only when it would actually be sent.
+ */
+export function currentPageAiReadiness(
+  rawUrl: string,
+  settings: CurrentPageAiSettings | null | undefined,
+  credential: { status: string } | null | undefined
+): CurrentPageAiReadiness {
+  if (
+    !credential ||
+    !settings?.properties?.descriptionPropertyId ||
+    !settings.properties.tagsPropertyId
+  ) {
+    return 'not_configured';
+  }
+  if (credential.status !== 'verified') return 'needs_attention';
+  return canSendCurrentPageToAi(rawUrl, settings) ? 'ready' : 'skipped_ineligible_page';
+}
+
 /** Keeps page content in the tab unless AI is configured and the URL is safe to send. */
 export function canSendCurrentPageToAi(
   rawUrl: string,
@@ -30,6 +56,9 @@ export function canSendCurrentPageToAi(
 }
 
 function isLocalOrPrivateHost(hostname: string): boolean {
+  // URL keeps IPv6 literals in brackets. Treat them all as private instead of
+  // matching prefixes such as "fd", which ordinary domain names share.
+  if (hostname.startsWith('[')) return true;
   if (
     hostname === 'localhost' ||
     hostname.endsWith('.localhost') ||
@@ -37,13 +66,6 @@ function isLocalOrPrivateHost(hostname: string): boolean {
     hostname.endsWith('.internal') ||
     hostname.endsWith('.test') ||
     !hostname.includes('.')
-  )
-    return true;
-  if (
-    hostname === '::1' ||
-    hostname.startsWith('fc') ||
-    hostname.startsWith('fd') ||
-    hostname.startsWith('fe80:')
   )
     return true;
   const octets = hostname.split('.').map(Number);

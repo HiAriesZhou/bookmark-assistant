@@ -17,6 +17,7 @@ import {
   type AccountContext,
 } from '../utils/account-state';
 import { mapAccountProfile } from '../utils/account-profile';
+import type { CurrentPageAiStatus } from '../utils/message';
 import type {
   BookmarkSyncResponse,
   BookmarkSyncEnrichmentRequest,
@@ -477,7 +478,7 @@ class ServerAPIClient {
     syncId: string;
     url: string;
     body: string;
-  }): Promise<{ status: string }> {
+  }): Promise<{ status: CurrentPageAiStatus }> {
     return this.makeRequest('/api/ai/current-page', {
       method: 'POST',
       body: JSON.stringify(input),

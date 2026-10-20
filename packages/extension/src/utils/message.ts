@@ -1,5 +1,17 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
+import type { AiGenerationStatus } from '@bookmark-assistant/types';
 import type { DashboardSnapshot } from '../dashboard/types';
+
+/** Current-page AI outcomes: server task statuses plus decisions made locally. */
+export type CurrentPageAiStatus =
+  | AiGenerationStatus
+  | 'not_started'
+  | 'not_configured'
+  | 'needs_attention'
+  | 'skipped_ineligible_page'
+  | 'skipped_navigation_changed'
+  | 'skipped_insufficient_content'
+  | 'skipped_fetch_disallowed';
 // Centralized typed messaging between Options/Content and Background
 // Define request/response contracts as a discriminated union
 
@@ -49,11 +61,16 @@ export type MessageMap = {
   };
   SAVE_CURRENT_PAGE: {
     req: {};
-    res: { success: boolean; error?: string; aiStatus?: string; aiRequestId?: string };
+    res: {
+      success: boolean;
+      error?: string;
+      aiStatus?: CurrentPageAiStatus | 'pending';
+      aiRequestId?: string;
+    };
   };
   GENERATE_CURRENT_PAGE_AI: {
     req: { aiRequestId: string };
-    res: { success: boolean; error?: string; aiStatus?: string };
+    res: { success: boolean; error?: string; aiStatus?: CurrentPageAiStatus };
   };
   GET_DASHBOARD_STATE: {
     req: { refreshConnection?: boolean };
