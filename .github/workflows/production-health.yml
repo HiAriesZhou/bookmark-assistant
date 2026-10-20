@@ -1,0 +1,78 @@
+# Checks the hosted API after every production deployment of
+# bookmark-assistant-server and on a schedule. Vercel can report a deployment
+# as Ready while its function crashes on start, so a failed check opens (or
+# comments on) a tracking issue, and the next passing check closes it.
+name: Production Health
+
+on:
+  deployment_status:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: production-health
+  cancel-in-progress: false
+
+env:
+  HEALTH_URL: https://bookmark-assistant-server.vercel.app/api/health
+  ISSUE_TITLE: Hosted API health check failing
+
+jobs:
+  check:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production – bookmark-assistant-server')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request the health endpoint
+        id: probe
+        shell: bash
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -sS -o body.json -w '%{http_code}' --max-time 20 "$HEALTH_URL" || echo 000)
+            status=$(jq -r '.status // empty' body.json 2>/dev/null || true)
+            if [ "$code" = 200 ] && [ "$status" = healthy ]; then
+              echo "Healthy on attempt $attempt."
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP $code, status '${status:-none}'."
+            [ "$attempt" = 5 ] || sleep 15
+          done
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+          echo "detail=HTTP $code, status '${status:-none}'" >> "$GITHUB_OUTPUT"
+
+      - name: Report the result in the tracking issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEALTHY: ${{ steps.probe.outputs.healthy }}
+          DETAIL: ${{ steps.probe.outputs.detail }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGER: ${{ github.event_name == 'deployment_status' && format('production deployment of {0}', github.event.deployment.sha) || github.event_name }}
+        run: |
+          set -euo pipefail
+          issue=$(gh issue list --state open --json number,title \
+            --jq "map(select(.title == \"$ISSUE_TITLE\")) | first | .number // empty")
+          if [ "$HEALTHY" = true ]; then
+            if [ -n "$issue" ]; then
+              gh issue close "$issue" --comment "Recovered: \`$HEALTH_URL\` is healthy again ($TRIGGER, $RUN_URL)."
+            fi
+            exit 0
+          fi
+          message="\`$HEALTH_URL\` failed 5 attempts: $DETAIL. Trigger: $TRIGGER. Run: $RUN_URL"
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$message"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body "$message"
+          fi
+          exit 1
