@@ -30,4 +30,3 @@ describe('opportunistic description-cache cleanup', () => {
     expect(cleanup).toHaveBeenCalledTimes(2);
   });
 });
-

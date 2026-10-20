@@ -1,4 +1,9 @@
-export type DescriptionSource = 'meta_description' | 'og_description' | 'title' | 'content' | 'empty';
+export type DescriptionSource =
+  | 'meta_description'
+  | 'og_description'
+  | 'title'
+  | 'content'
+  | 'empty';
 
 export interface HtmlDescriptionResult {
   text: string;

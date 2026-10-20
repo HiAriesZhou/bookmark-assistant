@@ -10,11 +10,17 @@ export class PrismaAiBatchStore implements AiBatchStore {
     return toRecord(value);
   }
   async confirm(id: string, userId: string): Promise<AiGenerationBatchRecord | undefined> {
-    const value = await prisma.aiGenerationBatch.updateMany({ where: { id, userId, status: 'awaiting_confirmation' }, data: { status: 'queued', confirmedAt: new Date() } });
+    const value = await prisma.aiGenerationBatch.updateMany({
+      where: { id, userId, status: 'awaiting_confirmation' },
+      data: { status: 'queued', confirmedAt: new Date() },
+    });
     return value.count ? this.find(id) : undefined;
   }
   async skip(id: string, userId: string): Promise<AiGenerationBatchRecord | undefined> {
-    const value = await prisma.aiGenerationBatch.updateMany({ where: { id, userId, status: 'awaiting_confirmation' }, data: { status: 'skipped', skippedAt: new Date() } });
+    const value = await prisma.aiGenerationBatch.updateMany({
+      where: { id, userId, status: 'awaiting_confirmation' },
+      data: { status: 'skipped', skippedAt: new Date() },
+    });
     return value.count ? this.find(id) : undefined;
   }
   /** A deliberate manual run is also the user's confirmation for every pending batch. */
@@ -43,6 +49,19 @@ export class PrismaAiBatchStore implements AiBatchStore {
   }
 }
 
-function toRecord(value: { id: string; userId: string; dataSourceId: string | null; status: string; eligibleCount: number }): AiGenerationBatchRecord {
-  return { id: value.id, userId: value.userId, dataSourceId: value.dataSourceId, eligibleCount: value.eligibleCount, status: value.status as AiGenerationBatchRecord['status'], requiresConfirmation: value.status === 'awaiting_confirmation' };
+function toRecord(value: {
+  id: string;
+  userId: string;
+  dataSourceId: string | null;
+  status: string;
+  eligibleCount: number;
+}): AiGenerationBatchRecord {
+  return {
+    id: value.id,
+    userId: value.userId,
+    dataSourceId: value.dataSourceId,
+    eligibleCount: value.eligibleCount,
+    status: value.status as AiGenerationBatchRecord['status'],
+    requiresConfirmation: value.status === 'awaiting_confirmation',
+  };
 }

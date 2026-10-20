@@ -323,9 +323,7 @@ function propertyTypeMatches(propertyType: unknown, matcherType: string | string
 }
 
 function buildSelectProperty(name: string, propertyType: string): unknown {
-  return propertyType === 'select'
-    ? { select: { name } }
-    : { single_select: { name } };
+  return propertyType === 'select' ? { select: { name } } : { single_select: { name } };
 }
 
 function normalizePageProperties(properties: unknown): NotionPagePropertiesLike {
@@ -375,7 +373,9 @@ function extractNotionPageType(properties: NotionPagePropertiesLike): LinkItemTy
       continue;
     }
 
-    const name = getNotionNamedOption(propDef.type === 'select' ? propDef.select : propDef.single_select);
+    const name = getNotionNamedOption(
+      propDef.type === 'select' ? propDef.select : propDef.single_select
+    );
     if (/reading\s*list/i.test(name) || /readinglist/i.test(name)) {
       return 'reading_list';
     }
@@ -390,7 +390,9 @@ function extractNotionPageType(properties: NotionPagePropertiesLike): LinkItemTy
 function extractNotionPageReadState(properties: NotionPagePropertiesLike): ReadState | undefined {
   for (const [propName, propDef] of Object.entries(properties)) {
     if (
-      (propDef?.type !== 'status' && propDef?.type !== 'select' && propDef?.type !== 'single_select') ||
+      (propDef?.type !== 'status' &&
+        propDef?.type !== 'select' &&
+        propDef?.type !== 'single_select') ||
       !(/read.*state/i.test(propName) || /status/i.test(propName))
     ) {
       continue;

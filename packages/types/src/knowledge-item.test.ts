@@ -44,9 +44,9 @@ describe('KnowledgeItem v1', () => {
   it('keeps different capture sources as distinct identities', () => {
     const canonicalUrl = 'https://example.com/context';
 
-    expect(
-      createKnowledgeItemId({ source: 'chrome_bookmark', canonicalUrl })
-    ).not.toBe(createKnowledgeItemId({ source: 'current_page', canonicalUrl }));
+    expect(createKnowledgeItemId({ source: 'chrome_bookmark', canonicalUrl })).not.toBe(
+      createKnowledgeItemId({ source: 'current_page', canonicalUrl })
+    );
   });
 
   it('accepts a valid v1 object', () => {

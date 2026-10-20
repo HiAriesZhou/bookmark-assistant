@@ -9,7 +9,9 @@ function createStore(): AiTaskStore & { records: AiGenerationTaskRecord[] } {
       return userId === 'missing' ? undefined : `internal-${userId}`;
     },
     async findTask(userId, knowledgeItemId) {
-      return records.find((record) => record.userId === userId && record.knowledgeItemId === knowledgeItemId);
+      return records.find(
+        (record) => record.userId === userId && record.knowledgeItemId === knowledgeItemId
+      );
     },
     async createTask(task) {
       const record = { ...task, id: `task-${records.length + 1}` };
@@ -19,7 +21,13 @@ function createStore(): AiTaskStore & { records: AiGenerationTaskRecord[] } {
     async createTasks(tasks) {
       let created = 0;
       for (const task of tasks) {
-        if (records.some((record) => record.userId === task.userId && record.knowledgeItemId === task.knowledgeItemId)) continue;
+        if (
+          records.some(
+            (record) =>
+              record.userId === task.userId && record.knowledgeItemId === task.knowledgeItemId
+          )
+        )
+          continue;
         records.push({ ...task, id: `task-${records.length + 1}` });
         created++;
       }
@@ -53,7 +61,13 @@ describe('AiTaskQueue', () => {
 
     expect(result).toMatchObject({
       created: true,
-      task: { status: 'queued', provider: 'openai', model: 'gpt-5-mini', credentialVersion: 3, descriptionBaselineHash: 'baseline-hash' },
+      task: {
+        status: 'queued',
+        provider: 'openai',
+        model: 'gpt-5-mini',
+        credentialVersion: 3,
+        descriptionBaselineHash: 'baseline-hash',
+      },
     });
     expect(store.records[0]).not.toHaveProperty('body');
   });
@@ -69,10 +83,18 @@ describe('AiTaskQueue', () => {
         verifiedAt: null,
       }),
     });
-    const input = { externalUserId: 'user-a', knowledgeItemId: 'ki-1', notionPageId: 'page-1', mode: 'batch' as const };
+    const input = {
+      externalUserId: 'user-a',
+      knowledgeItemId: 'ki-1',
+      notionPageId: 'page-1',
+      mode: 'batch' as const,
+    };
 
     await queue.enqueue(input);
-    await expect(queue.enqueue(input)).resolves.toMatchObject({ created: false, task: { id: 'task-1' } });
+    await expect(queue.enqueue(input)).resolves.toMatchObject({
+      created: false,
+      task: { id: 'task-1' },
+    });
     expect(store.records).toHaveLength(1);
   });
 
@@ -80,7 +102,14 @@ describe('AiTaskQueue', () => {
     const store = createStore();
     const queue = new AiTaskQueue(store, { getCredentialSummary: async () => undefined });
 
-    await expect(queue.enqueue({ externalUserId: 'user-a', knowledgeItemId: 'ki-1', notionPageId: 'page-1', mode: 'batch' })).resolves.toEqual({
+    await expect(
+      queue.enqueue({
+        externalUserId: 'user-a',
+        knowledgeItemId: 'ki-1',
+        notionPageId: 'page-1',
+        mode: 'batch',
+      })
+    ).resolves.toEqual({
       created: false,
       reason: 'credential_required',
     });

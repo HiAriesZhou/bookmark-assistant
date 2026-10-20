@@ -1,15 +1,39 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AiTaskWorker } from './ai-task-worker';
 
-const task = (id: string, userId: string, minute: number) => ({ id, userId, knowledgeItemId: id, notionPageId: id, sourceUrl: 'https://example.com', mode: 'batch' as const, status: 'queued' as const, provider: 'openai', model: 'gpt-5-mini', promptVersion: 'v1', credentialVersion: 1, createdAt: new Date(`2026-08-23T00:${String(minute).padStart(2, '0')}:00Z`) });
+const task = (id: string, userId: string, minute: number) => ({
+  id,
+  userId,
+  knowledgeItemId: id,
+  notionPageId: id,
+  sourceUrl: 'https://example.com',
+  mode: 'batch' as const,
+  status: 'queued' as const,
+  provider: 'openai',
+  model: 'gpt-5-mini',
+  promptVersion: 'v1',
+  credentialVersion: 1,
+  createdAt: new Date(`2026-08-23T00:${String(minute).padStart(2, '0')}:00Z`),
+});
 
 describe('AiTaskWorker', () => {
   it('claims fairly selected tasks and resolves context before execution', async () => {
     const queued = [task('a1', 'a', 1), task('a2', 'a', 2), task('b1', 'b', 3)];
     const execute = vi.fn(async () => undefined);
     const worker = new AiTaskWorker({
-      store: { listClaimable: async () => queued, listClaimableForUser: async () => queued, countProcessingByUser: async () => new Map(), claimTask: async (id) => queued.find((item) => item.id === id), retryBatchTask: async () => false, markNeedsAction: async () => undefined },
-      resolveContext: async () => ({ accessToken: 'token', settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' } }), execute: execute as any,
+      store: {
+        listClaimable: async () => queued,
+        listClaimableForUser: async () => queued,
+        countProcessingByUser: async () => new Map(),
+        claimTask: async (id) => queued.find((item) => item.id === id),
+        retryBatchTask: async () => false,
+        markNeedsAction: async () => undefined,
+      },
+      resolveContext: async () => ({
+        accessToken: 'token',
+        settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' },
+      }),
+      execute: execute as any,
     });
     await expect(worker.runOnce(2)).resolves.toBe(2);
     expect(execute.mock.calls.map(([item]) => item.id)).toEqual(['a1', 'b1']);
@@ -27,7 +51,10 @@ describe('AiTaskWorker', () => {
         retryBatchTask: async () => false,
         markNeedsAction: async () => undefined,
       },
-      resolveContext: async () => ({ accessToken: 'token', settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' } }),
+      resolveContext: async () => ({
+        accessToken: 'token',
+        settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' },
+      }),
       execute: execute as any,
     });
     await expect(worker.runForUser('a', 10)).resolves.toBe(2);
@@ -39,11 +66,17 @@ describe('AiTaskWorker', () => {
     const retryBatchTask = vi.fn(async () => true);
     const worker = new AiTaskWorker({
       store: {
-        listClaimable: async () => queued, listClaimableForUser: async () => queued,
-        countProcessingByUser: async () => new Map(), claimTask: async () => queued[0],
-        retryBatchTask, markNeedsAction: async () => undefined,
+        listClaimable: async () => queued,
+        listClaimableForUser: async () => queued,
+        countProcessingByUser: async () => new Map(),
+        claimTask: async () => queued[0],
+        retryBatchTask,
+        markNeedsAction: async () => undefined,
       },
-      resolveContext: async () => ({ accessToken: 'token', settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' } }),
+      resolveContext: async () => ({
+        accessToken: 'token',
+        settings: { descriptionPropertyId: 'desc', tagsPropertyId: 'tags' },
+      }),
       execute: async () => 'failed',
     });
     await worker.runForUser('a', 1);

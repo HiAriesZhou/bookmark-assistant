@@ -23,7 +23,13 @@ function createPublishDirectory() {
       icons: { 16: 'assets/icon-16.png' },
     })
   );
-  for (const file of ['assets/background.js', 'assets/icon-16.png', 'popup.html', 'options.html', '_locales/en/messages.json']) {
+  for (const file of [
+    'assets/background.js',
+    'assets/icon-16.png',
+    'popup.html',
+    'options.html',
+    '_locales/en/messages.json',
+  ]) {
     fs.writeFileSync(path.join(directory, file), 'fixture');
   }
   return directory;

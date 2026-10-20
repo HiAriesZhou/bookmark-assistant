@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  AI_GENERATION_STATUSES,
-  AI_PROVIDERS,
-  isAiGenerationStatus,
-  isAiProvider,
-} from './index';
+import { AI_GENERATION_STATUSES, AI_PROVIDERS, isAiGenerationStatus, isAiProvider } from './index';
 
 describe('AI shared contracts', () => {
   it('exposes official and curated compatible providers', () => {

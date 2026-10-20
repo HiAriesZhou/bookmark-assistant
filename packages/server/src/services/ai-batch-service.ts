@@ -1,4 +1,4 @@
-import { planAiBatch, type AiBatchPlan } from './ai-batch-planner';
+import { planAiBatch } from './ai-batch-planner';
 
 export type AiGenerationBatchRecord = {
   id: string;
@@ -20,6 +20,10 @@ export class AiBatchService {
     const plan = planAiBatch(eligibleCount);
     return this.store.create({ userId, dataSourceId, ...plan });
   }
-  confirm(id: string, userId: string) { return this.store.confirm(id, userId); }
-  skip(id: string, userId: string) { return this.store.skip(id, userId); }
+  confirm(id: string, userId: string) {
+    return this.store.confirm(id, userId);
+  }
+  skip(id: string, userId: string) {
+    return this.store.skip(id, userId);
+  }
 }

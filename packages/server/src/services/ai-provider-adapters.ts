@@ -75,7 +75,9 @@ export function createAiProviderAdapter(
     async validateApiKey(apiKey: string): Promise<void> {
       let response: Response;
       try {
-        response = await fetcher(...withProviderTimeout(buildValidationRequest(provider, model, apiKey)));
+        response = await fetcher(
+          ...withProviderTimeout(buildValidationRequest(provider, model, apiKey))
+        );
       } catch {
         throw new AiProviderValidationError('service_unavailable', provider);
       }
@@ -86,7 +88,9 @@ export function createAiProviderAdapter(
     async generate(apiKey: string, prompt: string): Promise<AiProviderGenerationResult> {
       let response: Response;
       try {
-        response = await fetcher(...withProviderTimeout(buildGenerationRequest(provider, model, apiKey, prompt)));
+        response = await fetcher(
+          ...withProviderTimeout(buildGenerationRequest(provider, model, apiKey, prompt))
+        );
       } catch {
         throw new AiProviderGenerationError('provider_request_failed', provider);
       }
@@ -104,10 +108,17 @@ export function createAiProviderAdapter(
 }
 
 function withProviderTimeout(request: [string, RequestInit]): [string, RequestInit] {
-  return [request[0], { ...request[1], signal: AbortSignal.timeout(AI_PROVIDER_REQUEST_TIMEOUT_MS) }];
+  return [
+    request[0],
+    { ...request[1], signal: AbortSignal.timeout(AI_PROVIDER_REQUEST_TIMEOUT_MS) },
+  ];
 }
 
-function buildValidationRequest(provider: AiProvider, model: string, apiKey: string): [string, RequestInit] {
+function buildValidationRequest(
+  provider: AiProvider,
+  model: string,
+  apiKey: string
+): [string, RequestInit] {
   const common: RequestInit = {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -160,9 +171,21 @@ function buildValidationRequest(provider: AiProvider, model: string, apiKey: str
       ];
     case 'deepseek':
     case 'groq':
-      return openAiCompatibleRequest(openAiCompatibleBaseUrl(provider), model, apiKey, 'Reply with OK.', 16);
+      return openAiCompatibleRequest(
+        openAiCompatibleBaseUrl(provider),
+        model,
+        apiKey,
+        'Reply with OK.',
+        16
+      );
     case 'minimax':
-      return anthropicCompatibleRequest('https://api.minimax.io/anthropic', model, apiKey, 'Reply with OK.', 16);
+      return anthropicCompatibleRequest(
+        'https://api.minimax.io/anthropic',
+        model,
+        apiKey,
+        'Reply with OK.',
+        16
+      );
   }
 }
 
@@ -221,11 +244,20 @@ function buildGenerationRequest(
     case 'groq':
       return openAiCompatibleRequest(openAiCompatibleBaseUrl(provider), model, apiKey, prompt, 600);
     case 'minimax':
-      return anthropicCompatibleRequest('https://api.minimax.io/anthropic', model, apiKey, prompt, 600);
+      return anthropicCompatibleRequest(
+        'https://api.minimax.io/anthropic',
+        model,
+        apiKey,
+        prompt,
+        600
+      );
   }
 }
 
-function extractGenerationResult(provider: AiProvider, payload: unknown): AiProviderGenerationResult {
+function extractGenerationResult(
+  provider: AiProvider,
+  payload: unknown
+): AiProviderGenerationResult {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid provider payload.');
   }
@@ -235,24 +267,51 @@ function extractGenerationResult(provider: AiProvider, payload: unknown): AiProv
       const text = record.output
         ?.flatMap((item: any) => item?.content || [])
         .find((content: any) => content?.type === 'output_text')?.text;
-      return generationResult(text, record.id, record.usage?.input_tokens, record.usage?.output_tokens);
+      return generationResult(
+        text,
+        record.id,
+        record.usage?.input_tokens,
+        record.usage?.output_tokens
+      );
     }
     case 'anthropic': {
       const text = record.content?.find((item: any) => item?.type === 'text')?.text;
-      return generationResult(text, record.id, record.usage?.input_tokens, record.usage?.output_tokens);
+      return generationResult(
+        text,
+        record.id,
+        record.usage?.input_tokens,
+        record.usage?.output_tokens
+      );
     }
     case 'gemini': {
-      const text = record.candidates?.[0]?.content?.parts?.find((item: any) => typeof item?.text === 'string')?.text;
-      return generationResult(text, record.responseId, record.usageMetadata?.promptTokenCount, record.usageMetadata?.candidatesTokenCount);
+      const text = record.candidates?.[0]?.content?.parts?.find(
+        (item: any) => typeof item?.text === 'string'
+      )?.text;
+      return generationResult(
+        text,
+        record.responseId,
+        record.usageMetadata?.promptTokenCount,
+        record.usageMetadata?.candidatesTokenCount
+      );
     }
     case 'deepseek':
     case 'groq': {
       const text = record.choices?.[0]?.message?.content;
-      return generationResult(text, record.id, record.usage?.prompt_tokens, record.usage?.completion_tokens);
+      return generationResult(
+        text,
+        record.id,
+        record.usage?.prompt_tokens,
+        record.usage?.completion_tokens
+      );
     }
     case 'minimax': {
       const text = record.content?.find((item: any) => item?.type === 'text')?.text;
-      return generationResult(text, record.id, record.usage?.input_tokens, record.usage?.output_tokens);
+      return generationResult(
+        text,
+        record.id,
+        record.usage?.input_tokens,
+        record.usage?.output_tokens
+      );
     }
   }
 }
@@ -374,8 +433,6 @@ async function classifyGenerationFailure(
 function parseRetryAfter(value: string | null): number | undefined {
   if (!value) return undefined;
   const seconds = Number(value);
-  const duration = Number.isFinite(seconds)
-    ? seconds * 1_000
-    : Date.parse(value) - Date.now();
+  const duration = Number.isFinite(seconds) ? seconds * 1_000 : Date.parse(value) - Date.now();
   return Number.isFinite(duration) && duration > 0 ? Math.min(duration, 15 * 60_000) : undefined;
 }

@@ -42,16 +42,23 @@ describe('AI generation prompt', () => {
   });
 
   it('accepts only a valid summary and one to five unique tags', () => {
-    expect(parseAiModelOutput('```json\n{"summary":"A concise summary.","tags":["AI","ai","Tools"]}\n```', 'en')).toEqual({
+    expect(
+      parseAiModelOutput(
+        '```json\n{"summary":"A concise summary.","tags":["AI","ai","Tools"]}\n```',
+        'en'
+      )
+    ).toEqual({
       status: 'ok',
       language: 'en',
       summary: 'A concise summary.',
       tags: ['AI', 'Tools'],
     });
-    expect(() => parseAiModelOutput('{"summary":"","tags":[]}', 'en')).toThrow('AI output is invalid.');
-    expect(() => parseAiModelOutput('{"summary":"x","tags":["a","b","c","d","e","f"]}', 'en')).toThrow(
+    expect(() => parseAiModelOutput('{"summary":"","tags":[]}', 'en')).toThrow(
       'AI output is invalid.'
     );
+    expect(() =>
+      parseAiModelOutput('{"summary":"x","tags":["a","b","c","d","e","f"]}', 'en')
+    ).toThrow('AI output is invalid.');
   });
 
   it('marks an otherwise valid overlong summary as recoverable for one compression request', () => {
@@ -63,7 +70,9 @@ describe('AI generation prompt', () => {
     }
     expect(caught).toBeInstanceOf(AiGenerationOutputError);
     expect(caught).toMatchObject({ code: 'summary_too_long' });
-    const prompt = buildAiSummaryCompressionPrompt((caught as AiGenerationOutputError).recoverableOutput!);
+    const prompt = buildAiSummaryCompressionPrompt(
+      (caught as AiGenerationOutputError).recoverableOutput!
+    );
     expect(prompt).toContain('60 English words');
     expect(prompt).toContain('"tags":["AI"]');
   });
@@ -73,27 +82,41 @@ describe('AI generation prompt', () => {
   });
 
   it('accepts the exact insufficient-content model response', () => {
-    expect(parseAiModelOutput('{"status":"insufficient_content","summary":"","tags":[]}', 'en')).toEqual({
-      status: 'insufficient_content', language: 'en', summary: '', tags: [],
+    expect(
+      parseAiModelOutput('{"status":"insufficient_content","summary":"","tags":[]}', 'en')
+    ).toEqual({
+      status: 'insufficient_content',
+      language: 'en',
+      summary: '',
+      tags: [],
     });
   });
 
   it('rejects unsafe or overlong generated tags', () => {
-    expect(() => parseAiModelOutput('{"summary":"Useful.","tags":["line\\nbreak"]}', 'en')).toThrow();
-    expect(() => parseAiModelOutput(`{"summary":"Useful.","tags":["${'x'.repeat(51)}"]}`, 'en')).toThrow();
+    expect(() =>
+      parseAiModelOutput('{"summary":"Useful.","tags":["line\\nbreak"]}', 'en')
+    ).toThrow();
+    expect(() =>
+      parseAiModelOutput(`{"summary":"Useful.","tags":["${'x'.repeat(51)}"]}`, 'en')
+    ).toThrow();
   });
 
   it('uses tiered body, description, and title content', () => {
     expect(selectSufficientAiContent('Sign in', 'Short metadata')).toBe('Short metadata');
-    const description = 'A useful description with enough factual context to summarize this bookmark and identify its main topic correctly.';
+    const description =
+      'A useful description with enough factual context to summarize this bookmark and identify its main topic correctly.';
     expect(selectSufficientAiContent('Sign in', description)).toBe(description);
-    expect(selectSufficientAiContent('Sign in', undefined, 'Product documentation')).toBe('Product documentation');
+    expect(selectSufficientAiContent('Sign in', undefined, 'Product documentation')).toBe(
+      'Product documentation'
+    );
     expect(selectSufficientAiContent('Sign in', undefined, 'DeepSeek')).toBe('DeepSeek');
     expect(selectSufficientAiContent('Sign in', undefined, 'Home')).toBeUndefined();
   });
 
   it('maps generated tags to existing Notion option casing', () => {
-    expect(canonicalizeGeneratedTags(['artificial intelligence'], ['Artificial Intelligence'])).toEqual(['Artificial Intelligence']);
+    expect(
+      canonicalizeGeneratedTags(['artificial intelligence'], ['Artificial Intelligence'])
+    ).toEqual(['Artificial Intelligence']);
     expect(canonicalizeGeneratedTags(['AI, tools', 'AI tools'], [])).toEqual(['AI tools']);
   });
 });

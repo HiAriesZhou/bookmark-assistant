@@ -23,15 +23,11 @@ describe('sync enrichment guards', () => {
     expect(
       belongsToSyncTarget({ parent: { data_source_id: 'source-1' } }, 'source-1', 'db-1')
     ).toBe(true);
-    expect(
-      belongsToSyncTarget({ parent: { database_id: 'db-1' } }, 'source-1', 'db-1')
-    ).toBe(true);
-    expect(
-      belongsToSyncTarget({ parent: { data_source_id: 'other' } }, 'source-1', 'db-1')
-    ).toBe(false);
-    expect(belongsToSyncTarget({ parent: { page_id: 'page-1' } }, 'source-1', 'db-1')).toBe(
+    expect(belongsToSyncTarget({ parent: { database_id: 'db-1' } }, 'source-1', 'db-1')).toBe(true);
+    expect(belongsToSyncTarget({ parent: { data_source_id: 'other' } }, 'source-1', 'db-1')).toBe(
       false
     );
+    expect(belongsToSyncTarget({ parent: { page_id: 'page-1' } }, 'source-1', 'db-1')).toBe(false);
     expect(
       belongsToSyncTarget({ archived: true, parent: { data_source_id: 'source-1' } }, 'source-1')
     ).toBe(false);

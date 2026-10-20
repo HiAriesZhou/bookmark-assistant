@@ -40,14 +40,27 @@ export interface AiTaskExecutionStore {
     userId: string,
     provider: string,
     credentialVersion: number,
-    reasonCode: Extract<AiGenerationReasonCode, 'needs_action_invalid_api_key' | 'needs_action_insufficient_quota' | 'needs_action_model_access'>
+    reasonCode: Extract<
+      AiGenerationReasonCode,
+      | 'needs_action_invalid_api_key'
+      | 'needs_action_insufficient_quota'
+      | 'needs_action_model_access'
+    >
   ): Promise<void>;
 }
 
 export interface AiTaskExecutionNotionClient {
   getPage(pageId: string, accessToken: string): Promise<NotionPageForAi>;
-  updatePage(pageId: string, properties: Record<string, unknown>, accessToken: string): Promise<void>;
-  getAiTagCandidates?(dataSourceId: string, accessToken: string, tagsPropertyId: string): Promise<string[]>;
+  updatePage(
+    pageId: string,
+    properties: Record<string, unknown>,
+    accessToken: string
+  ): Promise<void>;
+  getAiTagCandidates?(
+    dataSourceId: string,
+    accessToken: string,
+    tagsPropertyId: string
+  ): Promise<string[]>;
 }
 
 export interface AiTaskExecutionContext {
@@ -63,15 +76,34 @@ export interface AiTaskExecutorDependencies {
   notion: AiTaskExecutionNotionClient;
   fetcher: Pick<PublicPageFetcher, 'fetch'>;
   providerFor(provider: ActiveAiProviderCredential['provider'], model: string): AiProviderAdapter;
-  providerControl?: { isAllowed(provider: ActiveAiProviderCredential['provider'], mode: 'single_page' | 'batch'): Promise<boolean> };
-  diagnostics?: { record(taskId: string, input: { providerRequestId?: string; inputTokens?: number; outputTokens?: number; durationMs?: number; errorCode?: string }): Promise<void> };
+  providerControl?: {
+    isAllowed(
+      provider: ActiveAiProviderCredential['provider'],
+      mode: 'single_page' | 'batch'
+    ): Promise<boolean>;
+  };
+  diagnostics?: {
+    record(
+      taskId: string,
+      input: {
+        providerRequestId?: string;
+        inputTokens?: number;
+        outputTokens?: number;
+        durationMs?: number;
+        errorCode?: string;
+      }
+    ): Promise<void>;
+  };
 }
 
 /** Executes an already-claimed task. The caller owns the lease and never persists page body or prompt. */
 export class AiTaskExecutor {
   constructor(private readonly dependencies: AiTaskExecutorDependencies) {}
 
-  async execute(task: ExecutableAiTask, context: AiTaskExecutionContext): Promise<AiGenerationStatus> {
+  async execute(
+    task: ExecutableAiTask,
+    context: AiTaskExecutionContext
+  ): Promise<AiGenerationStatus> {
     const startedAt = Date.now();
     if (!task.leaseToken) return 'paused';
     if (task.sourceUrl && isAiSourceDisallowed(task.sourceUrl)) {
@@ -85,11 +117,18 @@ export class AiTaskExecutor {
       await this.complete(task, 'needs_action', 'needs_action_credential_deleted');
       return 'needs_action';
     }
-    if (!isAiProvider(task.provider) || credential.provider !== task.provider || credential.credentialVersion !== task.credentialVersion) {
+    if (
+      !isAiProvider(task.provider) ||
+      credential.provider !== task.provider ||
+      credential.credentialVersion !== task.credentialVersion
+    ) {
       await this.complete(task, 'needs_action', 'needs_action_credential_deleted');
       return 'needs_action';
     }
-    if (this.dependencies.providerControl && !(await this.dependencies.providerControl.isAllowed(credential.provider, task.mode))) {
+    if (
+      this.dependencies.providerControl &&
+      !(await this.dependencies.providerControl.isAllowed(credential.provider, task.mode))
+    ) {
       await this.complete(task, 'service_unavailable', 'service_provider_paused');
       return 'service_unavailable';
     }
@@ -120,7 +159,11 @@ export class AiTaskExecutor {
     const resolvedBody = await this.resolveBody(task, context.currentPageBody);
     const body = selectSufficientAiContent(resolvedBody.body, description, title);
     if (!body) {
-      await this.complete(task, 'skipped', resolvedBody.reasonCode || 'skipped_insufficient_content');
+      await this.complete(
+        task,
+        'skipped',
+        resolvedBody.reasonCode || 'skipped_insufficient_content'
+      );
       return 'skipped';
     }
 
@@ -136,7 +179,9 @@ export class AiTaskExecutor {
 
     let generated: Awaited<ReturnType<AiProviderAdapter['generate']>>;
     try {
-      generated = await this.dependencies.providerFor(credential.provider, task.model).generate(credential.apiKey, prompt.prompt);
+      generated = await this.dependencies
+        .providerFor(credential.provider, task.model)
+        .generate(credential.apiKey, prompt.prompt);
     } catch (error) {
       return this.handleProviderFailure(task, credential, startedAt, error);
     }
@@ -145,12 +190,15 @@ export class AiTaskExecutor {
     try {
       output = parseAiModelOutput(generated.text, prompt.language);
     } catch (error) {
-      if (error instanceof AiGenerationOutputError && error.code === 'summary_too_long' && error.recoverableOutput) {
+      if (
+        error instanceof AiGenerationOutputError &&
+        error.code === 'summary_too_long' &&
+        error.recoverableOutput
+      ) {
         try {
-          const compressed = await this.dependencies.providerFor(credential.provider, task.model).generate(
-            credential.apiKey,
-            buildAiSummaryCompressionPrompt(error.recoverableOutput)
-          );
+          const compressed = await this.dependencies
+            .providerFor(credential.provider, task.model)
+            .generate(credential.apiKey, buildAiSummaryCompressionPrompt(error.recoverableOutput));
           output = parseAiModelOutput(compressed.text, prompt.language);
           generated = mergeGenerationDiagnostics(generated, compressed);
         } catch (compressionError) {
@@ -158,18 +206,27 @@ export class AiTaskExecutor {
             return this.handleProviderFailure(task, credential, startedAt, compressionError);
           }
           await this.complete(task, 'failed', 'failed_invalid_output');
-          await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: 'failed_invalid_output' });
+          await this.recordDiagnostic(task.id, {
+            durationMs: Date.now() - startedAt,
+            errorCode: 'failed_invalid_output',
+          });
           return 'failed';
         }
       } else {
         await this.complete(task, 'failed', 'failed_invalid_output');
-        await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: 'failed_invalid_output' });
+        await this.recordDiagnostic(task.id, {
+          durationMs: Date.now() - startedAt,
+          errorCode: 'failed_invalid_output',
+        });
         return 'failed';
       }
     }
     if (!output) {
       await this.complete(task, 'failed', 'failed_invalid_output');
-      await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: 'failed_invalid_output' });
+      await this.recordDiagnostic(task.id, {
+        durationMs: Date.now() - startedAt,
+        errorCode: 'failed_invalid_output',
+      });
       return 'failed';
     }
     if (output.status === 'insufficient_content') {
@@ -190,13 +247,24 @@ export class AiTaskExecutor {
 
     let prepared: ReturnType<typeof prepareNotionAiWrite>;
     try {
-      prepared = prepareNotionAiWrite(latestPage, context.settings, output, task.descriptionBaselineHash || undefined);
+      prepared = prepareNotionAiWrite(
+        latestPage,
+        context.settings,
+        output,
+        task.descriptionBaselineHash || undefined
+      );
     } catch (error) {
-      const isTargetUnavailable = error instanceof NotionAiWriteError && error.code === 'target_unavailable';
+      const isTargetUnavailable =
+        error instanceof NotionAiWriteError && error.code === 'target_unavailable';
       const status = isTargetUnavailable ? 'needs_action' : 'failed';
-      const reasonCode = isTargetUnavailable ? 'needs_action_notion_schema' : 'failed_invalid_output';
+      const reasonCode = isTargetUnavailable
+        ? 'needs_action_notion_schema'
+        : 'failed_invalid_output';
       await this.complete(task, status, reasonCode);
-      await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: reasonCode });
+      await this.recordDiagnostic(task.id, {
+        durationMs: Date.now() - startedAt,
+        errorCode: reasonCode,
+      });
       return status;
     }
 
@@ -204,18 +272,29 @@ export class AiTaskExecutor {
     // the model call so an in-flight request can never write with a revoked key.
     try {
       const current = await this.dependencies.credentials.getActiveCredential(task.userId);
-      if (current.provider !== credential.provider || current.credentialVersion !== credential.credentialVersion) return 'paused';
+      if (
+        current.provider !== credential.provider ||
+        current.credentialVersion !== credential.credentialVersion
+      )
+        return 'paused';
     } catch {
       return 'paused';
     }
-    if (this.dependencies.providerControl && !(await this.dependencies.providerControl.isAllowed(credential.provider, task.mode))) {
+    if (
+      this.dependencies.providerControl &&
+      !(await this.dependencies.providerControl.isAllowed(credential.provider, task.mode))
+    ) {
       await this.complete(task, 'service_unavailable', 'service_provider_paused');
       return 'service_unavailable';
     }
     if (!(await this.dependencies.store.hasActiveLease(task.id, task.leaseToken))) return 'paused';
 
     try {
-      await this.dependencies.notion.updatePage(task.notionPageId, prepared.properties, context.accessToken);
+      await this.dependencies.notion.updatePage(
+        task.notionPageId,
+        prepared.properties,
+        context.accessToken
+      );
     } catch (error) {
       logNotionWriteFailure(error);
       if (isNotionArchivedTargetError(error)) {
@@ -247,7 +326,10 @@ export class AiTaskExecutor {
   private async resolveBody(
     task: ExecutableAiTask,
     currentPageBody?: string
-  ): Promise<{ body?: string; reasonCode?: 'skipped_fetch_disallowed' | 'skipped_unsupported_content_type' }> {
+  ): Promise<{
+    body?: string;
+    reasonCode?: 'skipped_fetch_disallowed' | 'skipped_unsupported_content_type';
+  }> {
     if (task.mode === 'single_page') return { body: currentPageBody?.trim() || undefined };
     if (!task.sourceUrl) return {};
     try {
@@ -263,9 +345,18 @@ export class AiTaskExecutor {
     }
   }
 
-  private async complete(task: ExecutableAiTask, status: AiGenerationStatus, reasonCode?: AiGenerationReasonCode) {
+  private async complete(
+    task: ExecutableAiTask,
+    status: AiGenerationStatus,
+    reasonCode?: AiGenerationReasonCode
+  ) {
     if (!task.leaseToken) return false;
-    const persisted = await this.dependencies.store.complete(task.id, task.leaseToken, status, reasonCode);
+    const persisted = await this.dependencies.store.complete(
+      task.id,
+      task.leaseToken,
+      status,
+      reasonCode
+    );
     console.info(
       `[AI Task] Completion: status=${status}, reason=${reasonCode || 'none'}, persisted=${persisted}`
     );
@@ -287,24 +378,32 @@ export class AiTaskExecutor {
           credential.credentialVersion,
           reasonCode
         );
-        await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: reasonCode });
+        await this.recordDiagnostic(task.id, {
+          durationMs: Date.now() - startedAt,
+          errorCode: reasonCode,
+        });
         return 'needs_action';
       }
       task.providerRetryAfterMs = error.retryAfterMs;
     }
     await this.complete(task, 'failed', 'failed_provider_request');
-    await this.recordDiagnostic(task.id, { durationMs: Date.now() - startedAt, errorCode: 'failed_provider_request' });
+    await this.recordDiagnostic(task.id, {
+      durationMs: Date.now() - startedAt,
+      errorCode: 'failed_provider_request',
+    });
     return 'failed';
   }
 
   private async loadTagCandidates(context: AiTaskExecutionContext): Promise<string[]> {
     if (!context.dataSourceId || !this.dependencies.notion.getAiTagCandidates) return [];
     try {
-      return (await this.dependencies.notion.getAiTagCandidates(
-        context.dataSourceId,
-        context.accessToken,
-        context.settings.tagsPropertyId
-      )).slice(0, 100);
+      return (
+        await this.dependencies.notion.getAiTagCandidates(
+          context.dataSourceId,
+          context.accessToken,
+          context.settings.tagsPropertyId
+        )
+      ).slice(0, 100);
     } catch {
       return [];
     }
@@ -335,15 +434,33 @@ export class AiTaskExecutor {
 
     let retry: ReturnType<typeof prepareNotionAiWrite>;
     try {
-      retry = prepareNotionAiWrite(refreshed, context.settings, output, task.descriptionBaselineHash || undefined);
+      retry = prepareNotionAiWrite(
+        refreshed,
+        context.settings,
+        output,
+        task.descriptionBaselineHash || undefined
+      );
     } catch (error) {
-      const targetUnavailable = error instanceof NotionAiWriteError && error.code === 'target_unavailable';
-      await this.complete(task, targetUnavailable ? 'needs_action' : 'failed', targetUnavailable ? 'needs_action_notion_schema' : 'failed_notion_write');
+      const targetUnavailable =
+        error instanceof NotionAiWriteError && error.code === 'target_unavailable';
+      await this.complete(
+        task,
+        targetUnavailable ? 'needs_action' : 'failed',
+        targetUnavailable ? 'needs_action_notion_schema' : 'failed_notion_write'
+      );
       return targetUnavailable ? 'needs_action' : 'failed';
     }
-    if (!task.leaseToken || !(await this.dependencies.store.hasActiveLease(task.id, task.leaseToken))) return 'paused';
+    if (
+      !task.leaseToken ||
+      !(await this.dependencies.store.hasActiveLease(task.id, task.leaseToken))
+    )
+      return 'paused';
     try {
-      await this.dependencies.notion.updatePage(task.notionPageId, retry.properties, context.accessToken);
+      await this.dependencies.notion.updatePage(
+        task.notionPageId,
+        retry.properties,
+        context.accessToken
+      );
       return 'succeeded';
     } catch {
       await this.complete(task, 'failed', 'failed_notion_write');
@@ -351,13 +468,27 @@ export class AiTaskExecutor {
     }
   }
 
-  private async recordDiagnostic(taskId: string, input: { providerRequestId?: string; inputTokens?: number; outputTokens?: number; durationMs?: number; errorCode?: string }) {
-    try { await this.dependencies.diagnostics?.record(taskId, input); } catch { /* diagnostics must never alter task outcome */ }
+  private async recordDiagnostic(
+    taskId: string,
+    input: {
+      providerRequestId?: string;
+      inputTokens?: number;
+      outputTokens?: number;
+      durationMs?: number;
+      errorCode?: string;
+    }
+  ) {
+    try {
+      await this.dependencies.diagnostics?.record(taskId, input);
+    } catch {
+      /* diagnostics must never alter task outcome */
+    }
   }
 }
 
 function logNotionWriteFailure(error: unknown): void {
-  const record = error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined;
+  const record =
+    error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined;
   const code = typeof record?.code === 'string' ? record.code : 'unknown';
   const status = typeof record?.status === 'number' ? record.status : 'unknown';
   // Deliberately omit the provider response message because it may include page
@@ -368,15 +499,22 @@ function logNotionWriteFailure(error: unknown): void {
 function isNotionAuthorizationError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const record = error as Record<string, unknown>;
-  return record.code === 'restricted_resource' || record.code === 'unauthorized' || record.status === 401 || record.status === 403;
+  return (
+    record.code === 'restricted_resource' ||
+    record.code === 'unauthorized' ||
+    record.status === 401 ||
+    record.status === 403
+  );
 }
 
 function isNotionArchivedTargetError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const record = error as Record<string, unknown>;
   const message = typeof record.message === 'string' ? record.message.toLocaleLowerCase() : '';
-  return record.code === 'validation_error'
-    && (message.includes('archived ancestor') || message.includes('trashed ancestor'));
+  return (
+    record.code === 'validation_error' &&
+    (message.includes('archived ancestor') || message.includes('trashed ancestor'))
+  );
 }
 
 function isUnavailableNotionTarget(page: NotionPageForAi, dataSourceId?: string): boolean {
@@ -403,7 +541,14 @@ function addOptionalIntegers(first?: number, second?: number): number | undefine
 
 function providerNeedsActionReason(
   code: AiProviderGenerationError['code']
-): Extract<AiGenerationReasonCode, 'needs_action_invalid_api_key' | 'needs_action_insufficient_quota' | 'needs_action_model_access'> | undefined {
+):
+  | Extract<
+      AiGenerationReasonCode,
+      | 'needs_action_invalid_api_key'
+      | 'needs_action_insufficient_quota'
+      | 'needs_action_model_access'
+    >
+  | undefined {
   if (code === 'invalid_api_key') return 'needs_action_invalid_api_key';
   if (code === 'insufficient_quota') return 'needs_action_insufficient_quota';
   if (code === 'model_access') return 'needs_action_model_access';
@@ -429,21 +574,29 @@ function extractTagsById(properties: Record<string, unknown>, propertyId: string
   const property = findById(properties, propertyId);
   if (property?.type !== 'multi_select' || !Array.isArray(property.multi_select)) return [];
   return property.multi_select.flatMap((item) => {
-    const name = item && typeof item === 'object' ? (item as Record<string, unknown>).name : undefined;
+    const name =
+      item && typeof item === 'object' ? (item as Record<string, unknown>).name : undefined;
     return typeof name === 'string' ? [name] : [];
   });
 }
 
-function findById(properties: Record<string, unknown>, propertyId: string): Record<string, any> | undefined {
-  return Object.values(properties).find((value): value is Record<string, any> =>
-    !!value && typeof value === 'object' && (value as Record<string, unknown>).id === propertyId
+function findById(
+  properties: Record<string, unknown>,
+  propertyId: string
+): Record<string, any> | undefined {
+  return Object.values(properties).find(
+    (value): value is Record<string, any> =>
+      !!value && typeof value === 'object' && (value as Record<string, unknown>).id === propertyId
   );
 }
 
 function richText(value: unknown): string {
   if (!Array.isArray(value)) return '';
-  return value.flatMap((item) => {
-    const plain = item && typeof item === 'object' ? (item as Record<string, unknown>).plain_text : undefined;
-    return typeof plain === 'string' ? [plain] : [];
-  }).join('');
+  return value
+    .flatMap((item) => {
+      const plain =
+        item && typeof item === 'object' ? (item as Record<string, unknown>).plain_text : undefined;
+      return typeof plain === 'string' ? [plain] : [];
+    })
+    .join('');
 }

@@ -19,15 +19,23 @@ export function selectFairAiTasks<T extends SchedulableAiTask>(
   for (const task of [...queued].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())) {
     if ((activeByUser.get(task.userId) || 0) >= AI_MAX_CONCURRENT_PROVIDER_CALLS_PER_USER) continue;
     const tasks = byUser.get(task.userId) || [];
-    tasks.push(task); byUser.set(task.userId, tasks);
+    tasks.push(task);
+    byUser.set(task.userId, tasks);
   }
   const result: T[] = [];
   while (result.length < maxTasks) {
     let selected = false;
     for (const [userId, tasks] of byUser) {
-      const active = (activeByUser.get(userId) || 0) + result.filter((task) => task.userId === userId).length;
-      if (active >= AI_MAX_CONCURRENT_PROVIDER_CALLS_PER_USER || !tasks.length || result.length >= maxTasks) continue;
-      result.push(tasks.shift()!); selected = true;
+      const active =
+        (activeByUser.get(userId) || 0) + result.filter((task) => task.userId === userId).length;
+      if (
+        active >= AI_MAX_CONCURRENT_PROVIDER_CALLS_PER_USER ||
+        !tasks.length ||
+        result.length >= maxTasks
+      )
+        continue;
+      result.push(tasks.shift()!);
+      selected = true;
     }
     if (!selected) break;
   }

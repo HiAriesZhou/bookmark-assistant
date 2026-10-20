@@ -15,9 +15,7 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "references": [
-    { "path": "../types" }
-  ],
+  "references": [{ "path": "../types" }],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/node_modules/*", "dist", "**/*.test.ts"]
 }

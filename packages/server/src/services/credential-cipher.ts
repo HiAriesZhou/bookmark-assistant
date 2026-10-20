@@ -60,7 +60,9 @@ class AesGcmCredentialCipher implements CredentialCipher {
 
     const key = this.keys.get(this.activeKeyVersion);
     if (!key) {
-      throw new CredentialCipherConfigurationError('Active credential encryption key is unavailable.');
+      throw new CredentialCipherConfigurationError(
+        'Active credential encryption key is unavailable.'
+      );
     }
 
     const initializationVector = randomBytes(IV_LENGTH_BYTES);
@@ -121,14 +123,22 @@ class AesGcmCredentialCipher implements CredentialCipher {
 }
 
 function buildAdditionalAuthenticatedData(context: CredentialEncryptionContext): Buffer {
-  if (!context.userId || !Number.isInteger(context.credentialVersion) || context.credentialVersion <= 0) {
+  if (
+    !context.userId ||
+    !Number.isInteger(context.credentialVersion) ||
+    context.credentialVersion <= 0
+  ) {
     throw new CredentialCipherConfigurationError('Credential encryption context is invalid.');
   }
 
   return Buffer.from(
-    ['bookmark-assistant-pro', 'ai-provider-credential', context.userId, context.provider, String(context.credentialVersion)].join(
-      '\u001f'
-    ),
+    [
+      'bookmark-assistant-pro',
+      'ai-provider-credential',
+      context.userId,
+      context.provider,
+      String(context.credentialVersion),
+    ].join('\u001f'),
     'utf8'
   );
 }
