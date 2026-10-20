@@ -1,12 +1,13 @@
 import { isStaleAccountStateError } from '../utils/account-state';
-import { ChevronRight, Cloud, Library, RefreshCw, Settings } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { BookmarkPlus, ChevronRight, Cloud, Library, RefreshCw, Settings } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import logoUrl from '@product-logo';
 import { deriveConnectionStatus } from '../options/connection-view-model';
 import { useToast } from '../options/hook/useToast';
 import { useAppStore } from '../options/store';
 import { relativeTime } from '../utils/common';
 import { createTranslator } from '../utils/i18n';
+import { saveCurrentPageWithAi } from './save-current-page';
 
 type OptionsRoute = 'library' | 'settings';
 
@@ -22,6 +23,7 @@ export default function Popup() {
     syncNow,
   } = useAppStore();
   const requestedDashboard = useRef(false);
+  const [pageSave, setPageSave] = useState<'idle' | 'saving' | 'generating'>('idle');
   const isBooting = hydrationState === 'booting';
   const connectionStatus = deriveConnectionStatus(
     hasActiveConnection,
@@ -53,6 +55,30 @@ export default function Popup() {
         title: t('error'),
         description: error instanceof Error ? error.message : String(error),
       });
+    }
+  };
+
+  const handleSaveCurrentPage = async () => {
+    if (!hasDestination || pageSave !== 'idle') return;
+    setPageSave('saving');
+    try {
+      const outcome = await saveCurrentPageWithAi(() => setPageSave('generating'));
+      if (outcome.status === 'failed') {
+        show({ variant: 'error', title: t('saveFailed'), description: outcome.error });
+      } else {
+        show({
+          variant: outcome.message === 'popup_ai_not_started' ? 'info' : 'success',
+          title: t(outcome.message),
+        });
+      }
+    } catch (error) {
+      show({
+        variant: 'error',
+        title: t('saveFailed'),
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setPageSave('idle');
     }
   };
 
@@ -170,6 +196,30 @@ export default function Popup() {
                   />
                 </button>
               </section>
+            ) : null}
+
+            {hasDestination ? (
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={handleSaveCurrentPage}
+                  disabled={pageSave !== 'idle'}
+                  aria-label={t('saveCurrentPage')}
+                  aria-busy={pageSave !== 'idle'}
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-ui-line bg-white text-sm font-semibold text-ui-ink shadow-ui-sm transition-colors hover:bg-ui-surface-hover disabled:text-ui-disabled disabled:hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus"
+                >
+                  <BookmarkPlus
+                    aria-hidden="true"
+                    className={`h-4 w-4 ${pageSave === 'saving' ? 'animate-pulse motion-reduce:animate-none' : ''}`}
+                  />
+                  {t('saveCurrentPage')}
+                </button>
+                {pageSave === 'generating' ? (
+                  <p role="status" className="px-1 text-xs text-ui-subtle">
+                    {t('popup_ai_generating')}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </>
         )}

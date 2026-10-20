@@ -119,7 +119,11 @@ test.describe('Bookmark Assistant Pro extension', () => {
     const page = await openExtensionPage(context, extensionId, 'options.html');
     await page.evaluate(() => chrome.storage.local.clear());
     await page.goto(`chrome-extension://${extensionId}/popup.html`);
-    const labels = await getLocalizedMessages(page, ['popup_library', 'syncNow'] as const);
+    const labels = await getLocalizedMessages(page, [
+      'popup_library',
+      'syncNow',
+      'saveCurrentPage',
+    ] as const);
     const bookmarkCountLabel = await page.evaluate(() =>
       chrome.i18n.getMessage('popup_bookmark_count', '0')
     );
@@ -130,6 +134,7 @@ test.describe('Bookmark Assistant Pro extension', () => {
     ).toBeVisible();
     await expect(page.getByText(bookmarkCountLabel)).toBeVisible();
     await expect(page.getByRole('button', { name: labels.syncNow })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: labels.saveCurrentPage })).toHaveCount(0);
     await expect(page.getByText('Notion')).toHaveCount(0);
   });
 

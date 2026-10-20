@@ -608,6 +608,14 @@
     "message": "保存当前页面",
     "description": "Button to save current page to Notion"
   },
+  "saveToNotion": {
+    "message": "保存到 Notion",
+    "description": "Context menu item to save page to Notion"
+  },
+  "saveFailed": {
+    "message": "保存页面失败",
+    "description": "Error message when save fails"
+  },
   "saveSuccess": {
     "message": "页面已保存到 Notion",
     "description": "页面保存成功时的提示"

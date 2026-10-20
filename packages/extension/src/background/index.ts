@@ -554,8 +554,15 @@ async function generateCurrentPageAi(
     ]);
     const settings = settingsResult?.settings;
     const credential = credentialResult?.credential;
-    if (!canSendCurrentPageToAi(pending.url, settings) || credential?.status !== 'verified') {
-      return { success: true, aiStatus: 'not_started' };
+    if (
+      credential?.status !== 'verified' ||
+      !settings?.properties?.descriptionPropertyId ||
+      !settings.properties.tagsPropertyId
+    ) {
+      return { success: true, aiStatus: 'not_configured' };
+    }
+    if (!canSendCurrentPageToAi(pending.url, settings)) {
+      return { success: true, aiStatus: 'skipped_ineligible_page' };
     }
 
     const extracted = await chrome.scripting.executeScript({
