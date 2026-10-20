@@ -26,6 +26,9 @@ it('removes retired caches and refresh flags while preserving local edits and ac
   const values: Record<string, unknown> = {
     ...preserved,
     is_refreshing_entitlements: true,
+    last_sync_hash: 'legacy-hash',
+    hasTriedInitialLoad: true,
+    last_sync_partial_info: { new_count: 1, failed_count: 0 },
     page_description_cache: {
       'https://example.com/legacy': { description: 'Old automatic description', timestamp: 1 },
     },
@@ -48,6 +51,9 @@ it('removes retired caches and refresh flags while preserving local edits and ac
   expect(remove).toHaveBeenCalledExactlyOnceWith([
     'page_description_cache',
     'is_refreshing_entitlements',
+    'last_sync_hash',
+    'hasTriedInitialLoad',
+    'last_sync_partial_info',
   ]);
   expect(values).toEqual(preserved);
 

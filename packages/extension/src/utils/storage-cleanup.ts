@@ -2,8 +2,6 @@
 
 import { planStorageCleanup } from '../core';
 
-export { cleanErrorReports, validatePartialSyncInfo } from '../core';
-
 /**
  * Main storage cleanup function
  * Call this on service worker startup to clean up storage
@@ -25,12 +23,8 @@ export async function cleanupStorage(): Promise<void> {
       console.log('[StorageCleanup] Removed obsolete hasTriedInitialLoad field');
     }
 
-    if ('last_sync_partial_info' in toUpdate) {
-      console.log('[StorageCleanup] Validated last_sync_partial_info');
-    }
-
     if (toRemove.includes('last_sync_partial_info')) {
-      console.log('[StorageCleanup] Removed invalid last_sync_partial_info');
+      console.log('[StorageCleanup] Removed obsolete last_sync_partial_info field');
     }
 
     if ('error_reports' in toUpdate) {
@@ -62,21 +56,4 @@ export async function cleanupStorage(): Promise<void> {
   } catch (error) {
     console.warn('[StorageCleanup] Storage cleanup failed:', error);
   }
-}
-
-/**
- * Run storage cleanup periodically (daily)
- * Schedule this to run once per day
- */
-export function scheduleDailyStorageCleanup(): void {
-  // Check every 24 hours
-  const intervalMs = 24 * 60 * 60 * 1000;
-
-  setInterval(() => {
-    cleanupStorage().catch((error) => {
-      console.warn('[StorageCleanup] Periodic cleanup failed:', error);
-    });
-  }, intervalMs);
-
-  console.log('[StorageCleanup] Daily cleanup scheduled');
 }

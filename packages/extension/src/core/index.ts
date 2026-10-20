@@ -14,7 +14,6 @@ export type { ChromeReadingListItemLike, FormatReadingListItemOptions } from './
 export type {
   CleanErrorReportsOptions,
   ErrorReport,
-  PartialSyncInfo,
   PlanStorageCleanupOptions,
   StorageCleanupPlan,
 } from './storage-cleanup';
@@ -29,7 +28,6 @@ export type {
 export {
   collectBookmarkSyncItems,
   createSyncFingerprint,
-  formatBookmarkForSync,
   formatCurrentPageForSync,
   formatSavedLinkForSync,
   toSyncFingerprintItems,
@@ -38,20 +36,10 @@ export {
 
 export { isWebPageUrl, normalizeUrl } from './urls';
 
-export {
-  createFallbackPageContent,
-  extractPageContentFromDocument,
-  isValidHttpUrl,
-} from './content';
+export { extractPageContentFromDocument } from './content';
 
-export { formatReadingListItemForSync, formatReadingListItemsForSync } from './reading-list';
+export { formatReadingListItemsForSync } from './reading-list';
 
-export { cleanErrorReports, planStorageCleanup, validatePartialSyncInfo } from './storage-cleanup';
+export { cleanErrorReports, planStorageCleanup } from './storage-cleanup';
 
-export {
-  createDefaultKnowledgeItemId,
-  getKnowledgeItemValidationIssues,
-  knowledgeItemToLegacyLinkItem,
-  linkItemToKnowledgeItem,
-  prepareLegacyLinkItemForSync,
-} from './knowledge-item';
+export { createDefaultKnowledgeItemId, prepareLegacyLinkItemForSync } from './knowledge-item';

@@ -38,11 +38,6 @@ function createWorker(): AiTaskWorker | undefined {
  * Processes a small user-owned batch. The caller is responsible for authenticating
  * the user; the database claim remains the concurrency boundary.
  */
-export async function runAiTasksForUser(userId: string, maxTasks = 2): Promise<number> {
-  const worker = createWorker();
-  return worker ? worker.runForUser(userId, maxTasks) : 0;
-}
-
 export async function runAiTasksForUserWithSummary(
   userId: string,
   maxTasks = 2

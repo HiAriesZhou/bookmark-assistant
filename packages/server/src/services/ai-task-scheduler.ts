@@ -1,4 +1,4 @@
-export const AI_MAX_CONCURRENT_PROVIDER_CALLS_PER_USER = 2;
+const AI_MAX_CONCURRENT_PROVIDER_CALLS_PER_USER = 2;
 
 export interface SchedulableAiTask {
   id: string;

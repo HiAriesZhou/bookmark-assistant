@@ -121,7 +121,6 @@ describe('ServerAPI - Logout Selective Cleanup', () => {
       'last_sync_count',
       'last_sync_fingerprint',
       'last_sync_payload_version',
-      'last_sync_hash',
       'sync_in_progress',
       'sync_started_at',
       'sync_trigger',

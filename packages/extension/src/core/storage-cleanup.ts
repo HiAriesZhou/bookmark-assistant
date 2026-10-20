@@ -1,10 +1,3 @@
-export interface PartialSyncInfo {
-  new_count?: number;
-  failed_count?: number;
-  total_synced?: number;
-  message?: string;
-}
-
 export interface ErrorReport {
   message: string;
   stack?: string;
@@ -42,44 +35,6 @@ function getNowMs(now: CleanErrorReportsOptions['now']): number {
   return Date.now();
 }
 
-function parsePartialSyncInfo(info: unknown): unknown {
-  if (typeof info !== 'string') {
-    return info;
-  }
-
-  return JSON.parse(info);
-}
-
-export function validatePartialSyncInfo(info: unknown): PartialSyncInfo | null {
-  if (!info || typeof info !== 'object' || Array.isArray(info)) {
-    return null;
-  }
-
-  const source = info as Record<string, unknown>;
-  const validated: PartialSyncInfo = {};
-
-  if ('new_count' in source) {
-    const value = Number(source.new_count);
-    validated.new_count = Number.isFinite(value) ? value : 0;
-  }
-
-  if ('failed_count' in source) {
-    const value = Number(source.failed_count);
-    validated.failed_count = Number.isFinite(value) ? value : 0;
-  }
-
-  if ('total_synced' in source) {
-    const value = Number(source.total_synced);
-    validated.total_synced = Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof source.message === 'string') {
-    validated.message = source.message;
-  }
-
-  return validated;
-}
-
 export function cleanErrorReports(
   errorReports: unknown,
   options: CleanErrorReportsOptions = {}
@@ -112,31 +67,14 @@ export function planStorageCleanup(
   const removeKeys: string[] = [];
   const updateValues: Record<string, unknown> = {};
 
-  for (const key of ['page_description_cache', 'is_refreshing_entitlements']) {
+  for (const key of [
+    'page_description_cache',
+    'is_refreshing_entitlements',
+    'last_sync_hash',
+    'hasTriedInitialLoad',
+    'last_sync_partial_info',
+  ]) {
     if (key in storage) removeKeys.push(key);
-  }
-
-  if ('last_sync_hash' in storage) {
-    removeKeys.push('last_sync_hash');
-  }
-
-  if ('hasTriedInitialLoad' in storage) {
-    removeKeys.push('hasTriedInitialLoad');
-  }
-
-  if ('last_sync_partial_info' in storage) {
-    try {
-      const partialInfo = parsePartialSyncInfo(storage.last_sync_partial_info);
-      const validated = validatePartialSyncInfo(partialInfo);
-
-      if (validated) {
-        updateValues.last_sync_partial_info = validated;
-      } else {
-        removeKeys.push('last_sync_partial_info');
-      }
-    } catch {
-      removeKeys.push('last_sync_partial_info');
-    }
   }
 
   if ('error_reports' in storage) {

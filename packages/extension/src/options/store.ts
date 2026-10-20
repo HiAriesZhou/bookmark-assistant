@@ -25,9 +25,8 @@ const defaultDeployment = {
   capabilities: undefined as DeploymentCapabilities | undefined,
 };
 
-export const FREE_INTERVAL_HOURS = 24;
+const FREE_INTERVAL_HOURS = 24;
 export const PRO_MIN_INTERVAL_HOURS = 6; // 6 hours
-export const PRO_MIN_INTERVAL_MINUTES = Math.round(PRO_MIN_INTERVAL_HOURS * 60);
 // Leave room for the background's bounded sync request plus its error handling
 // and response delivery. This prevents both false failures and endless waits.
 const SYNC_MESSAGE_TIMEOUT_MS = 10 * 60_000 + 30_000;
@@ -36,9 +35,9 @@ let entitlementRefreshId = 0;
 let autoSyncUpdateId = 0;
 
 // Pricing constants
-export const PRICE_MONTHLY_EARLY_BIRD_USD = 1.5; // Fallback $/month
-export const PRICE_YEARLY_USD = 11.9; // Fallback $/year
-export const PRICING_CACHE_SCHEMA_VERSION = 2;
+const PRICE_MONTHLY_EARLY_BIRD_USD = 1.5; // Fallback $/month
+const PRICE_YEARLY_USD = 11.9; // Fallback $/year
+const PRICING_CACHE_SCHEMA_VERSION = 2;
 export type SubscriptionSource = 'paddle' | 'developer' | 'gift' | 'trial';
 
 export function parseCachedPricing(value: unknown): { monthly: number; yearly: number } | null {
@@ -119,7 +118,6 @@ export type AppState = {
   isRefreshingProfile: boolean;
   isOptionsInitialized: boolean;
   hydrationState: HydrationState;
-  hasTriedInitialLoad: boolean;
   bookmarkCount: number;
   lastSync: string;
   isPro: boolean;
@@ -179,7 +177,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   isRefreshingProfile: false,
   isOptionsInitialized: false,
   hydrationState: 'booting',
-  hasTriedInitialLoad: false,
   bookmarkCount: 0,
   lastSync: '',
   isPro: false,
@@ -482,14 +479,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
 
-      // hasTriedInitialLoad is obsolete - remove it if present
-      const { hasTriedInitialLoad } = await chrome.storage.local.get(['hasTriedInitialLoad']);
-      if (hasTriedInitialLoad) {
-        await chrome.storage.local.remove(['hasTriedInitialLoad']);
-      }
-
-      set({ hasTriedInitialLoad: false });
-
       await get().refreshEntitlements();
     } catch (error) {
       console.error('Failed to refresh connection state:', error);
@@ -574,7 +563,6 @@ async function handleAccountStateChange(changes: { [key: string]: chrome.storage
     ...(shouldClearDashboard
       ? {
           dashboard: undefined,
-          hasTriedInitialLoad: false,
           isSyncing: false,
           syncEnrichment: undefined,
         }

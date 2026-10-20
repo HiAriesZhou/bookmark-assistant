@@ -133,31 +133,6 @@ export async function sendMessage<T extends MessageType>(
   }
 }
 
-export async function sendMessageToTab<T extends MessageType>(
-  tabId: number,
-  message: MessageRequest<T>,
-  opts?: { timeoutMs?: number }
-): Promise<MessageResponse<T>> {
-  const timeoutMs = opts?.timeoutMs ?? 15_000;
-  const useTimeout = timeoutMs > 0;
-  const controller = useTimeout ? new AbortController() : null;
-  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
-  try {
-    const p = chrome.tabs.sendMessage(tabId, message as any) as Promise<any>;
-    const res = controller
-      ? await Promise.race([
-          p,
-          new Promise((_resolve, reject) =>
-            controller.signal.addEventListener('abort', () => reject(new Error('REQUEST_TIMEOUT')))
-          ),
-        ])
-      : await p;
-    return res as MessageResponse<T>;
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
 // Background-side: add a single, typed message listener for a map of handlers
 export function addMessageListener(
   handlers: Partial<{

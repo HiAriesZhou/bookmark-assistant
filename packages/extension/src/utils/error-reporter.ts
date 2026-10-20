@@ -74,7 +74,7 @@ function sanitizeRemoteContext(context?: Record<string, any>): Record<string, un
   return Object.keys(safe).length > 0 ? safe : undefined;
 }
 
-export function getRemoteErrorCategory(error: Error): string {
+function getRemoteErrorCategory(error: Error): string {
   const message = error.message.toLowerCase();
   const status = error.message.match(/status:\s*(\d{3})/i)?.[1];
 
@@ -133,21 +133,5 @@ async function sendToServer(report: ErrorReport): Promise<void> {
   } catch (err) {
     // Network error or timeout - fail silently
     console.warn('[ErrorReporter] Failed to send error to server:', err);
-  }
-}
-
-/**
- * Report a message (warning or info)
- */
-export async function reportMessage(
-  message: string,
-  level: 'info' | 'warning' | 'error' = 'info',
-  context?: Record<string, any>
-): Promise<void> {
-  // For MVP, only log locally
-  if (level === 'error') {
-    await reportError(new Error(message), context);
-  } else {
-    console.log(`[${level.toUpperCase()}]`, message, context);
   }
 }

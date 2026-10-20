@@ -1,6 +1,3 @@
-export const formatLastUpdated = () =>
-  new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date());
-
 export const relativeTime = (iso?: string, locale = 'en') => {
   if (!iso) return '—';
   const d = new Date(iso);

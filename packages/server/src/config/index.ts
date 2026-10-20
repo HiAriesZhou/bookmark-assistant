@@ -313,5 +313,3 @@ export function validateConfig(): void {
 
   console.log('✅ Configuration validated successfully');
 }
-
-export default config;

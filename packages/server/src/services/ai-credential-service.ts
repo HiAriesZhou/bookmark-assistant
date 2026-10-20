@@ -47,7 +47,7 @@ export class AiCredentialNotFoundError extends Error {
   }
 }
 
-export class AiCredentialRecordError extends Error {
+class AiCredentialRecordError extends Error {
   constructor() {
     super('AI provider credential record is invalid.');
     this.name = 'AiCredentialRecordError';

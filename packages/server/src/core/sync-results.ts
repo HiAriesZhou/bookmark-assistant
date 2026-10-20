@@ -5,7 +5,7 @@ export type BookmarkSyncResultWithRetryState = BookmarkSyncResult & {
   retryCount?: number;
 };
 
-export function isRetryableSyncError(errorMessage: unknown): boolean {
+function isRetryableSyncError(errorMessage: unknown): boolean {
   if (typeof errorMessage !== 'string') {
     return false;
   }

@@ -51,7 +51,7 @@ export function normalizeBookmarkTags(tags: string[]): string[] {
   return normalized;
 }
 
-export function normalizeBookmarkMetadata(
+function normalizeBookmarkMetadata(
   input: LocalBookmarkMetadataInput,
   now: Date = new Date()
 ): LocalBookmarkMetadataV1 {

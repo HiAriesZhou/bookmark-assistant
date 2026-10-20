@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 export type RouteId = 'library' | 'destinations' | 'settings';
 
-export const defaultRoute: RouteId = 'library';
+const defaultRoute: RouteId = 'library';
 
 export const normalizeHash = (hash: string): RouteId => {
   const val = hash.replace(/^#\/?/, '').toLowerCase();

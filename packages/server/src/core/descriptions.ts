@@ -65,7 +65,7 @@ export function extractDescriptionFromHtml(html: string): HtmlDescriptionResult 
   };
 }
 
-export function extractContentFromStructuredElements(html: string): HtmlDescriptionResult | null {
+function extractContentFromStructuredElements(html: string): HtmlDescriptionResult | null {
   const structuredMatch = html.match(
     /<(?:main|article|section)[^>]*>([\s\S]*?)<\/(?:main|article|section)>/i
   );

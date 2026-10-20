@@ -51,6 +51,7 @@ Generated mirrors are build artifacts. Run `pnpm resources:sync` and
 
 ```sh
 pnpm lint
+pnpm -F @bookmark-assistant/extension type-check
 pnpm test
 pnpm build:all
 pnpm exec playwright install chromium

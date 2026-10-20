@@ -15,7 +15,7 @@ const RETRYABLE_CODES = new Set([
   'gateway_timeout',
 ]);
 
-export function getNotionErrorStatus(error: unknown): number | undefined {
+function getNotionErrorStatus(error: unknown): number | undefined {
   const status = (error as NotionErrorLike | null | undefined)?.status;
   if (typeof status === 'number') return status;
   if (typeof status === 'string' && /^\d{3}$/.test(status)) return Number(status);

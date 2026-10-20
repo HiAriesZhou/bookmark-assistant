@@ -14,7 +14,7 @@ export interface FormatReadingListItemOptions {
   createSyncId?: (item: ChromeReadingListItemLike, index: number) => string;
 }
 
-export function formatReadingListItemForSync(
+function formatReadingListItemForSync(
   item: ChromeReadingListItemLike,
   options: FormatReadingListItemOptions = {},
   index = 0

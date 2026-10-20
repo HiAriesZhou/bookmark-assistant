@@ -28,36 +28,19 @@ export {
   diffLinkItems,
   diffBookmarks,
   normalizeBookmarkForSyncPlanning,
-  selectUnsyncedDescribedBookmarks,
   validateBookmarkInput,
-  validateLinkItemInput,
 } from './bookmarks';
-export {
-  extractContentFromStructuredElements,
-  extractDescriptionFromHtml,
-  isValidDescription,
-  looksLikeDescription,
-  sanitizeDescription,
-} from './descriptions';
+export { extractDescriptionFromHtml } from './descriptions';
 export {
   buildBookmarkPropertiesFromNotionSchema,
   extractNotionPageFolderAndTags,
   extractNotionPageLinkKeys,
-  extractNotionPageTimestamps,
   isReadOnlyNotionPropertyType,
 } from './notion-properties';
 export { getPrimaryNotionDataSourceId, hasNotionDataSourceId } from './notion-database';
 export { isRetryablePersistenceError } from './persistence';
-export {
-  getNotionErrorStatus,
-  getNotionRetryDelayMs,
-  isRetryableNotionError,
-} from './notion-retry';
-export {
-  isRetryableSyncError,
-  mergeRetryResults,
-  selectRetryableSyncFailures,
-} from './sync-results';
+export { getNotionRetryDelayMs, isRetryableNotionError } from './notion-retry';
+export { mergeRetryResults, selectRetryableSyncFailures } from './sync-results';
 export {
   buildGoogleS2FaviconUrl,
   isFetchableHttpUrl,

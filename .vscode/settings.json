@@ -10,10 +10,6 @@
     "javascriptreact": "javascriptreact",
     "typescriptreact": "typescriptreact"
   },
-  "tailwindCSS.experimental.classRegex": [
-    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
-    ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
-  ],
 
   // Formatter Configuration
   "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -45,10 +41,5 @@
     "cache": true,
     "cacheLocation": "node_modules/.cache/eslint/"
   },
-  "eslint.codeActionsOnSave.mode": "problems",
-
-  // Performance: Increase timeout for slow files
-  "eslint.runtime": null,
-  "eslint.nodePath": null,
-  "eslint.probe": ["javascript", "javascriptreact", "typescript", "typescriptreact"]
+  "eslint.codeActionsOnSave.mode": "problems"
 }

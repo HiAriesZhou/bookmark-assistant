@@ -219,15 +219,6 @@ export function extractNotionPageFolderAndTags(
   };
 }
 
-export function extractNotionPageTimestamps(
-  page: NotionPageLike | null | undefined
-): ExtractNotionPageTimestampsResult {
-  return {
-    createdTime: nonEmptyStringOrUndefined(page?.created_time),
-    lastEditedTime: nonEmptyStringOrUndefined(page?.last_edited_time),
-  };
-}
-
 export function buildBookmarkPropertiesFromNotionSchema(
   schema: NotionPropertySchema,
   bookmark: LinkItem,
@@ -310,10 +301,6 @@ function shouldBuildProperty(
 
 function stringOr(value: unknown, fallback: string): string {
   return typeof value === 'string' && value.length > 0 ? value : fallback;
-}
-
-function nonEmptyStringOrUndefined(value: unknown): string | undefined {
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 function resolveDefaultDate(options: BuildBookmarkPropertiesOptions): string {
