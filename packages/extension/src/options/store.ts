@@ -147,7 +147,6 @@ export type AppState = {
   // User info
   userId: string;
   userEmail: string;
-  setUserInfo: (userId: string, userEmail?: string) => void;
 
   // Sync settings
   autoSync: boolean;
@@ -254,14 +253,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     } finally {
       if (!context || (await isAccountContextCurrent(context))) set({ isSyncing: false });
     }
-  },
-  setUserInfo: (userId: string, userEmail?: string) => {
-    set({ userId, userEmail: userEmail || '' });
-    // Also persist to storage for Paddle checkout
-    chrome.storage.local.set({
-      user_id: userId,
-      user_email: userEmail || '',
-    });
   },
 
   autoSync: false,

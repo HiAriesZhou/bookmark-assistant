@@ -4,7 +4,7 @@ import type { WebsiteCopy } from '@/lib/i18n';
 
 export function FinalCTA({ copy }: { copy: WebsiteCopy }) {
   return (
-    <section className="editorial-final-cta relative overflow-hidden bg-[#e5e4dd] py-20 text-center text-[#29352e]">
+    <section className="relative overflow-hidden bg-[#e5e4dd] py-20 text-center text-[#29352e]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_110%,rgba(109,132,99,.14),transparent_48%)]" />
       <div className="relative mx-auto max-w-4xl px-6 text-[#29352e]">
         <h2 className="text-4xl font-medium tracking-[-0.035em] md:text-5xl">

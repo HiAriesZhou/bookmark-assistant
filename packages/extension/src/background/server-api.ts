@@ -661,19 +661,6 @@ class ServerAPIClient {
     return { pricing };
   }
 
-  async isConnected(): Promise<boolean> {
-    try {
-      const context = await readAccountContext();
-      await this.loadSessionToken();
-      if (!this.sessionToken) return false;
-
-      await this.getUserProfile({}, context);
-      return isAccountContextCurrent(context);
-    } catch {
-      return false;
-    }
-  }
-
   async restorePurchase(email: string): Promise<{ success: boolean; message?: string }> {
     return await this.makeRequest<any>('/api/user/restore-purchase', {
       method: 'POST',

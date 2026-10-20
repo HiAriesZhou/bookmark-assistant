@@ -522,25 +522,9 @@
     "message": "Working...",
     "description": "Working indicator"
   },
-  "about_title": {
-    "message": "About",
-    "description": "About section title"
-  },
-  "about_desc": {
-    "message": "About Bookmark Assistant",
-    "description": "About section description"
-  },
-  "about_app_name": {
-    "message": "Bookmark Assistant",
-    "description": "App name displayed in about section"
-  },
   "about_version": {
     "message": "Version $1",
     "description": "Version label with placeholder"
-  },
-  "about_description": {
-    "message": "Manage Chrome bookmarks locally, with optional Notion sync and AI",
-    "description": "App description in about section"
   },
   "license": {
     "message": "License",
@@ -550,17 +534,9 @@
     "message": "MIT",
     "description": "MIT license"
   },
-  "last_updated": {
-    "message": "Last Updated",
-    "description": "Last updated label"
-  },
   "view_on_github": {
     "message": "View on GitHub",
     "description": "Link to GitHub"
-  },
-  "product_website": {
-    "message": "Product Website",
-    "description": "Link to the Bookmark Assistant product website"
   },
   "documentation": {
     "message": "Documentation",
@@ -570,17 +546,9 @@
     "message": "Report an Issue",
     "description": "Link to report issues"
   },
-  "made_with_love": {
-    "message": "Made with $1 for people who keep bookmarks in Chrome",
-    "description": "Made with love message"
-  },
   "need_help": {
     "message": "Need Help?",
     "description": "Footer help section title"
-  },
-  "contact_support": {
-    "message": "Contact Support",
-    "description": "Footer contact support subtitle"
   },
   "faq_guide": {
     "message": "FAQ & Guide",
@@ -605,10 +573,6 @@
   "terms": {
     "message": "Terms",
     "description": "Terms of service link text"
-  },
-  "header_title": {
-    "message": "Bookmark Assistant",
-    "description": "Header app title"
   },
   "support": {
     "message": "Support",

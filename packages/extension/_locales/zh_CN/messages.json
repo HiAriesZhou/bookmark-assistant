@@ -380,22 +380,6 @@
   "feature_label": {
     "message": "功能"
   },
-  "about_app_name": {
-    "message": "Bookmark Assistant",
-    "description": "App name displayed in about section"
-  },
-  "about_desc": {
-    "message": "关于 Bookmark Assistant",
-    "description": "About section description"
-  },
-  "about_description": {
-    "message": "本地管理 Chrome 书签，并可选同步到 Notion 或使用 AI",
-    "description": "App description in about section"
-  },
-  "about_title": {
-    "message": "关于",
-    "description": "About section title"
-  },
   "about_version": {
     "message": "版本 $1",
     "description": "Version label with placeholder"
@@ -464,10 +448,6 @@
     "message": "你的 Notion 工作区已成功连接。",
     "description": "Connection success description"
   },
-  "contact_support": {
-    "message": "联系支持",
-    "description": "Footer contact support subtitle"
-  },
   "disconnected_desc": {
     "message": "Notion 连接已移除，套餐保持不变。",
     "description": "Disconnected description"
@@ -492,14 +472,6 @@
     "message": "常见问题与指南",
     "description": "Footer FAQ section title"
   },
-  "header_title": {
-    "message": "Bookmark Assistant",
-    "description": "Header app title"
-  },
-  "last_updated": {
-    "message": "最后更新",
-    "description": "Last updated label"
-  },
   "license": {
     "message": "许可证",
     "description": "License label"
@@ -515,10 +487,6 @@
   "loading": {
     "message": "加载中…",
     "description": "Loading indicator"
-  },
-  "made_with_love": {
-    "message": "为使用 Chrome 书签的人用 $1 制作",
-    "description": "Made with love message"
   },
   "nav_connection": {
     "message": "连接",
@@ -679,10 +647,6 @@
   "view_on_github": {
     "message": "在 GitHub 上查看",
     "description": "Link to GitHub"
-  },
-  "product_website": {
-    "message": "产品官网",
-    "description": "Link to the Bookmark Assistant product website"
   },
   "library_report_title": {
     "message": "一眼了解你的书签库"

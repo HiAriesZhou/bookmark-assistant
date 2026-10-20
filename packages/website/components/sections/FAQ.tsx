@@ -10,7 +10,7 @@ import { isWebsiteItemVisible, type WebsiteCopy } from '@/lib/i18n';
 export function FAQ({ copy }: { copy: WebsiteCopy }) {
   const items = copy.faq.items.filter(({ status }) => isWebsiteItemVisible(status, copy));
   return (
-    <section id="faq" className="editorial-faq bg-[#f9f9f5] py-20 sm:py-28">
+    <section id="faq" className="bg-[#f9f9f5] py-20 sm:py-28">
       <div className="mx-auto max-w-4xl px-6">
         <div className="text-center">
           <SectionEyebrow text={copy.faq.eyebrow} color="amber" />
