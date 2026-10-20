@@ -19,7 +19,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
       ? 'https://www.arieszhou.com/zh/projects/bookmark-assistant'
       : 'https://www.arieszhou.com/projects/bookmark-assistant';
   return (
-    <footer className="editorial-footer border-t border-[#dce0d4] bg-[#f9f9f5] px-6 py-12">
+    <footer className="border-t border-[#dce0d4] bg-[#f9f9f5] px-6 py-12">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-8 md:grid-cols-4 mb-8">
           <div>

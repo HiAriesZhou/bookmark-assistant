@@ -98,6 +98,19 @@ export async function recordDashboardSave(source: 'current_page' | 'context_menu
   }
 }
 
+// Activity belongs to the account that started the operation. Drop it when
+// logout, deletion or a new connection completed while the operation ran.
+export async function recordAccountActivity(
+  context: AccountContext,
+  record: () => Promise<void>
+): Promise<void> {
+  try {
+    await withCurrentAccount(context, record);
+  } catch (error) {
+    if (!isStaleAccountStateError(error)) throw error;
+  }
+}
+
 export function classifyDashboardError(error: unknown): DashboardEvent['errorCategory'] {
   const value = error instanceof Error ? error.message : String(error);
   const normalized = value.toLowerCase();

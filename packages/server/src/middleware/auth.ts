@@ -106,7 +106,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
  * Error handling middleware
  * Catches and formats errors consistently
  */
-export const errorHandler = (error: Error, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (error: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('🚨 Server Error:', error);
 
   auditLog('server_error', req.user?.userId || 'unknown', {
@@ -115,6 +115,9 @@ export const errorHandler = (error: Error, req: Request, res: Response, _next: N
     url: req.path,
     method: req.method,
   });
+
+  // A response that already started cannot be replaced; Express closes it.
+  if (res.headersSent) return next(error);
 
   // Don't expose internal errors in production
   const isDevelopment = config.nodeEnv === 'development';

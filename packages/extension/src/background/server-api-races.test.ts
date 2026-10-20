@@ -3,8 +3,16 @@ import { serverAPI } from './server-api';
 import { useAppStore } from '../options/store';
 import { deleteServiceAccount } from '../options/account-actions';
 import { setupAutoSyncListener, restoreAutoSync } from './auto-sync';
-import { getDashboardSnapshot } from './dashboard';
 import {
+  DASHBOARD_EVENTS_KEY,
+  DASHBOARD_SAVED_TODAY_KEY,
+  getDashboardSnapshot,
+  recordAccountActivity,
+  recordDashboardSave,
+} from './dashboard';
+import { readAccountContext } from '../utils/account-state';
+import {
+  enqueueSyncEnrichment,
   processPendingSyncEnrichment,
   SYNC_ENRICHMENT_JOB_KEY,
   SYNC_ENRICHMENT_STATE_KEY,
@@ -542,6 +550,52 @@ describe('account request ownership', () => {
     expect(stored[SYNC_ENRICHMENT_JOB_KEY]).toBeUndefined();
     expect(stored[SYNC_ENRICHMENT_STATE_KEY]).toBeUndefined();
     expect(chrome.alarms.create).not.toHaveBeenCalled();
+  });
+  it('runs enrichment queued while an earlier enrichment request is in flight', async () => {
+    const item = (syncId: string) => ({
+      title: `Synthetic ${syncId}`,
+      url: `https://example.invalid/${syncId}`,
+      syncId,
+      notionPageId: `page-${syncId}`,
+      action: 'created' as const,
+    });
+    stored[SYNC_ENRICHMENT_JOB_KEY] = {
+      id: 'first-job',
+      items: [item('first')],
+      attempts: 0,
+      createdAt: '2026-10-13T00:00:00Z',
+    };
+    const pending = deferred<Response>(),
+      started = deferred<void>();
+    vi.mocked(fetch)
+      .mockImplementationOnce(() => {
+        started.resolve();
+        return pending.promise;
+      })
+      .mockImplementationOnce(async () =>
+        response({ summary: { total: 2, generated: 2 }, aiPlanning: { status: 'planned' } })
+      );
+    const work = processPendingSyncEnrichment();
+    await started.promise;
+    await enqueueSyncEnrichment({ items: [item('second')] });
+    pending.resolve(
+      response({ summary: { total: 1, generated: 1 }, aiPlanning: { status: 'planned' } })
+    );
+    await work;
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(stored[SYNC_ENRICHMENT_JOB_KEY]).toBeUndefined();
+    expect(stored[SYNC_ENRICHMENT_STATE_KEY]).toMatchObject({ status: 'completed', total: 2 });
+  });
+  it('records save activity only for the account that started the save', async () => {
+    const context = await readAccountContext();
+    await recordAccountActivity(context, () => recordDashboardSave('context_menu'));
+    expect(stored[DASHBOARD_EVENTS_KEY]).toHaveLength(1);
+    expect(stored[DASHBOARD_SAVED_TODAY_KEY]).toMatchObject({ count: 1 });
+
+    await serverAPI.logout();
+    await recordAccountActivity(context, () => recordDashboardSave('context_menu'));
+    expect(stored[DASHBOARD_EVENTS_KEY]).toHaveLength(1);
+    expect(stored[DASHBOARD_SAVED_TODAY_KEY]).toMatchObject({ count: 1 });
   });
   it('serializes a delayed profile cache commit before logout clears it', async () => {
     const written = deferred<void>(),

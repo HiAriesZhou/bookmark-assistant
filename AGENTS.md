@@ -35,6 +35,12 @@ unrelated changes.
 - Basic sync never depends on AI success; user edits take priority over AI results.
 - Async Express route handlers must forward rejected promises to error middleware;
   use the shared `asyncHandler` when errors are not fully handled in the route.
+- The extension background owns account-scoped storage. Commit results through
+  `withCurrentAccount` with the context captured when the work started, so replies
+  that finish after logout, deletion or reconnection are dropped. Bulk sync runs
+  once per server account; a new account revision waits for the earlier sync,
+  whose server request cannot be cancelled. Startup cleanup removes obsolete
+  storage keys by exact name only.
 - For non-trivial bug fixes, add the smallest durable prevention such as a regression
   test, validation or type constraint. Do not add settings or services unnecessarily.
 

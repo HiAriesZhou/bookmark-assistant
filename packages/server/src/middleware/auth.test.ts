@@ -16,6 +16,7 @@ import {
 } from './auth';
 
 import { config } from '../config';
+import { auditLog } from '../utils';
 
 // Mock config
 vi.mock('../config', () => ({
@@ -275,6 +276,22 @@ describe('Auth Middleware', () => {
         message: 'Test error',
         stack: error.stack,
       });
+    });
+
+    it('delegates to Express when the response has already started', () => {
+      const error = new Error('Late failure');
+      const response = { ...mockResponse, headersSent: true } as Response;
+
+      errorHandler(error, mockRequest as Request, response, nextFunction);
+
+      expect(nextFunction).toHaveBeenCalledWith(error);
+      expect(auditLog).toHaveBeenCalledWith(
+        'server_error',
+        'unknown',
+        expect.objectContaining({ error: 'Late failure' })
+      );
+      expect(response.status).not.toHaveBeenCalled();
+      expect(response.json).not.toHaveBeenCalled();
     });
 
     it('should hide error details in production', () => {

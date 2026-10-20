@@ -96,17 +96,34 @@ export async function enqueueSyncEnrichment(
 
 export function processPendingSyncEnrichment(): Promise<void> {
   if (activeRun) return activeRun;
-  activeRun = runPendingSyncEnrichment().finally(() => {
+  activeRun = drainPendingSyncEnrichment().finally(() => {
     activeRun = undefined;
   });
   return activeRun;
 }
 
-async function runPendingSyncEnrichment(): Promise<void> {
-  const context = await readAccountContext();
+async function readStoredJob(): Promise<SyncEnrichmentJob | undefined> {
   const stored = await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY);
   const job = stored[SYNC_ENRICHMENT_JOB_KEY] as SyncEnrichmentJob | undefined;
-  if (!job?.items?.length) return;
+  return job?.items?.length ? job : undefined;
+}
+
+// Callers that arrive during a run join it, so a job queued meanwhile (or by a
+// new account) is picked up here instead of waiting for a worker restart. The
+// same job left behind for retry waits for its alarm.
+async function drainPendingSyncEnrichment(): Promise<void> {
+  let processed = await runPendingSyncEnrichment();
+  while (processed) {
+    const latest = await readStoredJob();
+    if (!latest || latest.id === processed) return;
+    processed = await runPendingSyncEnrichment();
+  }
+}
+
+async function runPendingSyncEnrichment(): Promise<string | undefined> {
+  const context = await readAccountContext();
+  const job = await readStoredJob();
+  if (!job) return undefined;
   try {
     const startedAt = new Date().toISOString();
     await withCurrentAccount(context, () =>
@@ -130,10 +147,7 @@ async function runPendingSyncEnrichment(): Promise<void> {
       const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
         SYNC_ENRICHMENT_JOB_KEY
       ] as SyncEnrichmentJob | undefined;
-      if (latest?.id !== job.id) {
-        void processPendingSyncEnrichment();
-        return;
-      }
+      if (latest?.id !== job.id) return;
       await chrome.alarms.clear(SYNC_ENRICHMENT_ALARM);
       await chrome.storage.local.remove(SYNC_ENRICHMENT_JOB_KEY);
       const completedAt = new Date().toISOString();
@@ -153,7 +167,7 @@ async function runPendingSyncEnrichment(): Promise<void> {
       });
     });
   } catch (error) {
-    if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context))) return;
+    if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context))) return job.id;
     await withCurrentAccount(context, async () => {
       const latest = (await chrome.storage.local.get(SYNC_ENRICHMENT_JOB_KEY))[
         SYNC_ENRICHMENT_JOB_KEY
@@ -174,6 +188,7 @@ async function runPendingSyncEnrichment(): Promise<void> {
       console.warn('[Sync Enrichment] Deferred work will retry:', message);
     });
   }
+  return job.id;
 }
 
 export function setupSyncEnrichmentRecovery(): void {

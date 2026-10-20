@@ -59,6 +59,7 @@ beforeEach(() => {
     runtime: {
       getURL: (path: string) => `chrome-extension://test/${path}`,
       openOptionsPage: vi.fn(),
+      sendMessage: vi.fn(),
     },
     tabs: { create: vi.fn(async () => undefined) },
   });
@@ -129,6 +130,44 @@ it('runs destination sync when connected', async () => {
     container.querySelector<HTMLButtonElement>('[aria-label="syncNow"]')?.click();
   });
   expect(syncNow).toHaveBeenCalledOnce();
+});
+
+it('saves the current page and reports its AI result when connected', async () => {
+  let finishAi!: (value: unknown) => void;
+  const sendMessage = vi.fn((message: { type: string }) => {
+    if (message.type === 'SAVE_CURRENT_PAGE') {
+      return Promise.resolve({ success: true, aiStatus: 'pending', aiRequestId: 'request-1' });
+    }
+    return new Promise((resolve) => {
+      finishAi = resolve;
+    });
+  });
+  vi.mocked(chrome.runtime).sendMessage = sendMessage as never;
+  useAppStore.setState({
+    hydrationState: 'cached',
+    isConnected: true,
+    isSyncing: false,
+    dashboard: dashboard('connected'),
+    refreshDashboard: vi.fn(async () => undefined),
+  });
+
+  await renderPopup();
+  const saveButton = () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="saveCurrentPage"]');
+  expect(saveButton()?.disabled).toBe(false);
+
+  await act(async () => saveButton()?.click());
+  expect(sendMessage).toHaveBeenNthCalledWith(1, { type: 'SAVE_CURRENT_PAGE' });
+  expect(sendMessage).toHaveBeenNthCalledWith(2, {
+    type: 'GENERATE_CURRENT_PAGE_AI',
+    aiRequestId: 'request-1',
+  });
+  expect(saveButton()?.disabled).toBe(true);
+  expect(container.textContent).toContain('popup_ai_generating');
+
+  await act(async () => finishAi({ success: true, aiStatus: 'succeeded' }));
+  expect(saveButton()?.disabled).toBe(false);
+  expect(container.textContent).toContain('popup_ai_succeeded');
 });
 
 it('opens the local library and settings at their explicit routes', async () => {
