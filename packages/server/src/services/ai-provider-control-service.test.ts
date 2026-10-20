@@ -8,9 +8,13 @@ describe('AiProviderControlService', () => {
   });
 
   it('enforces global and mode-specific pauses', async () => {
-    const globallyPaused = new AiProviderControlService({ get: async () => ({ status: 'paused', singlePageEnabled: true, batchEnabled: true }) });
+    const globallyPaused = new AiProviderControlService({
+      get: async () => ({ status: 'paused', singlePageEnabled: true, batchEnabled: true }),
+    });
     await expect(globallyPaused.isAllowed('openai', 'validation')).resolves.toBe(false);
-    const batchPaused = new AiProviderControlService({ get: async () => ({ status: 'enabled', singlePageEnabled: true, batchEnabled: false }) });
+    const batchPaused = new AiProviderControlService({
+      get: async () => ({ status: 'enabled', singlePageEnabled: true, batchEnabled: false }),
+    });
     await expect(batchPaused.isAllowed('openai', 'batch')).resolves.toBe(false);
     await expect(batchPaused.isAllowed('openai', 'single_page')).resolves.toBe(true);
   });

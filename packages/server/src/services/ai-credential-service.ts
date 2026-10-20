@@ -22,7 +22,9 @@ export interface AiCredentialStore {
   stopTasksForDeletedCredential(userId: string): Promise<void>;
   reconcileTasksWithActiveCredential(
     userId: string,
-    credential: Pick<StoredAiProviderCredential, 'provider' | 'credentialVersion'> & { model: string }
+    credential: Pick<StoredAiProviderCredential, 'provider' | 'credentialVersion'> & {
+      model: string;
+    }
   ): Promise<void>;
 }
 
@@ -135,7 +137,11 @@ export class AiCredentialService {
       provider: credential.provider,
       credentialVersion: credential.credentialVersion,
     });
-    return { provider: credential.provider, apiKey, credentialVersion: credential.credentialVersion };
+    return {
+      provider: credential.provider,
+      apiKey,
+      credentialVersion: credential.credentialVersion,
+    };
   }
 
   async deleteCredential(externalUserId: string): Promise<void> {

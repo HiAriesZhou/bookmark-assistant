@@ -36,10 +36,18 @@ export function isSinglePageAiConfigured(
 }
 
 function normalizeSettings(settings: AiSettings): AiSettings {
-  const properties = settings.properties?.descriptionPropertyId.trim() && settings.properties.tagsPropertyId.trim()
-    ? { descriptionPropertyId: settings.properties.descriptionPropertyId.trim(), tagsPropertyId: settings.properties.tagsPropertyId.trim() }
-    : undefined;
-  return { singlePageEnabled: settings.singlePageEnabled, batchEnabled: settings.batchEnabled, properties };
+  const properties =
+    settings.properties?.descriptionPropertyId.trim() && settings.properties.tagsPropertyId.trim()
+      ? {
+          descriptionPropertyId: settings.properties.descriptionPropertyId.trim(),
+          tagsPropertyId: settings.properties.tagsPropertyId.trim(),
+        }
+      : undefined;
+  return {
+    singlePageEnabled: settings.singlePageEnabled,
+    batchEnabled: settings.batchEnabled,
+    properties,
+  };
 }
 
 export function isAiSourceDisallowed(rawUrl: string): boolean {
@@ -58,7 +66,8 @@ export function isAiSourceDisallowed(rawUrl: string): boolean {
     hostname.endsWith('.local') ||
     hostname.endsWith('.internal') ||
     hostname.endsWith('.test')
-  ) return true;
+  )
+    return true;
   if (isPrivateAddress(hostname)) return true;
   return false;
 }

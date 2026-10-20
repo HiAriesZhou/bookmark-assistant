@@ -80,7 +80,9 @@ for (const locale of MARKETING_LOCALES) {
   }
 }
 
-const overview = manifest.screenshots.find((item) => item.locale === 'global' && item.id === 'overview');
+const overview = manifest.screenshots.find(
+  (item) => item.locale === 'global' && item.id === 'overview'
+);
 check(Boolean(overview), 'Global overview screenshot is required');
 if (overview) {
   check(overview.file === 'screenshots/global/01-overview.png', 'Unexpected global overview path');

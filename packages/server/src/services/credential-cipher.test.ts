@@ -49,11 +49,14 @@ describe('credential cipher', () => {
     const cipher = createCredentialCipher(createConfig());
     const encrypted = cipher.encrypt('sk-example-secret', context);
 
-    expect(() => cipher.decrypt({ ...encrypted, ciphertext: `${encrypted.ciphertext}x` }, context)).toThrow(
-      CredentialCipherIntegrityError
-    );
     expect(() =>
-      cipher.decrypt({ ...encrypted, authenticationTag: `${encrypted.authenticationTag}x` }, context)
+      cipher.decrypt({ ...encrypted, ciphertext: `${encrypted.ciphertext}x` }, context)
+    ).toThrow(CredentialCipherIntegrityError);
+    expect(() =>
+      cipher.decrypt(
+        { ...encrypted, authenticationTag: `${encrypted.authenticationTag}x` },
+        context
+      )
     ).toThrow(CredentialCipherIntegrityError);
   });
 
@@ -69,7 +72,10 @@ describe('credential cipher', () => {
 
   it('fails closed when encryption is not configured', () => {
     expect(() =>
-      createCredentialCipher({ available: false, reason: 'AI credential encryption keys are not configured.' })
+      createCredentialCipher({
+        available: false,
+        reason: 'AI credential encryption keys are not configured.',
+      })
     ).toThrow(CredentialCipherConfigurationError);
   });
 });

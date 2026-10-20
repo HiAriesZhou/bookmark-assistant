@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DomainLimiter, extractReadableText, isPathAllowedByRobots, isPrivateAddress, resolvePublicUrl } from './public-page-fetcher';
+import {
+  DomainLimiter,
+  extractReadableText,
+  isPathAllowedByRobots,
+  isPrivateAddress,
+  resolvePublicUrl,
+} from './public-page-fetcher';
 
 afterEach(() => vi.useRealTimers());
 

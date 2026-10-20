@@ -18,8 +18,6 @@
     "erasableSyntaxOnly": true,
     "noUncheckedSideEffectImports": true
   },
-  "references": [
-    { "path": "../types" }
-  ],
+  "references": [{ "path": "../types" }],
   "exclude": ["node_modules", "**/node_modules/*", "dist", "**/*.test.ts"]
 }

@@ -74,7 +74,12 @@ export function buildAiGenerationPrompt(input: AiGenerationPromptInput): {
 
 export function parseAiModelOutput(raw: string, language: AiOutputLanguage): AiModelOutput {
   const parsed = parseJsonObject(raw);
-  if (parsed.status === 'insufficient_content' && parsed.summary === '' && Array.isArray(parsed.tags) && parsed.tags.length === 0) {
+  if (
+    parsed.status === 'insufficient_content' &&
+    parsed.summary === '' &&
+    Array.isArray(parsed.tags) &&
+    parsed.tags.length === 0
+  ) {
     return { status: 'insufficient_content', language, summary: '', tags: [] };
   }
   const summary = typeof parsed.summary === 'string' ? normalizeText(parsed.summary) : '';
@@ -82,7 +87,12 @@ export function parseAiModelOutput(raw: string, language: AiOutputLanguage): AiM
   if (!summary || tags.length < 1 || tags.length > 5) {
     throw new AiGenerationOutputError();
   }
-  const output: Extract<AiModelOutput, { status: 'ok' }> = { status: 'ok', language, summary, tags };
+  const output: Extract<AiModelOutput, { status: 'ok' }> = {
+    status: 'ok',
+    language,
+    summary,
+    tags,
+  };
   if (!isSummaryWithinLimit(summary, language)) {
     throw new AiGenerationOutputError('summary_too_long', output);
   }
@@ -111,13 +121,19 @@ export function selectSufficientAiContent(
   title?: string
 ): string | undefined {
   if (body && hasMinimumContent(body, MIN_BODY_CJK_CHARACTERS, MIN_BODY_WORDS)) return body.trim();
-  if (description && hasMinimumContent(description, MIN_DESCRIPTION_CJK_CHARACTERS, MIN_DESCRIPTION_WORDS)) return description.trim();
+  if (
+    description &&
+    hasMinimumContent(description, MIN_DESCRIPTION_CJK_CHARACTERS, MIN_DESCRIPTION_WORDS)
+  )
+    return description.trim();
   if (title && isMeaningfulTitle(title)) return title.trim();
   return undefined;
 }
 
 export function canonicalizeGeneratedTags(tags: string[], candidates: string[]): string[] {
-  const candidateCasing = new Map(candidates.map((tag) => [tag.normalize('NFC').toLocaleLowerCase(), tag.normalize('NFC')]));
+  const candidateCasing = new Map(
+    candidates.map((tag) => [tag.normalize('NFC').toLocaleLowerCase(), tag.normalize('NFC')])
+  );
   const seen = new Set<string>();
   return tags.flatMap((tag) => {
     // Notion rejects commas in select and multi-select option names.
@@ -174,7 +190,11 @@ function normalizeText(value: string): string {
   return value.normalize('NFC').replace(/\s+/g, ' ').trim();
 }
 
-function hasMinimumContent(value: string, minimumCjkCharacters: number, minimumWords: number): boolean {
+function hasMinimumContent(
+  value: string,
+  minimumCjkCharacters: number,
+  minimumWords: number
+): boolean {
   const normalized = normalizeText(value);
   const cjkCount = (normalized.match(/[\u3400-\u9fff\uf900-\ufaff]/g) || []).length;
   return cjkCount >= 3
@@ -185,7 +205,9 @@ function hasMinimumContent(value: string, minimumCjkCharacters: number, minimumW
 function isMeaningfulTitle(value: string): boolean {
   const normalized = normalizeText(value);
   if (GENERIC_TITLES.has(normalized.toLocaleLowerCase())) return false;
-  const meaningfulCharacters = Array.from(normalized).filter((character) => /[\p{L}\p{N}]/u.test(character));
+  const meaningfulCharacters = Array.from(normalized).filter((character) =>
+    /[\p{L}\p{N}]/u.test(character)
+  );
   return meaningfulCharacters.length >= 2;
 }
 

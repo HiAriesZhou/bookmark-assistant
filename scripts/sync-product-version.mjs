@@ -40,7 +40,7 @@ function assertChromeCompatibleVersion(version) {
 
   if (!isValid) {
     throw new Error(
-      `Product version "${version}" must use Chrome-compatible major.minor.patch integers between 0 and 65535.`,
+      `Product version "${version}" must use Chrome-compatible major.minor.patch integers between 0 and 65535.`
     );
   }
 }
@@ -94,6 +94,6 @@ if (checkOnly) {
   console.log(
     updated.length > 0
       ? `Synchronized product version ${productVersion}: ${updated.join(', ')}`
-      : `Product version ${productVersion} is already synchronized.`,
+      : `Product version ${productVersion} is already synchronized.`
   );
 }

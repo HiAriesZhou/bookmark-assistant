@@ -266,6 +266,7 @@ function shouldUpdateExistingLink(item: LinkItem, existing: ExistingLinkRecord):
 
   return (
     itemType === 'reading_list' &&
-    (item.readState !== undefined && item.readState !== existing.readState)
+    item.readState !== undefined &&
+    item.readState !== existing.readState
   );
 }

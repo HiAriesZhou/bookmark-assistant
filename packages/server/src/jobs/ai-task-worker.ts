@@ -12,22 +12,40 @@ import { PrismaAiTaskStore } from '../services/prisma-ai-task-store';
 import { notionService } from '../services/notion';
 import { userPrisma } from '../services/userPrisma';
 import { AiDiagnosticsService } from '../services/ai-diagnostics-service';
-import { AiProviderControlService, PrismaAiProviderControlStore } from '../services/ai-provider-control-service';
+import {
+  AiProviderControlService,
+  PrismaAiProviderControlStore,
+} from '../services/ai-provider-control-service';
 import { PrismaPublicPageDomainLimiter } from '../services/prisma-public-page-domain-limiter';
 
 function createWorker(): AiTaskWorker | undefined {
   if (!config.aiCredentialEncryption.available) return undefined;
   const taskStore = new PrismaAiTaskStore();
-  const credentials = new AiCredentialService(new PrismaAiCredentialStore(), createCredentialCipher(config.aiCredentialEncryption));
+  const credentials = new AiCredentialService(
+    new PrismaAiCredentialStore(),
+    createCredentialCipher(config.aiCredentialEncryption)
+  );
   const settings = new AiSettingsService(new PrismaAiSettingsStore());
   const providerControl = new AiProviderControlService(new PrismaAiProviderControlStore());
-  const executor = new AiTaskExecutor({ store: taskStore, credentials, notion: notionService, fetcher: new PublicPageFetcher(new PrismaPublicPageDomainLimiter()), providerFor: (provider, model) => createAiProviderAdapter(provider, fetch, model), providerControl, diagnostics: new AiDiagnosticsService() });
+  const executor = new AiTaskExecutor({
+    store: taskStore,
+    credentials,
+    notion: notionService,
+    fetcher: new PublicPageFetcher(new PrismaPublicPageDomainLimiter()),
+    providerFor: (provider, model) => createAiProviderAdapter(provider, fetch, model),
+    providerControl,
+    diagnostics: new AiDiagnosticsService(),
+  });
   return new AiTaskWorker({
     store: taskStore,
     resolveContext: async (userId) => {
       const [user, aiSettings] = await Promise.all([userPrisma.find(userId), settings.get(userId)]);
       return user?.notionAccessToken && aiSettings?.properties
-        ? { accessToken: user.notionAccessToken, settings: aiSettings.properties, dataSourceId: user.notionDataSourceId || undefined }
+        ? {
+            accessToken: user.notionAccessToken,
+            settings: aiSettings.properties,
+            dataSourceId: user.notionDataSourceId || undefined,
+          }
         : undefined;
     },
     execute: (task, context) => executor.execute(task, context),

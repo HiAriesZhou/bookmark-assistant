@@ -16,7 +16,11 @@ export interface NotionPageForAi {
 
 export type NotionAiWritePreparation =
   | { action: 'write'; properties: Record<string, unknown>; descriptionBaselineHash: string }
-  | { action: 'write_tags_only'; properties: Record<string, unknown>; descriptionBaselineHash: string };
+  | {
+      action: 'write_tags_only';
+      properties: Record<string, unknown>;
+      descriptionBaselineHash: string;
+    };
 
 export class NotionAiWriteError extends Error {
   constructor(public readonly code: 'target_unavailable' | 'invalid_output') {
@@ -45,7 +49,8 @@ export function prepareNotionAiWrite(
 
   const currentDescription = richTextPlainText(description.value);
   const currentHash = createDescriptionBaselineHash(currentDescription);
-  const canReplaceDescription = !currentDescription || currentHash === expectedDescriptionBaselineHash;
+  const canReplaceDescription =
+    !currentDescription || currentHash === expectedDescriptionBaselineHash;
   const mergedTags = mergeNotionTags(multiSelectNames(tags.value), output.tags);
   if (!canReplaceDescription) {
     return {
@@ -78,7 +83,9 @@ export function getDescriptionBaselineHash(
   settings: NotionAiPropertySettings
 ): string | undefined {
   const description = findProperty(page.properties, settings.descriptionPropertyId, 'rich_text');
-  return description ? createDescriptionBaselineHash(richTextPlainText(description.value)) : undefined;
+  return description
+    ? createDescriptionBaselineHash(richTextPlainText(description.value))
+    : undefined;
 }
 
 /** Confirms whether a possibly-ambiguous Notion update reached the page. */
@@ -93,8 +100,10 @@ export function doesNotionPageMatchAiOutput(
   if (!description || !tags) return false;
   const currentDescription = normalizeText(richTextPlainText(description.value));
   const currentTags = new Set(multiSelectNames(tags.value).map((tag) => tag.toLocaleLowerCase()));
-  return currentDescription === normalizeText(output.summary)
-    && output.tags.every((tag) => currentTags.has(tag.trim().toLocaleLowerCase()));
+  return (
+    currentDescription === normalizeText(output.summary) &&
+    output.tags.every((tag) => currentTags.has(tag.trim().toLocaleLowerCase()))
+  );
 }
 
 function findProperty(
@@ -128,7 +137,8 @@ function richTextPlainText(value: Record<string, unknown>): string {
 function multiSelectNames(value: Record<string, unknown>): string[] {
   const options = Array.isArray(value.multi_select) ? value.multi_select : [];
   return options.flatMap((option) => {
-    const name = option && typeof option === 'object' ? (option as Record<string, unknown>).name : undefined;
+    const name =
+      option && typeof option === 'object' ? (option as Record<string, unknown>).name : undefined;
     return typeof name === 'string' && name.trim() ? [name.trim()] : [];
   });
 }

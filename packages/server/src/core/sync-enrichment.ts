@@ -17,11 +17,7 @@ export function readRichTextProperty(page: any, propertyId: string): string {
     .trim();
 }
 
-export function belongsToSyncTarget(
-  page: any,
-  dataSourceId: string,
-  databaseId?: string
-): boolean {
+export function belongsToSyncTarget(page: any, dataSourceId: string, databaseId?: string): boolean {
   if (!page || page.archived || page.in_trash) return false;
   const parentDataSourceId = page.parent?.data_source_id;
   if (typeof parentDataSourceId === 'string') return parentDataSourceId === dataSourceId;

@@ -7,4 +7,3 @@ export const metadata: Metadata = createPageMetadata('zh-CN', 'home');
 export default function Page() {
   return <LandingPage locale="zh-CN" />;
 }
-

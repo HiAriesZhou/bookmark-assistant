@@ -488,12 +488,19 @@ export class NotionService {
     return this.withRetry(() => notion.pages.retrieve({ page_id: pageId }), 'Retrieve page');
   }
 
-  async getAiTemplateProperties(dataSourceId: string, accessToken: string): Promise<{ descriptionPropertyId: string; tagsPropertyId: string }> {
+  async getAiTemplateProperties(
+    dataSourceId: string,
+    accessToken: string
+  ): Promise<{ descriptionPropertyId: string; tagsPropertyId: string }> {
     const schema = await this.getDataSourceSchema(dataSourceId, accessToken);
     return resolveAiTemplateProperties(schema);
   }
 
-  async getAiTagCandidates(dataSourceId: string, accessToken: string, tagsPropertyId: string): Promise<string[]> {
+  async getAiTagCandidates(
+    dataSourceId: string,
+    accessToken: string,
+    tagsPropertyId: string
+  ): Promise<string[]> {
     const schema = await this.getDataSourceSchema(dataSourceId, accessToken);
     return resolveAiTagCandidates(schema, tagsPropertyId);
   }
@@ -816,10 +823,18 @@ export class NotionService {
   }
 }
 
-export function resolveAiTemplateProperties(schema: { properties?: Record<string, unknown> }): { descriptionPropertyId: string; tagsPropertyId: string } {
+export function resolveAiTemplateProperties(schema: { properties?: Record<string, unknown> }): {
+  descriptionPropertyId: string;
+  tagsPropertyId: string;
+} {
   const description = schema.properties?.Description as Record<string, unknown> | undefined;
   const tags = schema.properties?.Tags as Record<string, unknown> | undefined;
-  if (description?.type !== 'rich_text' || typeof description.id !== 'string' || tags?.type !== 'multi_select' || typeof tags.id !== 'string') {
+  if (
+    description?.type !== 'rich_text' ||
+    typeof description.id !== 'string' ||
+    tags?.type !== 'multi_select' ||
+    typeof tags.id !== 'string'
+  ) {
     throw new Error('ai_template_properties_unavailable');
   }
   return { descriptionPropertyId: description.id, tagsPropertyId: tags.id };
@@ -836,7 +851,10 @@ export function resolveAiTagCandidates(
   }) as Record<string, any> | undefined;
   return Array.isArray(property?.multi_select?.options)
     ? property.multi_select.options.flatMap((option: unknown) => {
-        const name = option && typeof option === 'object' ? (option as Record<string, unknown>).name : undefined;
+        const name =
+          option && typeof option === 'object'
+            ? (option as Record<string, unknown>).name
+            : undefined;
         return typeof name === 'string' && name.trim() ? [name.trim()] : [];
       })
     : [];

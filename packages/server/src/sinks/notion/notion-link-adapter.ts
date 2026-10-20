@@ -42,7 +42,13 @@ export async function writeLinkItemToNotion(
     let notionPageId: string | undefined;
 
     try {
-      const createdPage = await writer.createPage(parent, properties, accessToken, undefined, iconUrl);
+      const createdPage = await writer.createPage(
+        parent,
+        properties,
+        accessToken,
+        undefined,
+        iconUrl
+      );
       notionPageId = readNotionPageId(createdPage);
     } catch (error) {
       if (!item.syncId || !writer.findPageBySyncId || !isRetryableNotionError(error)) {
@@ -62,7 +68,13 @@ export async function writeLinkItemToNotion(
         };
       }
 
-      const createdPage = await writer.createPage(parent, properties, accessToken, undefined, iconUrl);
+      const createdPage = await writer.createPage(
+        parent,
+        properties,
+        accessToken,
+        undefined,
+        iconUrl
+      );
       notionPageId = readNotionPageId(createdPage);
     }
 

@@ -5,7 +5,10 @@ import { selectFairAiTasks } from './ai-task-scheduler';
 
 export interface AiTaskWorkerStore {
   listClaimable(limit: number): Promise<Array<ExecutableAiTask & { createdAt: Date }>>;
-  listClaimableForUser(userId: string, limit: number): Promise<Array<ExecutableAiTask & { createdAt: Date }>>;
+  listClaimableForUser(
+    userId: string,
+    limit: number
+  ): Promise<Array<ExecutableAiTask & { createdAt: Date }>>;
   countProcessingByUser(): Promise<Map<string, number>>;
   claimTask(id: string, leaseToken: string): Promise<ExecutableAiTask | undefined>;
   retryBatchTask(id: string, retryAfterMs?: number): Promise<boolean>;
@@ -14,8 +17,22 @@ export interface AiTaskWorkerStore {
 
 export interface AiTaskWorkerDependencies {
   store: AiTaskWorkerStore;
-  resolveContext(userId: string): Promise<{ accessToken: string; settings: { descriptionPropertyId: string; tagsPropertyId: string }; dataSourceId?: string } | undefined>;
-  execute(task: ExecutableAiTask, context: { accessToken: string; settings: { descriptionPropertyId: string; tagsPropertyId: string }; dataSourceId?: string }): Promise<AiGenerationStatus>;
+  resolveContext(userId: string): Promise<
+    | {
+        accessToken: string;
+        settings: { descriptionPropertyId: string; tagsPropertyId: string };
+        dataSourceId?: string;
+      }
+    | undefined
+  >;
+  execute(
+    task: ExecutableAiTask,
+    context: {
+      accessToken: string;
+      settings: { descriptionPropertyId: string; tagsPropertyId: string };
+      dataSourceId?: string;
+    }
+  ): Promise<AiGenerationStatus>;
 }
 
 export type AiTaskRunSummary = {
@@ -56,28 +73,39 @@ export class AiTaskWorker {
     return this.runSelectedWithSummary(selected);
   }
 
-  private async runSelected(selected: Array<ExecutableAiTask & { createdAt?: Date }>): Promise<number> {
+  private async runSelected(
+    selected: Array<ExecutableAiTask & { createdAt?: Date }>
+  ): Promise<number> {
     return (await this.runSelectedWithSummary(selected)).claimed;
   }
 
   private async runSelectedWithSummary(
     selected: Array<ExecutableAiTask & { createdAt?: Date }>
   ): Promise<AiTaskRunSummary> {
-    const results = await Promise.all(selected.map(async (candidate) => {
-      const task = await this.dependencies.store.claimTask(candidate.id, randomUUID());
-      if (!task) return { claimed: false } as const;
-      const context = await this.dependencies.resolveContext(task.userId);
-      if (context) {
-        const status = await this.dependencies.execute(task, context);
-        if (status === 'failed') {
-          const exponentialBackoff = Math.min(30_000, 1_000 * 2 ** Math.max(0, (task.attemptCount || 1) - 1));
-          await this.dependencies.store.retryBatchTask(task.id, task.providerRetryAfterMs || exponentialBackoff);
+    const results = await Promise.all(
+      selected.map(async (candidate) => {
+        const task = await this.dependencies.store.claimTask(candidate.id, randomUUID());
+        if (!task) return { claimed: false } as const;
+        const context = await this.dependencies.resolveContext(task.userId);
+        if (context) {
+          const status = await this.dependencies.execute(task, context);
+          if (status === 'failed') {
+            const exponentialBackoff = Math.min(
+              30_000,
+              1_000 * 2 ** Math.max(0, (task.attemptCount || 1) - 1)
+            );
+            await this.dependencies.store.retryBatchTask(
+              task.id,
+              task.providerRetryAfterMs || exponentialBackoff
+            );
+          }
+          return { claimed: true, status } as const;
         }
-        return { claimed: true, status } as const;
-      }
-      if (task.leaseToken) await this.dependencies.store.markNeedsAction(task.id, task.leaseToken);
-      return { claimed: true, status: 'needs_action' as const };
-    }));
+        if (task.leaseToken)
+          await this.dependencies.store.markNeedsAction(task.id, task.leaseToken);
+        return { claimed: true, status: 'needs_action' as const };
+      })
+    );
     return results.reduce<AiTaskRunSummary>((summary, result) => {
       if (!result.claimed) return summary;
       summary.claimed += 1;

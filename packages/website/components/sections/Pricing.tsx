@@ -70,10 +70,7 @@ export function Pricing({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLo
   );
 
   return (
-    <section
-      id="pricing"
-      className="border-b border-[#d6d8cf] bg-[#eeede8] py-20 sm:py-28"
-    >
+    <section id="pricing" className="border-b border-[#d6d8cf] bg-[#eeede8] py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-6">
         <div className="mx-auto max-w-3xl text-center">
           <SectionEyebrow text={copy.pricing.eyebrow} color="amber" />

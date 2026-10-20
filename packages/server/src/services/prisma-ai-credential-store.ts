@@ -59,7 +59,9 @@ export class PrismaAiCredentialStore implements AiCredentialStore {
 
   async reconcileTasksWithActiveCredential(
     userId: string,
-    credential: Pick<StoredAiProviderCredential, 'provider' | 'credentialVersion'> & { model: string }
+    credential: Pick<StoredAiProviderCredential, 'provider' | 'credentialVersion'> & {
+      model: string;
+    }
   ): Promise<void> {
     const taskData = {
       provider: credential.provider,
@@ -87,7 +89,17 @@ export class PrismaAiCredentialStore implements AiCredentialStore {
           OR: [
             { status: 'queued', ...staleCredential },
             { status: 'processing', ...staleCredential },
-            { status: 'needs_action', reasonCode: { in: ['needs_action_credential_deleted', 'needs_action_invalid_api_key', 'needs_action_insufficient_quota', 'needs_action_model_access'] } },
+            {
+              status: 'needs_action',
+              reasonCode: {
+                in: [
+                  'needs_action_credential_deleted',
+                  'needs_action_invalid_api_key',
+                  'needs_action_insufficient_quota',
+                  'needs_action_model_access',
+                ],
+              },
+            },
           ],
         },
         data: {
@@ -121,19 +133,21 @@ function toPrismaCredential(credential: StoredAiProviderCredential) {
 }
 
 function fromPrismaCredential(
-  credential: typeof credentialSelect extends never ? never : {
-    userId: string;
-    provider: string;
-    encryptionScheme: string;
-    encryptionKeyVersion: number;
-    initializationVector: string;
-    authenticationTag: string;
-    encryptedSecret: string;
-    keyLastFour: string;
-    credentialVersion: number;
-    status: string;
-    verifiedAt: Date | null;
-  }
+  credential: typeof credentialSelect extends never
+    ? never
+    : {
+        userId: string;
+        provider: string;
+        encryptionScheme: string;
+        encryptionKeyVersion: number;
+        initializationVector: string;
+        authenticationTag: string;
+        encryptedSecret: string;
+        keyLastFour: string;
+        credentialVersion: number;
+        status: string;
+        verifiedAt: Date | null;
+      }
 ): StoredAiProviderCredential {
   return {
     userId: credential.userId,

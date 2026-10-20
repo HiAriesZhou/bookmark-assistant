@@ -1,3 +1,9 @@
 dist
+dist-dev
 node_modules
+.next
+.build
+pnpm-lock.yaml
 packages/extension/_locales/*/messages.json
+*.generated.ts
+*.webmanifest

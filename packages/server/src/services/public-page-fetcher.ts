@@ -10,7 +10,10 @@ const ALLOWED_PORTS = new Set(['', '80', '443']);
 const ROBOTS_CACHE_TTL_MS = 60 * 60_000;
 const MAX_REQUESTS_PER_DOMAIN = 2;
 const MIN_DOMAIN_REQUEST_INTERVAL_MS = 250;
-const sharedRobotsCache = new Map<string, { expiresAt: number; policy: Promise<string | boolean> }>();
+const sharedRobotsCache = new Map<
+  string,
+  { expiresAt: number; policy: Promise<string | boolean> }
+>();
 const sharedDomainLimiters = new Map<string, DomainLimiter>();
 
 export type PublicPageFetchErrorCode =
@@ -51,7 +54,10 @@ export class PublicPageFetcher {
     return this.fetchFollowingRedirects(url, 0);
   }
 
-  private async fetchFollowingRedirects(rawUrl: string, redirectCount: number): Promise<PublicPageContent> {
+  private async fetchFollowingRedirects(
+    rawUrl: string,
+    redirectCount: number
+  ): Promise<PublicPageContent> {
     if (redirectCount > MAX_REDIRECTS) throw new PublicPageFetchError('fetch_disallowed');
     const url = await resolvePublicUrl(rawUrl);
     if (!(await this.isAllowedByRobots(url))) throw new PublicPageFetchError('fetch_disallowed');
@@ -70,26 +76,30 @@ export class PublicPageFetcher {
     }
 
     const contentType = response.headers['content-type']?.toLowerCase() || '';
-    const kind = contentType.includes('text/html') || contentType.includes('application/xhtml+xml')
-      ? 'html'
-      : contentType.startsWith('text/plain')
-        ? 'plain'
-        : undefined;
+    const kind =
+      contentType.includes('text/html') || contentType.includes('application/xhtml+xml')
+        ? 'html'
+        : contentType.startsWith('text/plain')
+          ? 'plain'
+          : undefined;
     if (!kind) {
       discardResponse(response);
       throw new PublicPageFetchError('unsupported_content_type');
     }
 
     const rawBody = await readLimitedResponse(response);
-    return { finalUrl: url.toString(), contentType: kind, body: extractReadableText(rawBody, kind) };
+    return {
+      finalUrl: url.toString(),
+      contentType: kind,
+      body: extractReadableText(rawBody, kind),
+    };
   }
 
   private async isAllowedByRobots(url: URL): Promise<boolean> {
     const origin = url.origin;
     const cached = this.robotsCache.get(origin);
-    const policy = cached && cached.expiresAt > Date.now()
-      ? cached.policy
-      : this.fetchRobotsPolicy(url);
+    const policy =
+      cached && cached.expiresAt > Date.now() ? cached.policy : this.fetchRobotsPolicy(url);
     if (!cached || cached.expiresAt <= Date.now()) {
       this.robotsCache.set(origin, { expiresAt: Date.now() + ROBOTS_CACHE_TTL_MS, policy });
     }
@@ -104,17 +114,30 @@ export class PublicPageFetcher {
       const robotsUrl = await resolvePublicUrl(new URL('/robots.txt', url.origin).toString());
       const response = await this.requestWithDomainLimit(robotsUrl, 'text/plain,*/*;q=0.1');
       const status = response.statusCode || 0;
-      if (status === 404 || status === 410) { discardResponse(response); return true; }
-      if (status === 401 || status === 403) { discardResponse(response); return false; }
-      if (status < 200 || status >= 300) { discardResponse(response); return false; }
+      if (status === 404 || status === 410) {
+        discardResponse(response);
+        return true;
+      }
+      if (status === 401 || status === 403) {
+        discardResponse(response);
+        return false;
+      }
+      if (status < 200 || status >= 300) {
+        discardResponse(response);
+        return false;
+      }
       return readLimitedResponse(response);
     } catch {
       return false;
     }
   }
 
-  private async requestWithDomainLimit(url: URL, accept?: string): Promise<import('http').IncomingMessage> {
-    const limiter = this.domainLimiters.get(url.hostname) ||
+  private async requestWithDomainLimit(
+    url: URL,
+    accept?: string
+  ): Promise<import('http').IncomingMessage> {
+    const limiter =
+      this.domainLimiters.get(url.hostname) ||
       new DomainLimiter(MAX_REQUESTS_PER_DOMAIN, MIN_DOMAIN_REQUEST_INTERVAL_MS);
     this.domainLimiters.set(url.hostname, limiter);
     const release = this.distributedDomainLimiter
@@ -199,7 +222,11 @@ export function isPathAllowedByRobots(robots: string, path: string): boolean {
   let sawRule = false;
   for (const rawLine of robots.split(/\r?\n/)) {
     const line = rawLine.replace(/#.*$/, '').trim();
-    if (!line) { group = undefined; sawRule = false; continue; }
+    if (!line) {
+      group = undefined;
+      sawRule = false;
+      continue;
+    }
     const separator = line.indexOf(':');
     if (separator < 0) continue;
     const field = line.slice(0, separator).trim().toLowerCase();
@@ -217,11 +244,15 @@ export function isPathAllowedByRobots(robots: string, path: string): boolean {
     }
   }
   const specific = groups.filter((candidate) => candidate.agents.includes('bookmarkassistantbot'));
-  const applicable = specific.length ? specific : groups.filter((candidate) => candidate.agents.includes('*'));
+  const applicable = specific.length
+    ? specific
+    : groups.filter((candidate) => candidate.agents.includes('*'));
   const matches = applicable
     .flatMap((candidate) => candidate.rules)
     .map((rule) => ({ ...rule, matchLength: matchRobotsPath(rule.path, path) }))
-    .filter((rule): rule is typeof rule & { matchLength: number } => rule.matchLength !== undefined);
+    .filter(
+      (rule): rule is typeof rule & { matchLength: number } => rule.matchLength !== undefined
+    );
   if (!matches.length) return true;
   matches.sort((a, b) => b.matchLength - a.matchLength || Number(b.allow) - Number(a.allow));
   return matches[0].allow;
@@ -252,7 +283,9 @@ export class DomainLimiter {
   async acquire(): Promise<() => void> {
     let releaseSchedule!: () => void;
     const previousSchedule = this.schedule;
-    this.schedule = new Promise<void>((resolve) => { releaseSchedule = resolve; });
+    this.schedule = new Promise<void>((resolve) => {
+      releaseSchedule = resolve;
+    });
     await previousSchedule;
     if (this.active >= this.limit) await new Promise<void>((resolve) => this.waiters.push(resolve));
     const pacingDelay = Math.max(0, this.nextStartAt - Date.now());
@@ -274,7 +307,12 @@ export async function resolvePublicUrl(rawUrl: string): Promise<URL> {
   } catch {
     throw new PublicPageFetchError('fetch_disallowed');
   }
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !ALLOWED_PORTS.has(url.port)) {
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    !ALLOWED_PORTS.has(url.port)
+  ) {
     throw new PublicPageFetchError('fetch_disallowed');
   }
   if (isBlockedHostname(url.hostname)) throw new PublicPageFetchError('fetch_disallowed');
@@ -343,7 +381,13 @@ export function isPrivateAddress(address: string): boolean {
   if (isIP(normalized) === 6) {
     const mappedIpv4 = ipv4FromMappedIpv6(normalized);
     if (mappedIpv4) return isPrivateAddress(mappedIpv4);
-    return normalized === '::1' || normalized === '::' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
+    return (
+      normalized === '::1' ||
+      normalized === '::' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      normalized.startsWith('fe80:')
+    );
   }
   return false;
 }

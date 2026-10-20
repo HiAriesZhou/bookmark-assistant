@@ -3,7 +3,14 @@
  * provider credentials, prompts, page bodies, and raw model responses never
  * belong in the shared data model.
  */
-export const AI_PROVIDERS = ['openai', 'anthropic', 'gemini', 'deepseek', 'groq', 'minimax'] as const;
+export const AI_PROVIDERS = [
+  'openai',
+  'anthropic',
+  'gemini',
+  'deepseek',
+  'groq',
+  'minimax',
+] as const;
 
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
@@ -77,8 +84,5 @@ export function isAiProvider(value: unknown): value is AiProvider {
 }
 
 export function isAiGenerationStatus(value: unknown): value is AiGenerationStatus {
-  return (
-    typeof value === 'string' &&
-    (AI_GENERATION_STATUSES as readonly string[]).includes(value)
-  );
+  return typeof value === 'string' && (AI_GENERATION_STATUSES as readonly string[]).includes(value);
 }
