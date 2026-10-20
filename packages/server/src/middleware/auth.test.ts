@@ -277,6 +277,17 @@ describe('Auth Middleware', () => {
       });
     });
 
+    it('delegates to Express when the response has already started', () => {
+      const error = new Error('Late failure');
+      const response = { ...mockResponse, headersSent: true } as Response;
+
+      errorHandler(error, mockRequest as Request, response, nextFunction);
+
+      expect(nextFunction).toHaveBeenCalledWith(error);
+      expect(response.status).not.toHaveBeenCalled();
+      expect(response.json).not.toHaveBeenCalled();
+    });
+
     it('should hide error details in production', () => {
       config.nodeEnv = 'production';
 

@@ -37,6 +37,7 @@ import {
   classifyDashboardError,
   getDashboardSnapshot,
   inferSyncResult,
+  recordAccountActivity,
   recordDashboardEvent,
   recordDashboardSave,
 } from './dashboard';
@@ -129,8 +130,7 @@ async function performBookmarkSync(
 ): Promise<BookmarkSyncResult> {
   const context = expectedContext ?? (await readAccountContext());
   await assertAccountContextCurrent(context);
-  const accountKey = JSON.stringify([context.revision, context.userId ?? context.token]);
-  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), accountKey);
+  return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), context);
 }
 
 async function performBookmarkSyncAfterInitialization(
@@ -418,17 +418,25 @@ async function performBookmarkSyncAfterInitialization(
 }
 
 // Both capture surfaces share only the base save; current-page AI stays below.
-async function syncCapturedLink(bookmark: LinkItem, invalidCaptureMessage: string) {
+async function syncCapturedLink(
+  bookmark: LinkItem,
+  invalidCaptureMessage: string,
+  context: AccountContext
+) {
   const mapping = prepareLegacyLinkItemForSync(bookmark, {
     now: () => new Date(),
     createId: createDefaultKnowledgeItemId,
     normalizeUrl,
   });
   if (!mapping.success) throw new Error(invalidCaptureMessage);
-  const syncResponse = await serverAPI.syncBookmarks([mapping.item], {
-    aiBatchEligible: false,
-    requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-  });
+  const syncResponse = await serverAPI.syncBookmarks(
+    [mapping.item],
+    {
+      aiBatchEligible: false,
+      requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
+    },
+    context
+  );
   return { item: mapping.item, syncResponse };
 }
 
@@ -437,6 +445,7 @@ async function syncCapturedLink(bookmark: LinkItem, invalidCaptureMessage: strin
 async function saveCurrentPage(
   source: CurrentPageCaptureSource = 'current_page'
 ): Promise<{ success: boolean; error?: string; aiStatus?: string; aiRequestId?: string }> {
+  const context = await readAccountContext();
   try {
     // Saving the current page needs a linked Notion destination.
     if (!(await readNotionDestination())) {
@@ -468,15 +477,18 @@ async function saveCurrentPage(
 
     const { item, syncResponse } = await syncCapturedLink(
       bookmark,
-      'Current page capture cannot be synced'
+      'Current page capture cannot be synced',
+      context
     );
 
-    await recordDashboardSave(source).catch((dashboardError) => {
-      console.warn(
-        '[saveCurrentPage] Saved, but dashboard activity was not recorded:',
-        dashboardError
-      );
-    });
+    await recordAccountActivity(context, () => recordDashboardSave(source)).catch(
+      (dashboardError) => {
+        console.warn(
+          '[saveCurrentPage] Saved, but dashboard activity was not recorded:',
+          dashboardError
+        );
+      }
+    );
 
     if (
       source !== 'current_page' ||
@@ -513,13 +525,15 @@ async function saveCurrentPage(
     }
   } catch (error) {
     console.error('[saveCurrentPage] Failed:', error);
-    await recordDashboardEvent({
-      kind: 'error',
-      source,
-      result: 'failed',
-      errorCategory: classifyDashboardError(error),
-      action: 'retry',
-    });
+    await recordAccountActivity(context, () =>
+      recordDashboardEvent({
+        kind: 'error',
+        source,
+        result: 'failed',
+        errorCategory: classifyDashboardError(error),
+        action: 'retry',
+      })
+    );
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -611,6 +625,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
 
     console.log('[Context Menu] Saving page');
+    const context = await readAccountContext();
     try {
       const bookmark = formatSavedLinkForSync(
         {
@@ -625,18 +640,20 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         }
       );
 
-      await syncCapturedLink(bookmark, 'Context menu capture cannot be synced');
-      await recordDashboardSave('context_menu');
+      await syncCapturedLink(bookmark, 'Context menu capture cannot be synced', context);
+      await recordAccountActivity(context, () => recordDashboardSave('context_menu'));
       console.log('[Context Menu] Page saved successfully');
     } catch (error) {
       console.error('[Context Menu] Save failed:', error);
-      await recordDashboardEvent({
-        kind: 'error',
-        source: 'context_menu',
-        result: 'failed',
-        errorCategory: classifyDashboardError(error),
-        action: 'retry',
-      });
+      await recordAccountActivity(context, () =>
+        recordDashboardEvent({
+          kind: 'error',
+          source: 'context_menu',
+          result: 'failed',
+          errorCategory: classifyDashboardError(error),
+          action: 'retry',
+        })
+      );
     }
   }
 });

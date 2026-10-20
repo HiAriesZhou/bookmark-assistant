@@ -66,23 +66,42 @@ export async function runAfterSyncInitialization<T>(
   return task();
 }
 
+type SyncGateAccount = {
+  revision: string | null;
+  userId: string | null;
+  token: string | null;
+};
+
 /**
- * A service worker has no durable mutex. Keep all sync entry points behind one
- * in-memory promise after startup recovery has released stale persisted state.
- * Concurrent manual/alarm/catch-up calls join the same work rather than
- * creating duplicate Notion writes.
+ * A service worker has no durable mutex. Keep sync entry points behind one
+ * in-memory promise per server account after startup recovery has released
+ * stale persisted state. Concurrent manual/alarm/catch-up calls for the same
+ * account revision join the same work rather than creating duplicate Notion
+ * writes. A new revision of that account (for example after reconnecting
+ * Notion) waits for the earlier sync, because its server request cannot be
+ * cancelled and may still be writing to the same database. Other accounts
+ * start independently.
  */
 export function createSyncExecutionGate<T>(initialization: Promise<unknown>) {
-  const active = new Map<string, Promise<T>>();
+  const active = new Map<string, { revision: string | null; run: Promise<T> }>();
 
-  return (task: () => Promise<T>, accountKey = ''): Promise<T> => {
+  return (task: () => Promise<T>, account?: SyncGateAccount): Promise<T> => {
+    const accountKey = account?.userId ?? account?.token ?? '';
+    const revision = account?.revision ?? null;
     const existing = active.get(accountKey);
-    if (existing) return existing;
-    const started = runAfterSyncInitialization(initialization, task);
+    if (existing && existing.revision === revision) return existing.run;
+
+    const previous = existing?.run.then(
+      () => undefined,
+      () => undefined
+    );
+    const started = Promise.resolve(previous).then(() =>
+      runAfterSyncInitialization(initialization, task)
+    );
     const guarded = started.finally(() => {
-      if (active.get(accountKey) === guarded) active.delete(accountKey);
+      if (active.get(accountKey)?.run === guarded) active.delete(accountKey);
     });
-    active.set(accountKey, guarded);
+    active.set(accountKey, { revision, run: guarded });
     return guarded;
   };
 }

@@ -106,7 +106,10 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
  * Error handling middleware
  * Catches and formats errors consistently
  */
-export const errorHandler = (error: Error, req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (error: Error, req: Request, res: Response, next: NextFunction) => {
+  // A response that already started cannot be replaced; Express closes it.
+  if (res.headersSent) return next(error);
+
   console.error('🚨 Server Error:', error);
 
   auditLog('server_error', req.user?.userId || 'unknown', {

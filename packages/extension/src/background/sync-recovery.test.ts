@@ -109,17 +109,46 @@ describe('recoverInterruptedSyncState', () => {
           finishB = resolve;
         })
     );
-    const first = gate(runA, 'account-a-revision');
-    const second = gate(runB, 'account-b-revision');
-    expect(gate(runB, 'account-b-revision')).toBe(second);
+    const accountA = { revision: 'revision-a', userId: 'user-a', token: 'token-a' };
+    const accountB = { revision: 'revision-b', userId: 'user-b', token: 'token-b' };
+    const first = gate(runA, accountA);
+    const second = gate(runB, accountB);
+    expect(gate(runB, { ...accountB })).toBe(second);
     await vi.waitFor(() => expect(runB).toHaveBeenCalledTimes(1));
     finishA();
     await first;
-    expect(gate(runB, 'account-b-revision')).toBe(second);
+    expect(gate(runB, accountB)).toBe(second);
     finishB();
     await second;
-    await gate(vi.fn().mockResolvedValue(undefined), 'account-b-revision');
+    await gate(vi.fn().mockResolvedValue(undefined), accountB);
     expect(runA).toHaveBeenCalledTimes(1);
     expect(runB).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not overlap a sync for the same account after its revision changes', async () => {
+    // Reconnecting Notion renews the revision while the earlier server sync,
+    // which cannot be cancelled, may still be writing to the same database.
+    let finishBefore!: () => void;
+    const gate = createSyncExecutionGate(Promise.resolve());
+    const before = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishBefore = resolve;
+        })
+    );
+    const after = vi.fn().mockResolvedValue(undefined);
+
+    const first = gate(before, { revision: 'before-reconnect', userId: 'user-a', token: 'a1' });
+    await vi.waitFor(() => expect(before).toHaveBeenCalledTimes(1));
+    const reconnected = { revision: 'after-reconnect', userId: 'user-a', token: 'a2' };
+    const second = gate(after, reconnected);
+    expect(gate(after, reconnected)).toBe(second);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(after).not.toHaveBeenCalled();
+
+    finishBefore();
+    await Promise.all([first, second]);
+    expect(after).toHaveBeenCalledTimes(1);
   });
 });
