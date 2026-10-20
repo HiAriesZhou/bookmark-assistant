@@ -9,11 +9,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js",
       "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && node scripts/mark-cjs-output.mjs",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "clean": "rm -rf dist tsconfig.tsbuildinfo"
   }
