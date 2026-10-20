@@ -18,10 +18,6 @@
     "message": "Sync Now",
     "description": "Button to sync bookmarks"
   },
-  "connectToNotion": {
-    "message": "Connect to Notion",
-    "description": "Button to connect to Notion"
-  },
   "connected": {
     "message": "Connected",
     "description": "Status when connected to Notion"
@@ -154,85 +150,21 @@
     "message": "Auto-sync enabled",
     "description": "Status when auto-sync is on"
   },
-  "autoSyncDisabled": {
-    "message": "Auto-sync disabled",
-    "description": "Status when auto-sync is off"
-  },
-  "nav_connection": {
-    "message": "Connection",
-    "description": "Navigation: Connection section"
-  },
   "nav_sync_settings": {
     "message": "Sync",
     "description": "Navigation: Sync settings section"
-  },
-  "nav_billing": {
-    "message": "Billing & Plan",
-    "description": "Navigation: Billing section"
-  },
-  "nav_general": {
-    "message": "General",
-    "description": "Navigation: General section"
-  },
-  "nav_faq": {
-    "message": "FAQ",
-    "description": "Navigation: FAQ section"
-  },
-  "nav_about": {
-    "message": "About",
-    "description": "Navigation: About section"
   },
   "action_cancel": {
     "message": "Cancel",
     "description": "Cancel button"
   },
-  "action_save": {
-    "message": "Save",
-    "description": "Save button"
-  },
   "action_refresh": {
     "message": "Refresh",
     "description": "Refresh button"
   },
-  "action_syncing": {
-    "message": "Syncing...",
-    "description": "Syncing in progress"
-  },
-  "action_connecting": {
-    "message": "Connecting...",
-    "description": "Connecting in progress"
-  },
   "action_upgrade_pro": {
     "message": "Upgrade to Pro",
     "description": "Upgrade to Pro button"
-  },
-  "status_connected": {
-    "message": "Connected",
-    "description": "Connection status: connected"
-  },
-  "status_syncing": {
-    "message": "Syncing...",
-    "description": "Sync status: in progress"
-  },
-  "status_sync_complete": {
-    "message": "Sync complete",
-    "description": "Sync status: complete"
-  },
-  "status_active": {
-    "message": "Active",
-    "description": "Status: active"
-  },
-  "status_refreshed": {
-    "message": "Status Refreshed",
-    "description": "Status refreshed message"
-  },
-  "error_connection_failed": {
-    "message": "Connection failed",
-    "description": "Error: connection failed"
-  },
-  "error_sync_failed": {
-    "message": "Sync failed",
-    "description": "Error: sync failed"
   },
   "error_save_settings_failed": {
     "message": "Failed to save sync settings",
@@ -241,18 +173,6 @@
   "error_checkout_failed": {
     "message": "Failed to open checkout",
     "description": "Error: checkout failed"
-  },
-  "error_refresh_failed": {
-    "message": "Refresh Failed",
-    "description": "Error: refresh failed"
-  },
-  "error_cancellation_failed": {
-    "message": "Cancellation Failed",
-    "description": "Error: cancellation failed"
-  },
-  "connection_desc": {
-    "message": "Connect your Notion workspace to sync bookmarks",
-    "description": "Connection section description"
   },
   "connection_success_desc": {
     "message": "Your Notion workspace has been successfully connected.",
@@ -270,14 +190,6 @@
     "message": "An error occurred while connecting to Notion.",
     "description": "Connection error description"
   },
-  "oauth_connection_title": {
-    "message": "Secure OAuth Connection",
-    "description": "OAuth connection title"
-  },
-  "oauth_connection_desc": {
-    "message": "Connect securely with Notion's OAuth. We never see your password.",
-    "description": "OAuth connection description"
-  },
   "disconnected_title": {
     "message": "Disconnected",
     "description": "Disconnected title"
@@ -286,37 +198,9 @@
     "message": "Your Notion connection has been removed. Your plan is unchanged.",
     "description": "Disconnected description"
   },
-  "sync_no_changes_title": {
-    "message": "Everything is up to date",
-    "description": "Sync: no changes title"
-  },
-  "sync_no_changes_desc": {
-    "message": "All bookmarks are already synced to Notion.",
-    "description": "Sync: no changes description"
-  },
-  "sync_no_changes_count_desc": {
-    "message": "All $1 $2 are already synced to Notion.",
-    "description": "Sync: no changes with count"
-  },
-  "sync_failed_title": {
-    "message": "Sync Failed",
-    "description": "Sync failed title"
-  },
-  "sync_failed_desc": {
-    "message": "Failed to sync bookmarks",
-    "description": "Sync failed description"
-  },
-  "sync_settings_desc": {
-    "message": "Configure how and when your bookmarks are synced.",
-    "description": "Sync settings description"
-  },
   "auto_sync_label": {
     "message": "Auto Sync",
     "description": "Auto sync label"
-  },
-  "auto_sync_desc": {
-    "message": "Automatically sync bookmarks at set intervals.",
-    "description": "Auto sync description"
   },
   "sync_interval_label": {
     "message": "Sync interval",
@@ -326,18 +210,6 @@
     "message": "Minimum: $1 hours",
     "description": "Sync interval minimum"
   },
-  "sync_interval_free_note": {
-    "message": "Free plan uses a fixed 24-hour interval.",
-    "description": "Free plan interval note"
-  },
-  "pro_feature_title": {
-    "message": "Pro Feature",
-    "description": "Pro feature badge"
-  },
-  "pro_feature_desc": {
-    "message": "Auto-sync is a Pro feature. Upgrade to enable automatic bookmark syncing.",
-    "description": "Pro feature description"
-  },
   "confirm_disconnect_title": {
     "message": "Disconnect from Notion?",
     "description": "Confirm disconnect title"
@@ -345,22 +217,6 @@
   "confirm_disconnect_message": {
     "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
     "description": "Confirm disconnect message"
-  },
-  "confirm_important": {
-    "message": "Important:",
-    "description": "Important label"
-  },
-  "confirm_disconnect_note_1": {
-    "message": "Your synced bookmarks in Notion will not be deleted",
-    "description": "Disconnect note 1"
-  },
-  "confirm_disconnect_note_2": {
-    "message": "Reconnecting will require setting up a new database",
-    "description": "Disconnect note 2"
-  },
-  "confirm_disconnect_note_3": {
-    "message": "You'll need to sync bookmarks again after reconnecting",
-    "description": "Disconnect note 3"
   },
   "payment_success_title": {
     "message": "Payment Successful!",
@@ -382,65 +238,17 @@
     "message": "Please connect to Notion first before upgrading.",
     "description": "Upgrade requires connection"
   },
-  "subscription_cancelled_title": {
-    "message": "Subscription Cancelled",
-    "description": "Subscription cancelled title"
-  },
-  "subscription_cancelled_desc": {
-    "message": "You'll have access until the end of your billing period.",
-    "description": "Subscription cancelled description"
-  },
-  "cancellation_confirm": {
-    "message": "Are you sure you want to cancel your subscription?",
-    "description": "Cancellation confirmation"
-  },
   "subscription_management_title": {
     "message": "Plan",
     "description": "Subscription management title"
-  },
-  "subscription_management_desc": {
-    "message": "Manage your Pro subscription and billing.",
-    "description": "Subscription management description"
-  },
-  "pro_plan_active": {
-    "message": "Pro Plan Active",
-    "description": "Pro plan active status"
-  },
-  "current_plan_label": {
-    "message": "Current Plan",
-    "description": "Current plan label"
   },
   "next_billing_date_label": {
     "message": "Next Billing Date",
     "description": "Next billing date label"
   },
-  "linked_email_label": {
-    "message": "Linked Email",
-    "description": "Linked email label"
-  },
   "no_email_linked": {
     "message": "No email linked",
     "description": "No email linked"
-  },
-  "pro_features_title": {
-    "message": "Your Pro Features",
-    "description": "Pro features title"
-  },
-  "refund_policy_message": {
-    "message": "Refund policy",
-    "description": "Refund policy link"
-  },
-  "refund_policy_button": {
-    "message": "Refund Policy & Request",
-    "description": "Refund policy button"
-  },
-  "choose_plan_title": {
-    "message": "Choose Your Plan",
-    "description": "Choose plan title"
-  },
-  "choose_plan_desc": {
-    "message": "Unlock the full potential of Bookmark Assistant",
-    "description": "Choose plan description"
   },
   "billing_monthly": {
     "message": "Monthly",
@@ -462,10 +270,6 @@
     "message": "/ year",
     "description": "Per year suffix"
   },
-  "early_access_badge": {
-    "message": "Early Access",
-    "description": "Early access badge"
-  },
   "pro_plan_desc": {
     "message": "Automatic sync and batch AI for an organized library",
     "description": "Pro plan description"
@@ -474,38 +278,6 @@
     "message": "Local management with manual sync",
     "description": "Free plan description"
   },
-  "plan_yearly": {
-    "message": "Pro (Yearly)",
-    "description": "Yearly plan name"
-  },
-  "plan_monthly": {
-    "message": "Pro (Monthly)",
-    "description": "Monthly plan name"
-  },
-  "pro_unlock_hint": {
-    "message": "Pro unlocks advanced sync options, auto-sync, and priority processing.",
-    "description": "Pro unlock hint"
-  },
-  "overview_title": {
-    "message": "Overview",
-    "description": "Overview section title"
-  },
-  "overview_status": {
-    "message": "Status",
-    "description": "Overview status label"
-  },
-  "overview_plan": {
-    "message": "Plan",
-    "description": "Overview plan label"
-  },
-  "overview_bookmarks": {
-    "message": "Bookmarks",
-    "description": "Overview bookmarks label"
-  },
-  "overview_last_sync": {
-    "message": "Last sync",
-    "description": "Overview last sync label"
-  },
   "loading": {
     "message": "Loading...",
     "description": "Loading indicator"
@@ -513,10 +285,6 @@
   "refreshing": {
     "message": "Refreshing...",
     "description": "Refreshing indicator"
-  },
-  "cancelling": {
-    "message": "Cancelling...",
-    "description": "Cancelling indicator"
   },
   "working": {
     "message": "Working...",
@@ -530,41 +298,13 @@
     "message": "License",
     "description": "License label"
   },
-  "license_mit": {
-    "message": "MIT",
-    "description": "MIT license"
-  },
-  "view_on_github": {
-    "message": "View on GitHub",
-    "description": "Link to GitHub"
-  },
   "documentation": {
     "message": "Documentation",
     "description": "Link to documentation"
   },
-  "report_issue": {
-    "message": "Report an Issue",
-    "description": "Link to report issues"
-  },
-  "need_help": {
-    "message": "Need Help?",
-    "description": "Footer help section title"
-  },
   "faq_guide": {
     "message": "FAQ & Guide",
     "description": "Footer FAQ section title"
-  },
-  "common_questions": {
-    "message": "Common Questions",
-    "description": "Footer FAQ subtitle"
-  },
-  "version_label": {
-    "message": "Version",
-    "description": "Version label"
-  },
-  "footer_copyright": {
-    "message": "© 2025 Bookmark Assistant. Transform your bookmarks into organized knowledge.",
-    "description": "Footer copyright text"
   },
   "privacy": {
     "message": "Privacy",
@@ -606,38 +346,6 @@
     "message": "$1 more tags",
     "description": "Accessible label for additional bookmark tags hidden from a library row"
   },
-  "popup_status": {
-    "message": "Status",
-    "description": "Popup status label"
-  },
-  "popup_connected": {
-    "message": "Connected",
-    "description": "Popup connected status"
-  },
-  "popup_not_connected": {
-    "message": "Not Connected",
-    "description": "Popup not connected status"
-  },
-  "popup_last_sync": {
-    "message": "Last Sync",
-    "description": "Popup last sync label"
-  },
-  "popup_bookmarks": {
-    "message": "Bookmarks",
-    "description": "Popup bookmarks label"
-  },
-  "popup_plan": {
-    "message": "Plan",
-    "description": "Popup plan label"
-  },
-  "popup_connecting": {
-    "message": "Connecting…",
-    "description": "Popup connecting status"
-  },
-  "popup_connect_to_notion": {
-    "message": "Connect to Notion",
-    "description": "Popup connect button"
-  },
   "popup_syncing": {
     "message": "Syncing...",
     "description": "Popup syncing status"
@@ -674,42 +382,6 @@
     "message": "Page saved. AI did not run; verify your AI key in Settings.",
     "description": "Popup status when the saved AI key is not verified"
   },
-  "popup_settings_billing": {
-    "message": "Settings & Billing",
-    "description": "Popup settings button"
-  },
-  "free_feature_manual_sync": {
-    "message": "Manual sync only",
-    "description": "Free plan feature"
-  },
-  "free_feature_community_support": {
-    "message": "Community support",
-    "description": "Free plan feature"
-  },
-  "pro_feature_priority_processing": {
-    "message": "Priority sync processing",
-    "description": "Pro plan feature"
-  },
-  "pro_feature_auto_sync": {
-    "message": "Set & forget auto-sync",
-    "description": "Pro plan feature"
-  },
-  "pro_feature_deduplication": {
-    "message": "Smart fingerprint deduplication",
-    "description": "Pro plan feature"
-  },
-  "pro_feature_priority_support": {
-    "message": "Priority support",
-    "description": "Pro plan feature"
-  },
-  "cancel_subscription": {
-    "message": "Cancel Subscription",
-    "description": "Cancel subscription button"
-  },
-  "refund_request_title": {
-    "message": "Please help us improve. Why are you requesting a refund?",
-    "description": "Refund request prompt"
-  },
   "saveCurrentPage": {
     "message": "Save Current Page",
     "description": "Button to save current page to Notion"
@@ -726,19 +398,9 @@
     "message": "Failed to save page",
     "description": "Error message when save fails"
   },
-  "notConnectedMessage": {
-    "message": "Please connect to Notion first",
-    "description": "Message shown when user is not connected"
-  },
   "saving": {
     "message": "Saving...",
     "description": "Status when saving page"
-  },
-  "dashboard_connection_health": {
-    "message": "Connection health"
-  },
-  "dashboard_library_summary": {
-    "message": "Library summary"
   },
   "dashboard_sync_status": {
     "message": "Sync status"
@@ -761,29 +423,8 @@
   "dashboard_workspace_fallback": {
     "message": "Connected Notion workspace"
   },
-  "dashboard_database_fallback": {
-    "message": "Bookmark Assistant database"
-  },
-  "dashboard_checked": {
-    "message": "Checked"
-  },
-  "dashboard_check": {
-    "message": "Check"
-  },
-  "dashboard_checking": {
-    "message": "Checking..."
-  },
-  "dashboard_bookmarks": {
-    "message": "Bookmarks"
-  },
-  "dashboard_reading_list": {
-    "message": "Reading list"
-  },
   "dashboard_saved_today": {
     "message": "Saved today"
-  },
-  "dashboard_duplicates_skipped": {
-    "message": "Duplicates skipped"
   },
   "dashboard_result_success": {
     "message": "Successful"
@@ -803,38 +444,14 @@
   "dashboard_no_sync": {
     "message": "No sync yet"
   },
-  "dashboard_last_result": {
-    "message": "Last result"
-  },
   "dashboard_last_sync": {
     "message": "Last sync"
   },
   "dashboard_next_sync": {
     "message": "Next auto-sync"
   },
-  "dashboard_failed_count": {
-    "message": "Failed items"
-  },
-  "dashboard_event_connection_checked": {
-    "message": "Connection checked"
-  },
-  "dashboard_event_sync_started": {
-    "message": "Sync started"
-  },
   "dashboard_event_sync_completed": {
     "message": "Sync completed"
-  },
-  "dashboard_event_save_completed": {
-    "message": "Page saved"
-  },
-  "dashboard_event_error": {
-    "message": "Action failed"
-  },
-  "dashboard_no_activity": {
-    "message": "Activity will appear after your first connection or sync."
-  },
-  "dashboard_action_required": {
-    "message": "Open settings to resolve connection"
   },
   "dashboard_count_completed": {
     "message": "completed"
@@ -845,50 +462,17 @@
   "dashboard_count_failed": {
     "message": "failed"
   },
-  "operations_workspace_label": {
-    "message": "Operations workspace"
-  },
   "settings_workspace_label": {
     "message": "Settings workspace"
   },
-  "dashboard_connected_to_notion": {
-    "message": "Connected to Notion"
-  },
   "dashboard_connection_attention": {
     "message": "Notion connection interrupted"
-  },
-  "dashboard_not_connected": {
-    "message": "Not connected to Notion"
-  },
-  "dashboard_authentication_expired": {
-    "message": "Authentication expired"
-  },
-  "dashboard_error_network": {
-    "message": "Network error"
-  },
-  "dashboard_error_authentication": {
-    "message": "Authentication expired"
-  },
-  "dashboard_error_notion_access": {
-    "message": "Notion access failed"
-  },
-  "dashboard_error_rate_limit": {
-    "message": "Rate limited"
-  },
-  "dashboard_error_unknown": {
-    "message": "Action failed"
   },
   "dashboard_action_connect": {
     "message": "Connect"
   },
   "dashboard_action_reconnect": {
     "message": "Reconnect"
-  },
-  "dashboard_action_retry": {
-    "message": "Retry"
-  },
-  "notion_connection_label": {
-    "message": "Notion connection"
   },
   "sync_interval_validation": {
     "message": "Minimum interval is $1 hours."
@@ -953,29 +537,8 @@
   "plan_comparison_title": {
     "message": "Plan comparison"
   },
-  "feature_label": {
-    "message": "Feature"
-  },
-  "library_report_title": {
-    "message": "Your bookmark library, at a glance"
-  },
-  "destination_title": {
-    "message": "Destination"
-  },
-  "destination_target_label": {
-    "message": "Target"
-  },
   "destination_not_configured": {
     "message": "Not configured"
-  },
-  "library_section_title": {
-    "message": "Library"
-  },
-  "library_total_items": {
-    "message": "Total items"
-  },
-  "library_local_explanation": {
-    "message": "Calculated locally in Chrome"
   },
   "sync_status_connect_destination": {
     "message": "Connect a destination to start syncing"
@@ -983,71 +546,11 @@
   "sync_status_up_to_date": {
     "message": "Everything is up to date"
   },
-  "sync_status_last_sync_completed": {
-    "message": "Last sync completed"
-  },
-  "library_health_title": {
-    "message": "Library health"
-  },
-  "library_health_duplicates_found": {
-    "message": "Duplicate bookmarks need review"
-  },
-  "library_health_duplicates_guidance": {
-    "message": "Remove extra copies in Chrome when convenient to keep future syncs clean."
-  },
-  "library_health_duplicates_clear": {
-    "message": "No duplicate groups found"
-  },
-  "library_health_duplicates_clear_detail": {
-    "message": "Your Chrome bookmark URLs are unique."
-  },
-  "library_report_intro": {
-    "message": "Calculated on this device from your Chrome library. Bookmark content never leaves your browser for this report."
-  },
-  "library_report_local_badge": {
-    "message": "Local only"
-  },
-  "library_report_bookmarks": {
-    "message": "Bookmarks"
-  },
-  "library_report_folders": {
-    "message": "Your folders"
-  },
-  "library_report_reading_list": {
-    "message": "Reading list"
-  },
-  "library_report_duplicate_groups": {
-    "message": "Duplicate groups"
-  },
-  "library_report_duplicate_extra": {
-    "message": "extra copies"
-  },
   "library_report_uncategorized": {
     "message": "Top level"
   },
-  "library_report_largest_folder": {
-    "message": "Largest folder"
-  },
-  "library_report_estimated_sync": {
-    "message": "estimated local items ready to sync"
-  },
-  "library_report_connect_hint": {
-    "message": "Connect Notion when you are ready to organize this library."
-  },
-  "library_report_connected_hint": {
-    "message": "Your Notion connection is ready for the next sync."
-  },
-  "library_report_loading": {
-    "message": "Calculating local bookmark library report"
-  },
   "primary_navigation": {
     "message": "Primary navigation"
-  },
-  "nav_library": {
-    "message": "Library"
-  },
-  "nav_organize": {
-    "message": "Organize"
   },
   "nav_destinations": {
     "message": "Destinations"
@@ -1058,23 +561,11 @@
   "library_eyebrow": {
     "message": "Local library"
   },
-  "library_page_title": {
-    "message": "My bookmark library"
-  },
   "library_search_placeholder": {
     "message": "Search titles, URLs, descriptions, or tags…"
   },
   "library_local_ready": {
     "message": "Local library ready"
-  },
-  "library_local_refresh_failed_short": {
-    "message": "Local refresh needs attention"
-  },
-  "library_local_sidebar_hint": {
-    "message": "Bookmark management needs no account. Tags and descriptions stay on this device."
-  },
-  "library_smart_views": {
-    "message": "Smart views"
   },
   "library_all": {
     "message": "All"
@@ -1090,9 +581,6 @@
   },
   "library_folders": {
     "message": "Folders"
-  },
-  "library_frequent_tags": {
-    "message": "Frequent tags"
   },
   "library_filter": {
     "message": "Filter"
@@ -1223,83 +711,14 @@
   "library_delete_failed": {
     "message": "Chrome could not delete this bookmark. Nothing was removed locally."
   },
-  "library_original_source": {
-    "message": "Original bookmark"
-  },
-  "library_external_sync": {
-    "message": "External sync"
-  },
-  "library_destination_managed_separately": {
-    "message": "Managed in Destinations"
-  },
-  "library_view_all": {
-    "message": "View all →"
-  },
-  "organize_eyebrow": {
-    "message": "Library health"
-  },
-  "organize_title": {
-    "message": "Keep your library light"
-  },
-  "organize_description": {
-    "message": "Start with small, clear cleanup tasks. Every check runs locally, and you decide what changes."
-  },
-  "organize_review_duplicates": {
-    "message": "Review duplicates"
-  },
-  "organize_review_duplicates_hint": {
-    "message": "The same URL appears in several places"
-  },
-  "organize_add_tags": {
-    "message": "Add missing tags"
-  },
-  "organize_add_tags_hint": {
-    "message": "Make links easier to find across folders"
-  },
-  "organize_loose_bookmarks": {
-    "message": "Organize loose bookmarks"
-  },
-  "organize_loose_bookmarks_hint": {
-    "message": "Move top-level links into a Chrome folder"
-  },
-  "organize_duplicate_groups": {
-    "message": "Recently found duplicate groups"
-  },
-  "organize_locations": {
-    "message": "$1 locations"
-  },
-  "destinations_eyebrow": {
-    "message": "Destinations"
-  },
-  "destinations_page_title": {
-    "message": "Send bookmarks where you choose"
-  },
   "destinations_page_description": {
     "message": "Your local library works independently. Connect a destination when you want an external copy or workflow."
-  },
-  "destinations_add": {
-    "message": "Add destination"
   },
   "destination_actions": {
     "message": "Destination actions"
   },
   "destination_sync_action": {
     "message": "Sync"
-  },
-  "destinations_coming_later": {
-    "message": "More destinations are planned"
-  },
-  "destinations_local_independent": {
-    "message": "Local saving and external sync are independent"
-  },
-  "destinations_local_independent_hint": {
-    "message": "A disconnected or failed destination never removes Chrome bookmarks, local tags, or descriptions."
-  },
-  "settings_eyebrow": {
-    "message": "Preferences"
-  },
-  "settings_page_description": {
-    "message": "Manage AI, sync frequency, account, and plan settings. Destination-specific controls stay with each destination."
   },
   "ai_provider_label": {
     "message": "Provider"

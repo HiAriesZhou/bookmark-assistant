@@ -18,10 +18,6 @@
     "message": "立即同步",
     "description": "Button to sync bookmarks"
   },
-  "connectToNotion": {
-    "message": "连接Notion",
-    "description": "Button to connect to Notion"
-  },
   "connected": {
     "message": "已连接",
     "description": "Status when connected to Notion"
@@ -150,20 +146,6 @@
     "message": "自动同步已启用",
     "description": "Status when auto-sync is on"
   },
-  "autoSyncDisabled": {
-    "message": "自动同步已禁用",
-    "description": "Status when auto-sync is off"
-  },
-  "pro_feature_priority_processing": {
-    "message": "优先同步处理",
-    "description": "Pro plan feature"
-  },
-  "dashboard_connection_health": {
-    "message": "连接健康状态"
-  },
-  "dashboard_library_summary": {
-    "message": "内容概览"
-  },
   "dashboard_sync_status": {
     "message": "同步状态"
   },
@@ -185,29 +167,8 @@
   "dashboard_workspace_fallback": {
     "message": "已连接的 Notion 工作区"
   },
-  "dashboard_database_fallback": {
-    "message": "Bookmark Assistant 数据库"
-  },
-  "dashboard_checked": {
-    "message": "检查于"
-  },
-  "dashboard_check": {
-    "message": "检查连接"
-  },
-  "dashboard_checking": {
-    "message": "检查中..."
-  },
-  "dashboard_bookmarks": {
-    "message": "书签"
-  },
-  "dashboard_reading_list": {
-    "message": "阅读列表"
-  },
   "dashboard_saved_today": {
     "message": "今日保存"
-  },
-  "dashboard_duplicates_skipped": {
-    "message": "跳过重复项"
   },
   "dashboard_result_success": {
     "message": "同步成功"
@@ -227,38 +188,14 @@
   "dashboard_no_sync": {
     "message": "尚未同步"
   },
-  "dashboard_last_result": {
-    "message": "最近结果"
-  },
   "dashboard_last_sync": {
     "message": "最近同步"
   },
   "dashboard_next_sync": {
     "message": "下次自动同步"
   },
-  "dashboard_failed_count": {
-    "message": "失败项目"
-  },
-  "dashboard_event_connection_checked": {
-    "message": "已检查连接"
-  },
-  "dashboard_event_sync_started": {
-    "message": "同步已开始"
-  },
   "dashboard_event_sync_completed": {
     "message": "同步已完成"
-  },
-  "dashboard_event_save_completed": {
-    "message": "网页已保存"
-  },
-  "dashboard_event_error": {
-    "message": "操作失败"
-  },
-  "dashboard_no_activity": {
-    "message": "首次连接或同步后，活动记录会显示在这里。"
-  },
-  "dashboard_action_required": {
-    "message": "打开设置解决连接问题"
   },
   "dashboard_count_completed": {
     "message": "已完成"
@@ -269,50 +206,17 @@
   "dashboard_count_failed": {
     "message": "失败"
   },
-  "operations_workspace_label": {
-    "message": "运营工作区"
-  },
   "settings_workspace_label": {
     "message": "设置工作区"
   },
-  "dashboard_connected_to_notion": {
-    "message": "已连接 Notion"
-  },
   "dashboard_connection_attention": {
     "message": "Notion 连接已中断"
-  },
-  "dashboard_not_connected": {
-    "message": "尚未连接 Notion"
-  },
-  "dashboard_authentication_expired": {
-    "message": "身份验证已过期"
-  },
-  "dashboard_error_network": {
-    "message": "网络错误"
-  },
-  "dashboard_error_authentication": {
-    "message": "身份验证已过期"
-  },
-  "dashboard_error_notion_access": {
-    "message": "Notion 访问失败"
-  },
-  "dashboard_error_rate_limit": {
-    "message": "请求频率受限"
-  },
-  "dashboard_error_unknown": {
-    "message": "操作失败"
   },
   "dashboard_action_connect": {
     "message": "连接"
   },
   "dashboard_action_reconnect": {
     "message": "重新连接"
-  },
-  "dashboard_action_retry": {
-    "message": "重试"
-  },
-  "notion_connection_label": {
-    "message": "Notion 连接"
   },
   "sync_interval_validation": {
     "message": "最短同步间隔为 $1 小时。"
@@ -376,9 +280,6 @@
   },
   "plan_comparison_title": {
     "message": "方案对比"
-  },
-  "feature_label": {
-    "message": "功能"
   },
   "about_version": {
     "message": "版本 $1",
@@ -476,21 +377,9 @@
     "message": "许可证",
     "description": "License label"
   },
-  "license_mit": {
-    "message": "MIT",
-    "description": "MIT license"
-  },
-  "linked_email_label": {
-    "message": "关联邮箱",
-    "description": "Linked email label"
-  },
   "loading": {
     "message": "加载中…",
     "description": "Loading indicator"
-  },
-  "nav_connection": {
-    "message": "连接",
-    "description": "Navigation: Connection section"
   },
   "nav_sync_settings": {
     "message": "同步",
@@ -515,26 +404,6 @@
   "per_month": {
     "message": "/ 月",
     "description": "Per month suffix"
-  },
-  "popup_connect_to_notion": {
-    "message": "连接 Notion",
-    "description": "Popup connect button"
-  },
-  "popup_connecting": {
-    "message": "连接中…",
-    "description": "Popup connecting status"
-  },
-  "popup_last_sync": {
-    "message": "上次同步",
-    "description": "Popup last sync label"
-  },
-  "popup_not_connected": {
-    "message": "未连接",
-    "description": "Popup not connected status"
-  },
-  "popup_settings_billing": {
-    "message": "设置与账单",
-    "description": "Popup settings button"
   },
   "popup_syncing": {
     "message": "同步中…",
@@ -616,10 +485,6 @@
     "message": "刷新中…",
     "description": "Refreshing indicator"
   },
-  "report_issue": {
-    "message": "报告问题",
-    "description": "Link to report issues"
-  },
   "saveCurrentPage": {
     "message": "保存当前页面",
     "description": "Button to save current page to Notion"
@@ -664,34 +529,8 @@
     "message": "升级前请先连接 Notion。",
     "description": "Upgrade requires connection"
   },
-  "version_label": {
-    "message": "版本",
-    "description": "Version label"
-  },
-  "view_on_github": {
-    "message": "在 GitHub 上查看",
-    "description": "Link to GitHub"
-  },
-  "library_report_title": {
-    "message": "一眼了解你的书签库"
-  },
-  "destination_title": {
-    "message": "目标位置"
-  },
-  "destination_target_label": {
-    "message": "目标"
-  },
   "destination_not_configured": {
     "message": "尚未配置"
-  },
-  "library_section_title": {
-    "message": "资料库"
-  },
-  "library_total_items": {
-    "message": "项目总数"
-  },
-  "library_local_explanation": {
-    "message": "在 Chrome 中本地计算"
   },
   "sync_status_connect_destination": {
     "message": "连接目标位置以开始同步"
@@ -699,71 +538,11 @@
   "sync_status_up_to_date": {
     "message": "所有内容均为最新"
   },
-  "sync_status_last_sync_completed": {
-    "message": "上次同步已完成"
-  },
-  "library_health_title": {
-    "message": "资料库健康度"
-  },
-  "library_health_duplicates_found": {
-    "message": "重复书签需要检查"
-  },
-  "library_health_duplicates_guidance": {
-    "message": "方便时在 Chrome 中移除多余副本，让后续同步保持整洁。"
-  },
-  "library_health_duplicates_clear": {
-    "message": "未发现重复链接组"
-  },
-  "library_health_duplicates_clear_detail": {
-    "message": "Chrome 书签中的网址均不重复。"
-  },
-  "library_report_intro": {
-    "message": "报告只在此设备上根据 Chrome 书签库计算，书签内容不会因这份报告离开浏览器。"
-  },
-  "library_report_local_badge": {
-    "message": "仅本地"
-  },
-  "library_report_bookmarks": {
-    "message": "书签"
-  },
-  "library_report_folders": {
-    "message": "你的文件夹"
-  },
-  "library_report_reading_list": {
-    "message": "阅读清单"
-  },
-  "library_report_duplicate_groups": {
-    "message": "重复链接组"
-  },
-  "library_report_duplicate_extra": {
-    "message": "个多余副本"
-  },
   "library_report_uncategorized": {
     "message": "顶层"
   },
-  "library_report_largest_folder": {
-    "message": "最大文件夹"
-  },
-  "library_report_estimated_sync": {
-    "message": "个预计可同步的本地项目"
-  },
-  "library_report_connect_hint": {
-    "message": "准备好整理书签库时，再连接 Notion。"
-  },
-  "library_report_connected_hint": {
-    "message": "Notion 连接已准备好进行下一次同步。"
-  },
-  "library_report_loading": {
-    "message": "正在计算本地书签库报告"
-  },
   "primary_navigation": {
     "message": "主导航"
-  },
-  "nav_library": {
-    "message": "资料库"
-  },
-  "nav_organize": {
-    "message": "整理"
   },
   "nav_destinations": {
     "message": "同步目标"
@@ -774,23 +553,11 @@
   "library_eyebrow": {
     "message": "本地资料库"
   },
-  "library_page_title": {
-    "message": "我的书签库"
-  },
   "library_search_placeholder": {
     "message": "搜索标题、网址、描述或标签…"
   },
   "library_local_ready": {
     "message": "本地资料库已就绪"
-  },
-  "library_local_refresh_failed_short": {
-    "message": "本地刷新需要处理"
-  },
-  "library_local_sidebar_hint": {
-    "message": "书签管理无需连接账户。标签与描述保存在这台设备。"
-  },
-  "library_smart_views": {
-    "message": "智能视图"
   },
   "library_all": {
     "message": "全部"
@@ -806,9 +573,6 @@
   },
   "library_folders": {
     "message": "文件夹"
-  },
-  "library_frequent_tags": {
-    "message": "常用标签"
   },
   "library_filter": {
     "message": "过滤"
@@ -939,83 +703,14 @@
   "library_delete_failed": {
     "message": "Chrome 无法删除这条书签，本地元信息没有被移除。"
   },
-  "library_original_source": {
-    "message": "原始书签"
-  },
-  "library_external_sync": {
-    "message": "外部同步"
-  },
-  "library_destination_managed_separately": {
-    "message": "在同步目标中管理"
-  },
-  "library_view_all": {
-    "message": "查看全部 →"
-  },
-  "organize_eyebrow": {
-    "message": "资料库健康度"
-  },
-  "organize_title": {
-    "message": "让资料库保持轻盈"
-  },
-  "organize_description": {
-    "message": "从明确的小任务开始整理。所有检查都在本地进行，你决定哪些内容需要改变。"
-  },
-  "organize_review_duplicates": {
-    "message": "查看重复书签"
-  },
-  "organize_review_duplicates_hint": {
-    "message": "相同网址出现在多个位置"
-  },
-  "organize_add_tags": {
-    "message": "补充标签"
-  },
-  "organize_add_tags_hint": {
-    "message": "让跨文件夹查找更容易"
-  },
-  "organize_loose_bookmarks": {
-    "message": "整理散落书签"
-  },
-  "organize_loose_bookmarks_hint": {
-    "message": "移动到合适的 Chrome 文件夹"
-  },
-  "organize_duplicate_groups": {
-    "message": "最近发现的重复项"
-  },
-  "organize_locations": {
-    "message": "$1 个位置"
-  },
-  "destinations_eyebrow": {
-    "message": "同步目标"
-  },
-  "destinations_page_title": {
-    "message": "把书签送到你选择的地方"
-  },
   "destinations_page_description": {
     "message": "本地资料库始终可以独立使用。需要外部副本或工作流时，再连接同步目标。"
-  },
-  "destinations_add": {
-    "message": "添加同步目标"
   },
   "destination_actions": {
     "message": "同步目标操作"
   },
   "destination_sync_action": {
     "message": "同步"
-  },
-  "destinations_coming_later": {
-    "message": "更多同步目标仍在规划"
-  },
-  "destinations_local_independent": {
-    "message": "本地保存与外部同步相互独立"
-  },
-  "destinations_local_independent_hint": {
-    "message": "目标断开或同步失败不会删除 Chrome 书签、本地标签或描述。"
-  },
-  "settings_eyebrow": {
-    "message": "偏好设置"
-  },
-  "settings_page_description": {
-    "message": "管理 AI、同步频率、账户与计划。各同步目标的配置保留在对应目标页面。"
   },
   "ai_provider_label": {
     "message": "服务商"
