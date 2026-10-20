@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
-import { corsMiddleware, authRateLimit, apiRateLimit, createRateLimit } from './security';
+import { corsMiddleware, authRateLimit, apiRateLimit } from './security';
 
 import { config } from '../config';
 // Mock config
@@ -215,28 +215,6 @@ describe('Security Middleware', () => {
 
     it('should call next function when rate limit not exceeded', () => {
       apiRateLimit(mockRequest as Request, mockResponse as Response, nextFunction);
-
-      expect(nextFunction).toHaveBeenCalled();
-    });
-  });
-
-  describe('createRateLimit', () => {
-    it('should create custom rate limiter', () => {
-      const customLimit = createRateLimit(60000, 10, 'Custom limit');
-
-      expect(customLimit).toBeDefined();
-      expect(typeof customLimit).toBe('function');
-    });
-
-    it('should create rate limiter with custom config', () => {
-      const windowMs = 60000;
-      const max = 10;
-      const message = 'Custom limit message';
-
-      const customLimit = createRateLimit(windowMs, max, message);
-
-      // Should work without errors
-      customLimit(mockRequest as Request, mockResponse as Response, nextFunction);
 
       expect(nextFunction).toHaveBeenCalled();
     });

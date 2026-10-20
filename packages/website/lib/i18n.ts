@@ -8,18 +8,15 @@ import { SITE_URL, ASSET_PREFIX } from '@/lib/product-links';
 
 export { type WebsiteCopy, type WebsiteLocale };
 
-export const DEFAULT_LOCALE: WebsiteLocale = 'en';
-export const CHINESE_LOCALE: WebsiteLocale = 'zh-CN';
-
 export function getWebsiteCopy(locale: WebsiteLocale): WebsiteCopy {
   return marketingCopy[locale] as WebsiteCopy;
 }
 
-export function includePreparedWebsiteContent(): boolean {
+function includePreparedWebsiteContent(): boolean {
   return process.env.NEXT_PUBLIC_WEBSITE_CHANNEL === 'preview';
 }
 
-export function isPublished(
+function isPublished(
   status: 'released' | 'prepared',
   includePrepared = includePreparedWebsiteContent()
 ): boolean {

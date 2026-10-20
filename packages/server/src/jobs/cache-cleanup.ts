@@ -9,7 +9,7 @@ import { descriptionCache } from '../services/description-cache';
 /**
  * Clean up expired description cache entries
  */
-export async function cleanupExpiredDescriptions(): Promise<void> {
+async function cleanupExpiredDescriptions(): Promise<void> {
   console.log('[CacheCleanup] Starting cleanup of expired descriptions...');
 
   try {
@@ -53,7 +53,7 @@ export function scheduleCleanupJob(): void {
   console.log('[CacheCleanup] Scheduled daily cleanup job');
 }
 
-export const DESCRIPTION_CACHE_OPPORTUNISTIC_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const DESCRIPTION_CACHE_OPPORTUNISTIC_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export function createOpportunisticDescriptionCacheCleanup(
   cleanup: () => Promise<void> = cleanupExpiredDescriptions,

@@ -65,7 +65,7 @@ export type PrivacyCopy = {
   sections: readonly PrivacySection[];
 };
 
-export const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
+const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
   en: {
     title: 'Privacy Policy · Bookmark Assistant',
     description:

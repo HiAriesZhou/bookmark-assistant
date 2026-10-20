@@ -7,36 +7,6 @@ export interface PageContent {
   url?: string;
 }
 
-export function isValidHttpUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    return ['http:', 'https:'].includes(urlObj.protocol);
-  } catch {
-    return false;
-  }
-}
-
-export function createFallbackPageContent(url: string): PageContent {
-  try {
-    const urlObj = new URL(url);
-    const hostnameWithoutPrefix = urlObj.hostname.replace('www.', '');
-
-    return {
-      text: `Content from ${urlObj.hostname}`,
-      title: hostnameWithoutPrefix + urlObj.pathname,
-      description: `Bookmarked from ${urlObj.hostname}`,
-      keywords: [hostnameWithoutPrefix],
-    };
-  } catch {
-    return {
-      text: '',
-      title: url,
-      description: 'Bookmarked URL',
-      keywords: ['bookmark'],
-    };
-  }
-}
-
 export function extractPageContentFromDocument(documentRef: Document = document): PageContent {
   const getMetaContent = (selector: string): string | undefined => {
     return documentRef.querySelector(selector)?.getAttribute('content') || undefined;

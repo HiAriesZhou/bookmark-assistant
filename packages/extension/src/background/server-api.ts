@@ -106,7 +106,6 @@ const SYNC_PROGRESS_KEYS = [
   'last_sync_count',
   'last_sync_fingerprint',
   'last_sync_payload_version',
-  'last_sync_hash',
   'sync_in_progress',
   ...ENRICHMENT_STATE_KEYS,
   'sync_started_at',
@@ -784,30 +783,3 @@ export class APIError extends Error {
       : undefined;
   }
 }
-
-// Helper function to convert Chrome bookmarks to server format
-export function formatBookmarkForServer(
-  bookmark: chrome.bookmarks.BookmarkTreeNode,
-  path: string
-): BookmarkData {
-  // Use stable syncId based on Chrome bookmark ID
-  // This ensures the same bookmark gets the same syncId across multiple syncs
-  // which is critical for duplicate detection on the server side
-  const syncId = bookmark.id; // Chrome bookmark ID is stable across sessions
-
-  return {
-    title: bookmark.title || 'Untitled',
-    url: bookmark.url || '',
-    description: `Imported from Chrome bookmarks`,
-    path: path,
-    dateAdded: bookmark.dateAdded
-      ? new Date(bookmark.dateAdded).toISOString()
-      : new Date().toISOString(),
-    syncId,
-    source: 'chrome_bookmark',
-  };
-}
-
-// REMOVED: syncAllBookmarksViaServer - this function was unused and contained
-// chrome.notifications API calls that required the 'notifications' permission.
-// Bookmark syncing is now handled by performBookmarkSync in background/index.ts

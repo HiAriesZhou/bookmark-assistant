@@ -3,7 +3,7 @@ import { prisma } from '../services/userPrisma';
 
 export const AI_DIAGNOSTIC_OPPORTUNISTIC_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-export async function cleanupExpiredAiDiagnostics(): Promise<void> {
+async function cleanupExpiredAiDiagnostics(): Promise<void> {
   try {
     const now = new Date();
     const staleDomainLeaseCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);

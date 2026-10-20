@@ -7,12 +7,6 @@ export interface AppConfig {
     serverUrl: string;
   };
 
-  // AI Services
-  ai: {
-    model: string;
-    maxTokens: number;
-  };
-
   // App Settings
   app: {
     name: string;
@@ -43,16 +37,6 @@ function getEnvBoolean(key: string, defaultValue: boolean) {
 }
 
 /**
- * Get environment variable as number
- */
-function getEnvNumber(key: string, defaultValue = 0) {
-  const value = import.meta.env[key];
-  if (value === undefined) return defaultValue;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-
-/**
  * Application configuration object
  */
 export const config: AppConfig = {
@@ -60,38 +44,12 @@ export const config: AppConfig = {
     clientId: getEnvVar('VITE_NOTION_CLIENT_ID', ''),
     serverUrl: productConfig.apiUrl,
   },
-  ai: {
-    // Provider credentials are stored by the server and must never be bundled
-    // into the extension as Vite environment variables.
-    model: getEnvVar('VITE_OPENAI_MODEL', 'gpt-3.5-turbo'),
-    maxTokens: getEnvNumber('VITE_OPENAI_MAX_TOKENS', 150),
-  },
   app: {
     name: productConfig.name,
     version: PRODUCT_VERSION,
     debugMode: getEnvBoolean('VITE_DEBUG_MODE', true),
   },
 };
-
-/**
- * Shared server API configuration. Notion credentials stay on the server.
- */
-export const API_CONFIG = {
-  baseUrl: productConfig.apiUrl,
-  timeout: 10000,
-  retries: 3,
-  retryDelay: 1000,
-} as const;
-
-/**
- * Direct Notion API Configuration (Recommended)
- */
-export const NOTION_CONFIG = {
-  apiUrl: 'https://api.notion.com/v1',
-  version: '2025-09-03',
-  clientId: import.meta.env.VITE_NOTION_CLIENT_ID || '',
-  // clientSecret intentionally omitted from extension bundle (server-only)
-} as const;
 
 /**
  * Validate configuration and log warnings for missing values
@@ -109,15 +67,6 @@ export function validateConfig(): { isValid: boolean; errors: string[]; warnings
     errors,
     warnings,
   };
-}
-
-/**
- * Check if AI features are available and enabled
- * AI features are currently disabled to focus on core functionality
- */
-export function isAIEnabled(): boolean {
-  // AI features disabled for now - will be added as advanced features later
-  return false;
 }
 
 /**

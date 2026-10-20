@@ -5,7 +5,7 @@ import { config } from '../config';
 
 // Sessions renew while the extension is used (see /api/oauth/session), so an
 // active account never silently drops back to Free after a fixed day.
-export const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
+const SESSION_TTL_SECONDS = 14 * 24 * 60 * 60;
 
 export function issueSessionToken(userId: string): string {
   return jwt.sign({ userId, timestamp: Date.now() }, config.jwtSecret, {

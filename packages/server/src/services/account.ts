@@ -13,7 +13,7 @@ export function findAccountByEmail(email: string) {
   });
 }
 
-export const NOTION_CONNECTION_RESET = {
+const NOTION_CONNECTION_RESET = {
   notionUserId: null,
   notionAccessToken: null,
   notionRefreshToken: null,

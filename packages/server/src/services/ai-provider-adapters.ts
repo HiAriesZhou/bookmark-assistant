@@ -58,7 +58,7 @@ export interface AiProviderAdapter {
 }
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
-export const AI_PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
+const AI_PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 
 /**
  * Makes a deliberately tiny, tool-free model call. A successful HTTP response is

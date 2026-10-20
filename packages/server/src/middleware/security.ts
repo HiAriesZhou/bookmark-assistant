@@ -162,26 +162,3 @@ export const apiRateLimit: RateLimitRequestHandler = rateLimit({
     });
   },
 });
-
-/**
- * Create custom rate limiter with specific configuration
- */
-export const createRateLimit: (
-  windowMs: number,
-  max: number,
-  message: string
-) => RateLimitRequestHandler = (windowMs, max, message) => {
-  return rateLimit({
-    windowMs,
-    max,
-    // @ts-expect-error - trustProxy is supported in express-rate-limit v7
-    trustProxy: 1,
-    message: {
-      error: 'Too Many Requests',
-      message,
-      retryAfter: Math.ceil(windowMs / 1000),
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-};

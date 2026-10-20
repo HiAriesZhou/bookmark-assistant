@@ -40,26 +40,3 @@ export function createTranslator(): TranslationContext {
     isAvailable,
   };
 }
-
-/**
- * Get the current UI language
- * @returns ISO language code (e.g., 'en', 'zh-CN')
- */
-export function getLocale(): string {
-  if (typeof chrome !== 'undefined' && chrome.i18n) {
-    return chrome.i18n.getUILanguage();
-  }
-  return 'en';
-}
-
-/**
- * Get all accepted languages
- * @param callback Function to receive the languages array
- */
-export function getAcceptLanguages(callback: (languages: string[]) => void): void {
-  if (typeof chrome !== 'undefined' && chrome.i18n) {
-    chrome.i18n.getAcceptLanguages(callback);
-  } else {
-    callback(['en']);
-  }
-}
