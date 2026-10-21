@@ -1,14 +1,68 @@
+<div align="center">
+
+<img src="packages/shared/assets/brand/logo.png" alt="Bookmark Assistant logo" width="96" height="96">
+
 # Bookmark Assistant
 
-Manage existing Chrome bookmarks locally, connect Notion when you want an external
-copy, and optionally generate AI summaries and tags with your own provider key.
-The extension, server, website, billing implementation and build tools share one
-source tree licensed under **GPL-3.0-only**. See LICENSE, NOTICE and TRADEMARKS.md.
+**Manage the Chrome bookmarks you already have.**
 
-Official hosted services offer Free and Pro plans. Self-hosted deployments include
-scheduled sync and batch AI without an official subscription. Hosting and provider
-costs are the operator's responsibility. AI currently requires a connected Notion
-destination; the local bookmark library works independently.
+Search, edit, tag and organize your library locally. Sync to Notion when you want an
+external copy, and add AI summaries and tags with your own provider key.
+
+[Chrome Web Store](https://chromewebstore.google.com/detail/khffaaemphidjmhokafmiilkcjpgiije) ·
+[Website](https://bookmarkassistant.com) ·
+[Self-hosting](deploy/README.md) ·
+[Contributing](CONTRIBUTING.md)
+
+[![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE)
+![Chrome MV3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4)
+![Node 24](https://img.shields.io/badge/node-24-339933)
+
+<img src="packages/website/public/assets/laptop-en.png" alt="Bookmark Assistant local library with folders, search, descriptions and tags" width="760">
+
+</div>
+
+## Features
+
+- **Local library**: search titles, URLs, descriptions and tags; edit details, move
+  bookmarks between folders, find duplicates and remove what you no longer need.
+  Chrome bookmarks stay the source of truth, and no account is required.
+- **Bookmarks and Reading List to Notion**: connect a workspace through OAuth and
+  sync both Chrome sources on demand, with stable link handling to avoid duplicates.
+- **Save the current page** without adding it to Chrome bookmarks first.
+- **AI summaries and tags** with your own OpenAI, Anthropic, Gemini, DeepSeek, Groq or
+  MiniMax key. AI never overwrites your Notion edits. AI currently requires a
+  connected Notion destination.
+
+## Plans and deployments
+
+|                                    | Hosted Free | Hosted Pro | Self-hosted |
+| ---------------------------------- | :---------: | :--------: | :---------: |
+| Local library                      |      ✓      |     ✓      |      ✓      |
+| Manual Notion sync and page saving |      ✓      |     ✓      |      ✓      |
+| AI for newly saved pages           |      ✓      |     ✓      |      ✓      |
+| Scheduled background sync          |             |     ✓      |      ✓      |
+| Batch AI for newly synced pages    |             |     ✓      |      ✓      |
+
+The server decides capabilities. Self-hosted deployments include every capability
+without an official subscription; hosting and provider costs are the operator's
+responsibility. See [self-hosting](deploy/README.md).
+
+## Repository layout
+
+| Package              | Contents                                                          |
+| -------------------- | ----------------------------------------------------------------- |
+| `packages/extension` | Chrome extension (React, Vite, Manifest V3)                       |
+| `packages/server`    | API for OAuth, sync, AI and billing (Express, Prisma, PostgreSQL) |
+| `packages/website`   | Product website (Next.js)                                         |
+| `packages/types`     | Shared KnowledgeItem, AI and deployment contracts                 |
+| `packages/shared`    | Brand artwork and shared scrollbar styles                         |
+| `packages/marketing` | Localized public copy and headless rendering tools                |
+
+The root package version is the product version source. Localized copy lives in
+`packages/marketing/content` and brand sources in `packages/shared`. Generated mirrors
+are build artifacts: run `pnpm resources:sync` and `pnpm resources:check` after
+changing their source inputs.
 
 ## Development
 
@@ -17,35 +71,22 @@ Use Node 24 and pnpm 9.12.0:
 ```sh
 pnpm install --frozen-lockfile
 pnpm -F @bookmark-assistant/types build
-pnpm dev
-pnpm dev:server
+pnpm dev            # extension, loads from packages/extension/dist-dev
+pnpm dev:server     # API at http://localhost:3333
 pnpm dev:website
 ```
 
-Development builds connect to a local server at `http://localhost:3333`; load
-`packages/extension/dist-dev`. Production builds are the official extension and
-connect to the official hosted service by default:
+Production builds are the official extension and connect to the official hosted
+service by default. The output directory is `packages/extension/dist`:
 
 ```sh
 pnpm build:prod
 pnpm package
 ```
 
-The production directory is `packages/extension/dist`. To use your own server, set
-`VITE_OAUTH_SERVER_URL` and your own `VITE_NOTION_CLIENT_ID` at build time; official
-links and the official Notion client ID then no longer apply. Server-only credentials
-must never be passed as Vite variables. See [self-hosting](deploy/README.md).
-
-## Workspace
-
-Extension: React/Vite/MV3. Server: Express/Prisma/PostgreSQL. Website: Next.js.
-Shared types own the KnowledgeItem capture contract; shared styles supply scrollbar rules.
-The marketing workspace contains public example copy and headless rendering tools.
-
-The root package version is the product version source. Localized copy lives in
-`packages/marketing/content`; brand sources live in `packages/shared`.
-Generated mirrors are build artifacts. Run `pnpm resources:sync` and
-`pnpm resources:check` after changing their source inputs.
+To use your own server, set `VITE_OAUTH_SERVER_URL` and your own
+`VITE_NOTION_CLIENT_ID` at build time; official links and the official Notion client
+ID then no longer apply. Never pass server-only credentials as Vite variables.
 
 ## Verification
 
@@ -59,20 +100,28 @@ pnpm test:e2e:extension
 pnpm source:check
 ```
 
-Routine testing is headless and never opens the system browser. See CONTRIBUTING.md
-and SECURITY.md for contribution and disclosure guidance.
+Routine testing is headless and never opens the system browser.
 
-## Official releases and source candidates
+## Releases and source
 
-Official artwork, store snapshots and the hosted-service endpoints are part of this
+Official artwork, store snapshots and hosted-service endpoints are part of this
 repository, so a tagged commit is the complete corresponding source of a store
-package. The Bookmark Assistant name and logo are covered by TRADEMARKS.md.
+package. Public binary releases must identify their exact source snapshot or commit
+and include the applicable third-party notices.
 
-`pnpm source:snapshot` exports the current source into a new, history-free directory
-under `.build`, with a file checksum manifest. It includes pending source changes
-and does not publish a repository. Review provenance and the independent secret
-scan before publishing. Public binary releases must identify their exact source
-snapshot or commit and include the applicable third-party notices.
+`pnpm source:snapshot` exports the current source, including pending changes, into a
+new history-free directory under `.build` with a file checksum manifest. It does not
+publish a repository. Review provenance and run the independent secret scan before
+publishing.
 
 Older AGPL releases retain their existing grants. Historical repositories and npm
 core packages are archival references; current core implementations live here.
+
+## License and trademarks
+
+The extension, server, website, billing implementation and build tools are licensed
+under **GPL-3.0-only**; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The Bookmark
+Assistant name and logo are covered by [TRADEMARKS.md](TRADEMARKS.md): forks and
+independent deployments must use their own name and artwork.
+
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
