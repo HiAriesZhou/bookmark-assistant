@@ -1,5 +1,5 @@
 import type { AiGenerationMode, AiGenerationStatus } from '@bookmark-assistant/types';
-import { AI_PROVIDER_DEFAULT_MODELS } from './ai-provider-adapters';
+import { AI_PROVIDER_DEFAULT_MODELS } from '@bookmark-assistant/types';
 import type { AiCredentialService, AiCredentialSummary } from './ai-credential-service';
 import { AiCredentialNotFoundError } from './ai-credential-service';
 import { AI_GENERATION_PROMPT_VERSION } from './ai-generation-prompt';

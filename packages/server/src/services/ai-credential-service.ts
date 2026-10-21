@@ -1,7 +1,7 @@
 import type { AiProvider } from '@bookmark-assistant/types';
 import { isAiProvider } from './ai-provider';
 import type { CredentialCipher, EncryptedCredential } from './credential-cipher';
-import { AI_PROVIDER_DEFAULT_MODELS } from './ai-provider-adapters';
+import { AI_PROVIDER_DEFAULT_MODELS } from '@bookmark-assistant/types';
 
 export type AiCredentialStatus = 'verified' | 'invalid' | 'revoked';
 

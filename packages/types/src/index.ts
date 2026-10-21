@@ -41,6 +41,23 @@ export {
   isAiProvider,
 } from './ai.js';
 
+export {
+  AI_PROVIDER_DEFAULT_MODELS,
+  AI_PROVIDER_HOST_PERMISSIONS,
+  AiProviderGenerationError,
+  AiProviderValidationError,
+  createAiProviderAdapter,
+} from './ai-providers.js';
+
+export type {
+  AiProviderAdapter,
+  AiProviderAdapterOptions,
+  AiProviderGenerationOptions,
+  AiProviderGenerationResult,
+  AiProviderValidationErrorCode,
+  FetchLike,
+} from './ai-providers.js';
+
 export type {
   AiGenerationAggregate,
   AiGenerationMode,

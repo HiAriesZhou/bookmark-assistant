@@ -11,7 +11,7 @@ import {
   AI_PROVIDER_DEFAULT_MODELS,
   AiProviderValidationError,
   createAiProviderAdapter,
-} from '../services/ai-provider-adapters';
+} from '@bookmark-assistant/types';
 import {
   createCredentialCipher,
   CredentialCipherConfigurationError,

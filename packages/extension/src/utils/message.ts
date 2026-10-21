@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { AiGenerationStatus } from '@bookmark-assistant/types';
 import type { DashboardSnapshot } from '../dashboard/types';
+import type { OrganizeBatch, OrganizeProposal } from '../core';
+import type { OrganizeErrorCode, OrganizeKeySummary } from '../background/library-organize';
 
 /** Current-page AI outcomes: server task statuses plus decisions made locally. */
 export type CurrentPageAiStatus =
@@ -76,6 +78,28 @@ export type MessageMap = {
     req: { refreshConnection?: boolean };
     res: { success: boolean; dashboard?: DashboardSnapshot; error?: string };
   };
+  ORGANIZE_KEY_GET: {
+    req: {};
+    res: { success: boolean; key?: OrganizeKeySummary | null; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_KEY_SAVE: {
+    req: { provider: string; apiKey: string };
+    res: { success: boolean; key?: OrganizeKeySummary; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_KEY_DELETE: {
+    req: {};
+    res: { success: boolean; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_PREVIEW_BATCH: {
+    req: { batch: OrganizeBatch; uiLanguage: string };
+    res: {
+      success: boolean;
+      proposals?: OrganizeProposal[];
+      discardedCount?: number;
+      errorCode?: OrganizeErrorCode;
+      retryAfterMs?: number;
+    };
+  };
 };
 
 export type MessageType = keyof MessageMap;
@@ -99,6 +123,10 @@ export const Messages: { [K in MessageType]: K } = {
   SAVE_CURRENT_PAGE: 'SAVE_CURRENT_PAGE',
   GENERATE_CURRENT_PAGE_AI: 'GENERATE_CURRENT_PAGE_AI',
   GET_DASHBOARD_STATE: 'GET_DASHBOARD_STATE',
+  ORGANIZE_KEY_GET: 'ORGANIZE_KEY_GET',
+  ORGANIZE_KEY_SAVE: 'ORGANIZE_KEY_SAVE',
+  ORGANIZE_KEY_DELETE: 'ORGANIZE_KEY_DELETE',
+  ORGANIZE_PREVIEW_BATCH: 'ORGANIZE_PREVIEW_BATCH',
 };
 
 // Notion OAuth can include template duplication and server-side database resolution.
@@ -108,6 +136,8 @@ export const SAVE_CURRENT_PAGE_MESSAGE_TIMEOUT_MS = 120_000;
 // A separate message keeps the user-visible AI phase bounded without delaying
 // the successful save acknowledgement.
 export const GENERATE_CURRENT_PAGE_AI_MESSAGE_TIMEOUT_MS = 4 * 60_000;
+// Key validation and one organize batch each make a single provider call (30 s limit).
+export const ORGANIZE_MESSAGE_TIMEOUT_MS = 60_000;
 
 export async function sendMessage<T extends MessageType>(
   message: MessageRequest<T>,

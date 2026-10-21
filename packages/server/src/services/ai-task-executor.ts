@@ -1,6 +1,6 @@
 import type { AiGenerationReasonCode, AiGenerationStatus } from '@bookmark-assistant/types';
 import type { ActiveAiProviderCredential } from './ai-credential-service';
-import { AiProviderGenerationError, type AiProviderAdapter } from './ai-provider-adapters';
+import { AiProviderGenerationError, type AiProviderAdapter } from '@bookmark-assistant/types';
 import {
   AiGenerationOutputError,
   buildAiGenerationPrompt,

@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   AI_PROVIDER_DEFAULT_MODELS,
+  AI_PROVIDER_HOST_PERMISSIONS,
   AiProviderGenerationError,
   AiProviderValidationError,
   createAiProviderAdapter,
   type FetchLike,
-} from './ai-provider-adapters';
+} from './ai-providers';
+import { AI_PROVIDERS } from './ai';
 
 function successfulFetch(): FetchLike {
   return vi.fn(async () => new Response('{}', { status: 200 }));
@@ -51,13 +53,14 @@ describe('AI provider adapters', () => {
     const fetcher: FetchLike = vi.fn(async () => new Response('{}', { status: 401 }));
     const adapter = createAiProviderAdapter('openai', fetcher);
 
-    await expect(adapter.validateApiKey('bad-key')).rejects.toMatchObject<
-      Partial<AiProviderValidationError>
-    >({
+    await expect(adapter.validateApiKey('bad-key')).rejects.toBeInstanceOf(
+      AiProviderValidationError
+    );
+    await expect(adapter.validateApiKey('bad-key')).rejects.toMatchObject({
       code: 'invalid_api_key',
       provider: 'openai',
     });
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it('classifies provider network and timeout failures as unavailable', async () => {
@@ -141,7 +144,10 @@ describe('AI provider adapters', () => {
     const fetcher: FetchLike = vi.fn(async () => new Response('{}', { status: 401 }));
     await expect(
       createAiProviderAdapter('openai', fetcher).generate('bad-key', 'content')
-    ).rejects.toMatchObject<Partial<AiProviderGenerationError>>({
+    ).rejects.toBeInstanceOf(AiProviderGenerationError);
+    await expect(
+      createAiProviderAdapter('openai', fetcher).generate('bad-key', 'content')
+    ).rejects.toMatchObject({
       code: 'invalid_api_key',
       provider: 'openai',
     });
@@ -166,5 +172,74 @@ describe('AI provider adapters', () => {
     await expect(
       createAiProviderAdapter('openai', rateFetcher).generate('key', 'content')
     ).rejects.toMatchObject({ code: 'rate_limited', retryAfterMs: 7_000 });
+  });
+
+  it.each(AI_PROVIDERS)(
+    'keeps the 600-token default and honors a %s output limit',
+    async (provider) => {
+      const fetcher = successfulFetch();
+      const adapter = createAiProviderAdapter(provider, fetcher);
+      await adapter.generate('key', 'content').catch(() => undefined);
+      await adapter.generate('key', 'content', { maxOutputTokens: 6_000 }).catch(() => undefined);
+
+      const [defaultCall, customCall] = vi.mocked(fetcher).mock.calls;
+      expect(String(defaultCall![1]?.body)).toMatch(/":600[,}]/);
+      expect(String(customCall![1]?.body)).toMatch(/":6000[,}]/);
+    }
+  );
+
+  it('opts browser clients into Anthropic-style direct access only when asked', async () => {
+    for (const provider of AI_PROVIDERS) {
+      const serverFetcher = successfulFetch();
+      const browserFetcher = successfulFetch();
+      await createAiProviderAdapter(provider, serverFetcher).validateApiKey('key');
+      await createAiProviderAdapter(provider, browserFetcher, undefined, {
+        browserClient: true,
+      })
+        .generate('key', 'content')
+        .catch(() => undefined);
+
+      const serverHeaders = vi.mocked(serverFetcher).mock.calls[0]![1]?.headers as Record<
+        string,
+        string
+      >;
+      const browserHeaders = vi.mocked(browserFetcher).mock.calls[0]![1]?.headers as Record<
+        string,
+        string
+      >;
+      expect(serverHeaders['anthropic-dangerous-direct-browser-access']).toBeUndefined();
+      expect(browserHeaders['anthropic-dangerous-direct-browser-access']).toBe(
+        provider === 'anthropic' || provider === 'minimax' ? 'true' : undefined
+      );
+    }
+  });
+
+  it('declares a host permission that matches every provider request', async () => {
+    for (const provider of AI_PROVIDERS) {
+      const fetcher = successfulFetch();
+      await createAiProviderAdapter(provider, fetcher).validateApiKey('key');
+      const url = String(vi.mocked(fetcher).mock.calls[0]![0]);
+      const origin = AI_PROVIDER_HOST_PERMISSIONS[provider].replace(/\*$/, '');
+      expect(url.startsWith(origin)).toBe(true);
+    }
+  });
+
+  it('adds low-latency reasoning settings only when asked', async () => {
+    const expected: Record<string, string | undefined> = {
+      openai: '"reasoning":{"effort":"minimal"}',
+      groq: '"reasoning_effort":"low"',
+      gemini: '"thinkingConfig":{"thinkingBudget":0}',
+    };
+    for (const provider of AI_PROVIDERS) {
+      const fetcher = successfulFetch();
+      const adapter = createAiProviderAdapter(provider, fetcher);
+      await adapter.generate('key', 'content').catch(() => undefined);
+      await adapter.generate('key', 'content', { lowLatency: true }).catch(() => undefined);
+      const [defaultCall, fastCall] = vi.mocked(fetcher).mock.calls;
+
+      expect(String(defaultCall![1]?.body)).not.toMatch(/reasoning|thinking/);
+      if (expected[provider]) expect(String(fastCall![1]?.body)).toContain(expected[provider]);
+      else expect(fastCall![1]?.body).toBe(defaultCall![1]?.body);
+    }
   });
 });

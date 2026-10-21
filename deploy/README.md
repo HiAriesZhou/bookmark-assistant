@@ -1,6 +1,6 @@
 # Self-hosting
 
-The local bookmark library works without a server. Notion sync and AI enrichment use the server; AI currently requires a connected Notion destination. Self-hosting includes scheduled sync and batch AI. API provider and hosting charges remain yours.
+The local bookmark library works without a server. Notion sync and AI summaries use the server; AI summaries currently require a connected Notion destination. AI organize runs in the extension with each user's own provider key and needs no server or account. Self-hosting includes scheduled sync and batch AI. API provider and hosting charges remain yours.
 
 Requirements: Node 24, pnpm 9.12, and Docker Compose with PostgreSQL 17. The website and Paddle are optional.
 
