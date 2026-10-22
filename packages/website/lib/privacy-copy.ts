@@ -75,7 +75,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant processes only the information needed for local bookmark management and library reports, Notion sync, optional AI features, billing, and support.',
     effectiveLabel: 'Effective',
     updatedLabel: 'Last updated',
-    date: 'October 12, 2026',
+    date: 'October 21, 2026',
     contentsLabel: 'On this page',
     backHome: 'Back to Bookmark Assistant',
     language: '中文',
@@ -130,8 +130,21 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         ],
       },
       {
+        id: 'ai-organize',
+        title: '6. AI library organization',
+        paragraphs: [
+          'AI organize is optional and runs in the extension. When you start it, the extension sends batches of bookmarks directly to the AI provider you selected, using an API key you enter in the extension. These requests do not pass through Bookmark Assistant servers and do not require an account.',
+        ],
+        bullets: [
+          'A request contains bookmark titles, their current folder paths, URLs reduced to origin and path without credentials, query parameters, or fragments, and the paths of folders that can receive them.',
+          'Managed bookmarks, non-web URLs, and common local and private-network addresses, such as localhost, .local, .lan, or private IP ranges, are not sent. Internal sites on public domain names cannot be recognized and are treated like other web pages.',
+          'The key is stored only in this browser profile’s extension storage. Bookmark Assistant does not encrypt it or sync it to other devices. Removing the key also releases the provider access permissions granted for AI organize.',
+          'Suggestions are shown for review first; bookmarks move only after you apply them. A local record of the last applied run stays on this device so you can undo it.',
+        ],
+      },
+      {
         id: 'retention',
-        title: '6. AI tasks, diagnostics, and retention',
+        title: '7. AI tasks, diagnostics, and retention',
         paragraphs: [
           'AI task and idempotency records are retained with your account so the same item is not repeatedly processed and interrupted work can be classified safely.',
           'Minimal diagnostics may include provider, model, request identifier, token counts, duration, retry count, and a standardized error code. They do not contain page text, title, URL, generated summary or tags, the complete key, or a raw provider response. Diagnostic records expire after 30 days and are removed by scheduled or request-triggered cleanup; low traffic may delay physical deletion.',
@@ -139,14 +152,14 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'billing',
-        title: '7. Billing and subscriptions',
+        title: '8. Billing and subscriptions',
         paragraphs: [
           'Paddle processes checkout and payment information under its own privacy policy. Bookmark Assistant stores only the subscription, customer, plan, and entitlement identifiers needed to show and enforce your plan. Bookmark Assistant does not store complete payment-card details.',
         ],
       },
       {
         id: 'telemetry',
-        title: '8. Reliability and support data',
+        title: '9. Reliability and support data',
         paragraphs: [
           'Bookmark Assistant may process minimal operational events and safe error categories to diagnose failures and provide support. Extension error reports and service logs are designed not to include bookmark titles, page content, complete URLs, complete API keys, raw provider responses, or raw client stack traces.',
           'The website does not add advertising trackers or a separate analytics product in this release.',
@@ -154,7 +167,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'sharing',
-        title: '9. Service providers and data use',
+        title: '10. Service providers and data use',
         paragraphs: [
           'Information is shared only as needed to provide the action you requested: with Notion for authorized sync, with your selected AI provider for optional generation, with Paddle for billing, and with infrastructure providers that host Bookmark Assistant.',
           'We do not sell personal data, use it for advertising, or use it for creditworthiness or lending decisions. Each third-party service processes information under its own terms and privacy policy.',
@@ -162,15 +175,15 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'controls',
-        title: '10. Your controls and deletion',
+        title: '11. Your controls and deletion',
         paragraphs: [
-          'You can disable AI, edit the excluded-hostname list, replace or delete the stored AI key, turn off scheduled sync, disconnect Notion, and delete your service account from the extension.',
+          'You can disable AI, edit the excluded-hostname list, replace or delete the stored AI key, remove the AI organize key, undo the last AI organize run, turn off scheduled sync, disconnect Notion, and delete your service account from the extension.',
           'Disconnecting Notion removes the Notion tokens, database identifiers and AI work items tied to Notion pages; your account and plan remain. Deleting the service account removes the Bookmark Assistant service account with its Notion connection, AI key and AI records. Neither action deletes Chrome bookmarks or pages already written to your Notion workspace. Paddle may retain billing records under its legal obligations; manage an active monthly subscription through the Paddle customer portal before deleting the service account. Shared page-description cache entries expire under the retention rule above.',
         ],
       },
       {
         id: 'security',
-        title: '11. Security and international processing',
+        title: '12. Security and international processing',
         paragraphs: [
           'Bookmark Assistant uses HTTPS in transit, access controls, input minimization, fixed provider endpoints, and application-level encryption for stored AI credentials. No internet service can guarantee absolute security.',
           'Notion, Paddle, your selected AI provider, and hosting infrastructure may process information in countries other than your own, subject to their terms and safeguards.',
@@ -178,14 +191,14 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'limited-use',
-        title: '12. Chrome Web Store Limited Use',
+        title: '13. Chrome Web Store Limited Use',
         paragraphs: [
           'Bookmark Assistant’s use and transfer of information received from Google APIs complies with the Chrome Web Store User Data Policy, including its Limited Use requirements. Browser data is used only to provide or improve the user-facing features described in this policy, and not for personalized advertising, unrelated profiling, credit decisions, or sale to data brokers.',
         ],
       },
       {
         id: 'changes',
-        title: '13. Changes to this policy',
+        title: '14. Changes to this policy',
         paragraphs: [
           'We may update this policy when product behavior or legal requirements change. The updated date on this page identifies the current version. Material changes will be reflected here before the affected behavior is released.',
         ],
@@ -200,7 +213,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant 只处理本地书签管理与报告、Notion 同步、可选 AI、支付和支持所必需的信息。',
     effectiveLabel: '生效日期',
     updatedLabel: '最后更新',
-    date: '2026 年 10 月 12 日',
+    date: '2026 年 10 月 21 日',
     contentsLabel: '本页目录',
     backHome: '返回 Bookmark Assistant',
     language: 'English',
@@ -253,8 +266,21 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         ],
       },
       {
+        id: 'ai-organize',
+        title: '6. AI 整理书签',
+        paragraphs: [
+          'AI 整理是可选功能，在扩展内运行。开始整理后，扩展会使用你在扩展中填写的 API Key，把书签分批直接发送给你选择的 AI 服务商。这些请求不经过 Bookmark Assistant 服务器，也不需要账户。',
+        ],
+        bullets: [
+          '请求包含书签标题、当前所在文件夹路径、只保留来源与路径的 URL（移除凭据、查询参数和 Fragment），以及可作为目标的文件夹路径。',
+          '受管理书签、非网页 URL，以及常见的本地和内网地址（如 localhost、.local、.lan 或私有 IP 段）不会被发送。使用公共域名的内部网站无法识别，会按普通网页处理。',
+          'Key 只保存在当前浏览器配置文件的扩展存储中，Bookmark Assistant 不会对其加密，也不会同步到其他设备。移除 Key 时会一并撤销为 AI 整理授予的服务商访问权限。',
+          '建议会先供你查看确认，应用之后书签才会移动。本机会保留最近一次整理的记录，以便撤销。',
+        ],
+      },
+      {
         id: 'retention',
-        title: '6. AI 任务、诊断与保留期限',
+        title: '7. AI 任务、诊断与保留期限',
         paragraphs: [
           'AI 任务与幂等记录会随账户保留，以避免同一项目被反复处理，并安全判断中断任务的状态。',
           '最小诊断数据可能包括服务商、模型、请求标识、Token 数、耗时、重试次数和标准错误码；不包含页面正文、标题、URL、生成的摘要或标签、完整 Key 或原始服务商响应。诊断记录 30 天后过期，并由定时或请求触发的清理删除；低流量可能延迟物理删除。',
@@ -262,14 +288,14 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'billing',
-        title: '7. 支付与订阅',
+        title: '8. 支付与订阅',
         paragraphs: [
           'Paddle 会依据其隐私政策处理结账与支付信息。Bookmark Assistant 只保存显示和执行套餐权益所需的订阅、客户、计划和权益标识，不保存完整银行卡信息。',
         ],
       },
       {
         id: 'telemetry',
-        title: '8. 稳定性与支持数据',
+        title: '9. 稳定性与支持数据',
         paragraphs: [
           'Bookmark Assistant 可能处理最少量的运行事件和安全错误分类，用于诊断故障与提供支持。扩展错误上报和服务端日志不会记录书签标题、页面正文、完整 URL、完整 API Key、原始服务商响应或原始客户端堆栈。',
           '本次发布不会在官网新增广告追踪器或独立分析产品。',
@@ -277,7 +303,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'sharing',
-        title: '9. 服务提供商与数据用途',
+        title: '10. 服务提供商与数据用途',
         paragraphs: [
           '信息只会在提供你所请求操作所必需的范围内共享：授权同步使用 Notion、可选生成使用你选择的 AI 服务商、支付使用 Paddle，以及由基础设施提供商托管 Bookmark Assistant。',
           '我们不出售个人数据，不将其用于广告，也不用于信用评估或借贷决定。各第三方服务依据其自身条款和隐私政策处理信息。',
@@ -285,15 +311,15 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'controls',
-        title: '10. 你的控制与删除方式',
+        title: '11. 你的控制与删除方式',
         paragraphs: [
-          '你可以在扩展中关闭 AI、编辑排除 hostname 列表、更换或删除已保存的 AI Key、关闭定时同步、断开 Notion 以及删除服务端账户。',
+          '你可以在扩展中关闭 AI、编辑排除 hostname 列表、更换或删除已保存的 AI Key、移除 AI 整理所用的 Key、撤销最近一次 AI 整理、关闭定时同步、断开 Notion 以及删除服务端账户。',
           '断开 Notion 会移除 Notion Token、数据库标识以及关联 Notion 页面的 AI 任务，账户和套餐保留。删除服务端账户会移除 Bookmark Assistant 服务账户及其 Notion 连接、AI Key 和 AI 记录。这两项操作都不会删除 Chrome 书签或已经写入 Notion 工作区的页面。Paddle 可能因法律义务保留支付记录；如有有效月度订阅，请先通过 Paddle 客户门户管理订阅再删除服务端账户。共享页面描述缓存会按上述保留规则过期。',
         ],
       },
       {
         id: 'security',
-        title: '11. 安全与跨境处理',
+        title: '12. 安全与跨境处理',
         paragraphs: [
           'Bookmark Assistant 使用 HTTPS 传输、访问控制、输入最小化、固定服务商端点，并对保存的 AI 凭据进行应用层加密。任何互联网服务都无法保证绝对安全。',
           'Notion、Paddle、你选择的 AI 服务商和托管基础设施可能在你所在国家或地区以外处理信息，并受其条款与保护措施约束。',
@@ -301,14 +327,14 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       },
       {
         id: 'limited-use',
-        title: '12. Chrome Web Store Limited Use',
+        title: '13. Chrome Web Store Limited Use',
         paragraphs: [
           'Bookmark Assistant 对从 Google API 获得的信息的使用和传输遵守 Chrome Web Store User Data Policy，包括 Limited Use 要求。浏览器数据仅用于提供或改进本政策所述的用户可见功能，不用于个性化广告、无关画像、信用决定，也不会出售给数据经纪商。',
         ],
       },
       {
         id: 'changes',
-        title: '13. 政策变更',
+        title: '14. 政策变更',
         paragraphs: [
           '当产品行为或法律要求变化时，我们可能更新本政策。本页的最后更新日期代表当前版本；重大变更会在相关行为发布前反映在这里。',
         ],

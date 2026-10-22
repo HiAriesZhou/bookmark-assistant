@@ -4,7 +4,7 @@ import { createCredentialCipher } from '../services/credential-cipher';
 import { AiSettingsService } from '../services/ai-settings-service';
 import { AiTaskExecutor } from '../services/ai-task-executor';
 import { AiTaskWorker, type AiTaskRunSummary } from '../services/ai-task-worker';
-import { createAiProviderAdapter } from '../services/ai-provider-adapters';
+import { createAiProviderAdapter } from '@bookmark-assistant/types';
 import { PublicPageFetcher } from '../services/public-page-fetcher';
 import { PrismaAiCredentialStore } from '../services/prisma-ai-credential-store';
 import { PrismaAiSettingsStore } from '../services/prisma-ai-settings-store';

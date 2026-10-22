@@ -7,9 +7,11 @@ import {
   ListFilter,
   RefreshCw,
   Search,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { planOrganizeScope, type OrganizeScope } from '../../core';
 import type { BookmarkChanges } from '../../library/bookmark-actions';
 import {
   filterLocalBookmarks,
@@ -25,6 +27,7 @@ import { BookmarkEditor } from './BookmarkEditor';
 import { BookmarkFavicon } from './BookmarkFavicon';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ConfirmPopover } from './ConfirmPopover';
+import { OrganizePanel } from './OrganizePanel';
 import { SelectMenu, type SelectMenuOption } from './SelectMenu';
 
 type LocalLibraryController = ReturnType<typeof useLocalLibrary>;
@@ -57,6 +60,8 @@ export function LocalLibraryWorkspace({
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; text: string }>();
   const [duplicateSnapshotIds, setDuplicateSnapshotIds] = useState<Set<string>>();
+  // The scope is frozen when the panel opens so library refreshes do not reshuffle a run.
+  const [organizeScope, setOrganizeScope] = useState<OrganizeScope>();
   const [pendingDelete, setPendingDelete] = useState<
     | { bookmark: LocalBookmark; presentation: 'dialog' }
     | { bookmark: LocalBookmark; presentation: 'popover'; anchor: HTMLButtonElement }
@@ -169,6 +174,16 @@ export function LocalLibraryWorkspace({
     }
   };
 
+  const openOrganize = () => {
+    if (!library || !confirmDiscardDraft()) return;
+    setNotice(undefined);
+    setOrganizeScope(
+      planOrganizeScope(results, library.folders, {
+        scopeFolderId: filter.kind === 'folder' ? filter.folderId : undefined,
+      })
+    );
+  };
+
   const filterOptions = createFilterOptions(filter, t, library);
   const sortOptions: SelectMenuOption[] = [
     {
@@ -249,6 +264,16 @@ export function LocalLibraryWorkspace({
                 ariaLabel={t('library_sort')}
                 className="shrink-0"
               />
+              <button
+                type="button"
+                onClick={openOrganize}
+                disabled={!library || !results.length}
+                className="library-secondary-button shrink-0"
+                title={t('organize_open_hint')}
+              >
+                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                {t('organize_open')}
+              </button>
               {filter.kind === 'duplicates' ? (
                 <button
                   type="button"
@@ -351,6 +376,14 @@ export function LocalLibraryWorkspace({
         onCancel={() => setPendingDelete(undefined)}
         onConfirm={() => void confirmDelete()}
       />
+      {organizeScope && library ? (
+        <OrganizePanel
+          scope={organizeScope}
+          bookmarks={library.bookmarks}
+          folders={library.folders}
+          onClose={() => setOrganizeScope(undefined)}
+        />
+      ) : null}
       <ConfirmPopover
         open={pendingDelete?.presentation === 'popover'}
         anchor={pendingDelete?.presentation === 'popover' ? pendingDelete.anchor : undefined}

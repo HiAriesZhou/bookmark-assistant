@@ -957,5 +957,125 @@
   },
   "service_data_deleted_title": {
     "message": "服务端账户已删除"
+  },
+  "organize_open": {
+    "message": "AI 整理"
+  },
+  "organize_open_hint": {
+    "message": "为当前视图中的书签建议更合适的文件夹"
+  },
+  "organize_title": {
+    "message": "AI 整理"
+  },
+  "organize_close": {
+    "message": "关闭"
+  },
+  "organize_privacy_note": {
+    "message": "书签标题、文件夹路径和去掉查询参数的网址会用你自己的 API key 直接发送给所选服务商，不经过 Bookmark Assistant 服务器。Key 只保存在本机，未加密。常见的本地和内网地址（如 localhost、.local、.lan 或私有 IP 段）不会被发送。"
+  },
+  "organize_key_label": {
+    "message": "API key"
+  },
+  "organize_key_save": {
+    "message": "保存 key"
+  },
+  "organize_key_saving": {
+    "message": "正在验证 key…"
+  },
+  "organize_key_summary": {
+    "message": "$1 key（尾号 $2）"
+  },
+  "organize_key_change": {
+    "message": "更换"
+  },
+  "organize_key_clear": {
+    "message": "移除 key"
+  },
+  "organize_scope_count": {
+    "message": "将分析当前视图中的 $1 条书签。"
+  },
+  "organize_scope_truncated": {
+    "message": "当前视图共有 $1 条书签。每次整理优先处理未分类书签，其次是最新添加的。"
+  },
+  "organize_scope_excluded": {
+    "message": "$1 条书签不会离开本机：受管理、常见本地或内网地址，或非网页地址。"
+  },
+  "organize_no_folders": {
+    "message": "没有可以移入的文件夹。"
+  },
+  "organize_start": {
+    "message": "生成建议"
+  },
+  "organize_progress": {
+    "message": "正在分析第 $1 / $2 批…"
+  },
+  "organize_preview_empty": {
+    "message": "没有需要移动的书签，它们看起来已经放对了位置。"
+  },
+  "organize_preview_summary": {
+    "message": "建议移动 $1 条。应用之前不会做任何改动。"
+  },
+  "organize_select_all": {
+    "message": "全选"
+  },
+  "organize_select_none": {
+    "message": "全不选"
+  },
+  "organize_select_bookmark": {
+    "message": "移动 $1"
+  },
+  "organize_target_folder": {
+    "message": "$1 的目标文件夹"
+  },
+  "organize_retry_failed": {
+    "message": "重试 $1 个未完成的批次"
+  },
+  "organize_apply": {
+    "message": "应用 $1 项移动"
+  },
+  "organize_apply_result": {
+    "message": "已移动 $1 条书签，跳过 $2 条已变化或无法移动的书签。"
+  },
+  "organize_undo": {
+    "message": "撤销上次整理"
+  },
+  "organize_undo_result": {
+    "message": "已恢复 $1 条书签，$2 条因再次移动或已删除而保持不变。"
+  },
+  "organize_error_generic": {
+    "message": "请求未能完成，请重试。"
+  },
+  "organize_error_not_configured": {
+    "message": "请先添加 API key。"
+  },
+  "organize_error_permission": {
+    "message": "请允许访问该服务商，Chrome 才能发送请求。"
+  },
+  "organize_error_invalid_key": {
+    "message": "服务商拒绝了这个 API key。"
+  },
+  "organize_error_quota": {
+    "message": "服务商提示这个 key 的额度或余额已用完。"
+  },
+  "organize_error_model": {
+    "message": "这个 key 无法使用该服务商的默认模型。"
+  },
+  "organize_error_rate_limited": {
+    "message": "服务商正在限流，请稍后重试失败的批次。"
+  },
+  "organize_error_unavailable": {
+    "message": "服务商暂时不可用，请稍后再试。"
+  },
+  "organize_error_response": {
+    "message": "部分服务商返回的结果无法使用，请重试失败的批次。"
+  },
+  "organize_error_apply": {
+    "message": "Chrome 未能完成全部移动。已完成的移动可以撤销。"
+  },
+  "organize_error_undo": {
+    "message": "Chrome 未能完成撤销，请重试。"
+  },
+  "organize_error_key_delete": {
+    "message": "未能移除 key，请重试。"
   }
 }

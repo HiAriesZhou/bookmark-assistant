@@ -36,9 +36,10 @@ unrelated changes.
   the Notion connection. Disconnecting Notion keeps the account, session and plan;
   only the explicit account deletion removes the server record. Local bookmark
   management never requires an account.
-- Types hold the shared KnowledgeItem, AI and deployment contracts. Shared holds
-  brand artwork and scrollbar styles. Website: Next.js. Marketing: public copy and
-  headless rendering/validation tools.
+- Types hold the shared KnowledgeItem, AI and deployment contracts and the AI provider
+  adapters used by both the server and the extension. Shared holds brand artwork and
+  scrollbar styles. Website: Next.js. Marketing: public copy and headless
+  rendering/validation tools.
 - Pure core transforms must not depend on Chrome APIs, database access or network
   calls. AI providers reuse the shared provider contract and adapter boundary.
 

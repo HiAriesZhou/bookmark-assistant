@@ -1,4 +1,4 @@
-import type { AiProvider } from '@bookmark-assistant/types';
+import type { AiProvider } from './ai.js';
 
 export const AI_PROVIDER_DEFAULT_MODELS: Readonly<Record<AiProvider, string>> = {
   openai: 'gpt-5-mini',
@@ -7,6 +7,16 @@ export const AI_PROVIDER_DEFAULT_MODELS: Readonly<Record<AiProvider, string>> = 
   deepseek: 'deepseek-v4-flash',
   groq: 'openai/gpt-oss-20b',
   minimax: 'MiniMax-M2.7',
+};
+
+/** Match patterns for every endpoint an adapter calls, for extension host permissions. */
+export const AI_PROVIDER_HOST_PERMISSIONS: Readonly<Record<AiProvider, string>> = {
+  openai: 'https://api.openai.com/*',
+  anthropic: 'https://api.anthropic.com/*',
+  gemini: 'https://generativelanguage.googleapis.com/*',
+  deepseek: 'https://api.deepseek.com/*',
+  groq: 'https://api.groq.com/*',
+  minimax: 'https://api.minimax.io/*',
 };
 
 export type AiProviderValidationErrorCode =
@@ -50,15 +60,34 @@ export interface AiProviderGenerationResult {
   outputTokens?: number;
 }
 
+export interface AiProviderGenerationOptions {
+  maxOutputTokens?: number;
+  /**
+   * Asks reasoning models to answer with minimal deliberation. Extension service
+   * workers cannot wait much longer than 30 s for a response.
+   */
+  lowLatency?: boolean;
+}
+
 export interface AiProviderAdapter {
   readonly provider: AiProvider;
   readonly model: string;
   validateApiKey(apiKey: string): Promise<void>;
-  generate(apiKey: string, prompt: string): Promise<AiProviderGenerationResult>;
+  generate(
+    apiKey: string,
+    prompt: string,
+    options?: AiProviderGenerationOptions
+  ): Promise<AiProviderGenerationResult>;
+}
+
+export interface AiProviderAdapterOptions {
+  /** The extension calls providers directly; servers never set this. */
+  browserClient?: boolean;
 }
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 const AI_PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 600;
 
 /**
  * Makes a deliberately tiny, tool-free model call. A successful HTTP response is
@@ -67,17 +96,18 @@ const AI_PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 export function createAiProviderAdapter(
   provider: AiProvider,
   fetcher: FetchLike = fetch,
-  model = AI_PROVIDER_DEFAULT_MODELS[provider]
+  model = AI_PROVIDER_DEFAULT_MODELS[provider],
+  { browserClient = false }: AiProviderAdapterOptions = {}
 ): AiProviderAdapter {
+  const send = (request: [string, RequestInit]) =>
+    fetcher(...withProviderTimeout(withBrowserAccess(provider, request, browserClient)));
   return {
     provider,
     model,
     async validateApiKey(apiKey: string): Promise<void> {
       let response: Response;
       try {
-        response = await fetcher(
-          ...withProviderTimeout(buildValidationRequest(provider, model, apiKey))
-        );
+        response = await send(buildValidationRequest(provider, model, apiKey));
       } catch {
         throw new AiProviderValidationError('service_unavailable', provider);
       }
@@ -85,11 +115,22 @@ export function createAiProviderAdapter(
         throw new AiProviderValidationError(await classifyFailure(response), provider);
       }
     },
-    async generate(apiKey: string, prompt: string): Promise<AiProviderGenerationResult> {
+    async generate(
+      apiKey: string,
+      prompt: string,
+      {
+        maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
+        lowLatency = false,
+      }: AiProviderGenerationOptions = {}
+    ): Promise<AiProviderGenerationResult> {
       let response: Response;
       try {
-        response = await fetcher(
-          ...withProviderTimeout(buildGenerationRequest(provider, model, apiKey, prompt))
+        response = await send(
+          withLowLatency(
+            provider,
+            buildGenerationRequest(provider, model, apiKey, prompt, maxOutputTokens),
+            lowLatency
+          )
         );
       } catch {
         throw new AiProviderGenerationError('provider_request_failed', provider);
@@ -111,6 +152,25 @@ function withProviderTimeout(request: [string, RequestInit]): [string, RequestIn
   return [
     request[0],
     { ...request[1], signal: AbortSignal.timeout(AI_PROVIDER_REQUEST_TIMEOUT_MS) },
+  ];
+}
+
+/** Anthropic-style APIs reject browser-origin requests without an explicit opt-in. */
+function withBrowserAccess(
+  provider: AiProvider,
+  request: [string, RequestInit],
+  browserClient: boolean
+): [string, RequestInit] {
+  if (!browserClient || (provider !== 'anthropic' && provider !== 'minimax')) return request;
+  return [
+    request[0],
+    {
+      ...request[1],
+      headers: {
+        ...(request[1].headers as Record<string, string>),
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    },
   ];
 }
 
@@ -189,11 +249,36 @@ function buildValidationRequest(
   }
 }
 
+/** Only parameters documented for the default models; other providers are unchanged. */
+function withLowLatency(
+  provider: AiProvider,
+  request: [string, RequestInit],
+  lowLatency: boolean
+): [string, RequestInit] {
+  if (!lowLatency) return request;
+  const body = JSON.parse(String(request[1].body)) as Record<string, any>;
+  switch (provider) {
+    case 'openai':
+      body.reasoning = { effort: 'minimal' };
+      break;
+    case 'groq':
+      body.reasoning_effort = 'low';
+      break;
+    case 'gemini':
+      body.generationConfig = { ...body.generationConfig, thinkingConfig: { thinkingBudget: 0 } };
+      break;
+    default:
+      return request;
+  }
+  return [request[0], { ...request[1], body: JSON.stringify(body) }];
+}
+
 function buildGenerationRequest(
   provider: AiProvider,
   model: string,
   apiKey: string,
-  prompt: string
+  prompt: string,
+  maxOutputTokens: number
 ): [string, RequestInit] {
   const common: RequestInit = {
     method: 'POST',
@@ -208,7 +293,12 @@ function buildGenerationRequest(
         {
           ...common,
           headers: { ...common.headers, authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model, input: prompt, max_output_tokens: 600, store: false }),
+          body: JSON.stringify({
+            model,
+            input: prompt,
+            max_output_tokens: maxOutputTokens,
+            store: false,
+          }),
         },
       ];
     case 'anthropic':
@@ -223,7 +313,7 @@ function buildGenerationRequest(
           },
           body: JSON.stringify({
             model,
-            max_tokens: 600,
+            max_tokens: maxOutputTokens,
             messages: [{ role: 'user', content: prompt }],
           }),
         },
@@ -236,20 +326,26 @@ function buildGenerationRequest(
           headers: { ...common.headers, 'x-goog-api-key': apiKey },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 600, responseMimeType: 'application/json' },
+            generationConfig: { maxOutputTokens, responseMimeType: 'application/json' },
           }),
         },
       ];
     case 'deepseek':
     case 'groq':
-      return openAiCompatibleRequest(openAiCompatibleBaseUrl(provider), model, apiKey, prompt, 600);
+      return openAiCompatibleRequest(
+        openAiCompatibleBaseUrl(provider),
+        model,
+        apiKey,
+        prompt,
+        maxOutputTokens
+      );
     case 'minimax':
       return anthropicCompatibleRequest(
         'https://api.minimax.io/anthropic',
         model,
         apiKey,
         prompt,
-        600
+        maxOutputTokens
       );
   }
 }

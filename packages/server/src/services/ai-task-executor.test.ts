@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AiTaskExecutor } from './ai-task-executor';
 import { createDescriptionBaselineHash } from './notion-ai-writer';
 import { PublicPageFetchError } from './public-page-fetcher';
-import { AiProviderGenerationError } from './ai-provider-adapters';
+import { AiProviderGenerationError } from '@bookmark-assistant/types';
 
 const task = {
   id: 'task-1',
