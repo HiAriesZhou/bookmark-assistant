@@ -366,17 +366,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       const notionConnected = hasNotionDestination(stored);
       const validPricing = parseCachedPricing(cached_pricing) || get().pricing;
 
-      const cachedDeployment =
+      const cachedProfile =
         stored.deployment_profile?.apiOrigin === productConfig.apiUrl
-          ? {
-              ...stored.deployment_profile,
-              signInMethods: Array.isArray(stored.deployment_profile.signInMethods)
-                ? stored.deployment_profile.signInMethods
-                : get().signInMethods,
-            }
-          : defaultDeployment;
+          ? stored.deployment_profile
+          : undefined;
+      const cachedDeployment = cachedProfile ?? defaultDeployment;
+      const signInMethods = Array.isArray(cachedProfile?.signInMethods)
+        ? cachedProfile.signInMethods
+        : get().signInMethods;
       set({
         ...cachedDeployment,
+        signInMethods,
         hasGoogleSignIn: stored.has_google_sign_in === true,
         showPriorNotionHint: stored.account_created_notice === true,
         isConnected: notionConnected,

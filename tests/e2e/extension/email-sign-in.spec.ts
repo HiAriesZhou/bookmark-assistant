@@ -128,7 +128,7 @@ test('signs in with an email code, shows the new-account hint, and signs out', a
     await page.getByRole('button', { name: text.account_send_code }).click();
     await page.getByLabel(text.account_code_label).fill('424242');
     await page.getByRole('button', { name: text.account_sign_in, exact: true }).click();
-    await expect(page.getByText('person@example.com')).toBeVisible();
+    await expect(page.getByText('person@example.com', { exact: true })).toBeVisible();
     await expect(page.getByText(text.account_prior_notion_hint)).toBeVisible();
     await page.getByRole('button', { name: text.account_sign_out }).click();
     await expect(page.getByLabel(text.account_email_label)).toBeVisible();
