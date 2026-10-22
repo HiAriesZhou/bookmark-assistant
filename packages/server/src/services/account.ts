@@ -185,14 +185,21 @@ export async function linkGoogleIdentity(userId: string, identity: GoogleIdentit
       'GOOGLE_ACCOUNT_CONFLICT'
     );
   }
-  const emailsMatch = current.email.trim().toLowerCase() === identity.email;
+  const googleEmail = identity.email.trim().toLowerCase();
+  const accountEmail = current.email.trim().toLowerCase();
+  if (googleEmail !== accountEmail) {
+    throw new AccountConflictError(
+      'This Google account uses a different email than the signed-in account',
+      'GOOGLE_ACCOUNT_CONFLICT'
+    );
+  }
   try {
     return await prisma.user.update({
       where: { id: userId },
       data: {
         googleSub: identity.sub,
+        emailVerifiedAt: new Date(),
         lastActivity: new Date(),
-        ...(emailsMatch ? { emailVerifiedAt: new Date() } : {}),
       },
       select: accountSelect,
     });

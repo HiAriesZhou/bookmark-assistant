@@ -355,7 +355,47 @@ describe('auth routes', () => {
     expect(users).toHaveLength(2);
   });
 
-  it('links Google to the signed-in account instead of switching accounts', async () => {
+  it('links a matching Google email to the signed-in account and signs in with it later', async () => {
+    users.push({
+      id: 'signed-in',
+      email: 'Owner@Example.com',
+      plan: 'pro',
+      googleSub: null,
+      notionAccessToken: 'notion-token',
+      emailVerifiedAt: new Date(),
+    });
+    const identity = { sub: 'google-sub-9', email: 'owner@example.com' };
+    exchangeGoogleCode.mockResolvedValue(identity);
+    const googleBody = {
+      code: 'auth-code',
+      codeVerifier: 'verifier',
+      redirectUri: `https://${EXTENSION_ID}.chromiumapp.org/google`,
+    };
+    const linked = await post(
+      '/api/auth/google/exchange',
+      googleBody,
+      `Bearer ${jwt.sign({ userId: 'signed-in' }, JWT_SECRET)}`
+    );
+    expect(linked.status).toBe(200);
+    expect(jwt.verify(linked.body.sessionToken, JWT_SECRET)).toMatchObject({
+      userId: 'signed-in',
+    });
+    expect(users).toHaveLength(1);
+    expect(users[0].googleSub).toBe('google-sub-9');
+    expect(users[0].plan).toBe('pro');
+    expect(users[0].email).toBe('Owner@Example.com');
+
+    const signedIn = await post('/api/auth/google/exchange', googleBody);
+    expect(signedIn.status).toBe(200);
+    expect(jwt.verify(signedIn.body.sessionToken, JWT_SECRET)).toMatchObject({
+      userId: 'signed-in',
+    });
+    expect(users).toHaveLength(1);
+    expect(users[0].plan).toBe('pro');
+    expect(users[0].googleSub).toBe('google-sub-9');
+  });
+
+  it('rejects linking a Google account whose verified email differs', async () => {
     users.push({
       id: 'signed-in',
       email: 'owner@example.com',
@@ -374,12 +414,34 @@ describe('auth routes', () => {
       },
       `Bearer ${jwt.sign({ userId: 'signed-in' }, JWT_SECRET)}`
     );
-    expect(response.status).toBe(200);
-    expect(jwt.verify(response.body.sessionToken, JWT_SECRET)).toMatchObject({
-      userId: 'signed-in',
-    });
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('GOOGLE_ACCOUNT_CONFLICT');
+    expect(response.body.sessionToken).toBeUndefined();
     expect(users).toHaveLength(1);
-    expect(users[0].googleSub).toBe('google-sub-9');
+    expect(users[0].googleSub).toBeNull();
+    expect(users[0].plan).toBe('pro');
+    expect(users[0].email).toBe('owner@example.com');
+  });
+
+  it('rejects Google sign-in when the email account already has another subject', async () => {
+    users.push({
+      id: 'email-account',
+      email: 'person@example.com',
+      plan: 'pro',
+      googleSub: 'other-sub',
+      notionAccessToken: null,
+      emailVerifiedAt: new Date(),
+    });
+    exchangeGoogleCode.mockResolvedValue({ sub: 'google-sub-1', email: 'person@example.com' });
+    const response = await post('/api/auth/google/exchange', {
+      code: 'auth-code',
+      codeVerifier: 'verifier',
+      redirectUri: `https://${EXTENSION_ID}.chromiumapp.org/google`,
+    });
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('GOOGLE_ACCOUNT_CONFLICT');
+    expect(users).toHaveLength(1);
+    expect(users[0].googleSub).toBe('other-sub');
     expect(users[0].plan).toBe('pro');
   });
 });

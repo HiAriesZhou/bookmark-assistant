@@ -145,22 +145,76 @@ describe('Google account linking', () => {
     expect(prisma.user.update.mock.calls.some((call) => call[0].data?.googleSub)).toBe(false);
   });
 
-  it('links Google onto the signed-in account instead of switching accounts', async () => {
+  it('links Google onto the signed-in account when the verified email matches', async () => {
+    prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'signed-in',
+      email: 'Person@Example.com',
+      googleSub: null,
+      plan: 'pro',
+    });
+    prisma.user.update.mockImplementation(async ({ data }: { data: object }) => ({
+      id: 'signed-in',
+      plan: 'pro',
+      email: 'Person@Example.com',
+      ...data,
+    }));
+
+    await expect(
+      linkGoogleIdentity('signed-in', { sub: 'google-sub-1', email: ' person@example.com ' })
+    ).resolves.toMatchObject({
+      id: 'signed-in',
+      googleSub: 'google-sub-1',
+    });
+    const update = prisma.user.update.mock.calls[0][0];
+    expect(update.where).toEqual({ id: 'signed-in' });
+    expect(update.data.googleSub).toBe('google-sub-1');
+    expect(update.data.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(update.data).not.toHaveProperty('email');
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('does not store a Google subject when the verified email differs', async () => {
     prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
       id: 'signed-in',
       email: 'owner@example.com',
       googleSub: null,
       plan: 'pro',
     });
-    prisma.user.update.mockResolvedValue({ id: 'signed-in', plan: 'pro' });
 
-    await expect(linkGoogleIdentity('signed-in', identity)).resolves.toMatchObject({
+    await expect(linkGoogleIdentity('signed-in', identity)).rejects.toMatchObject({
+      code: 'GOOGLE_ACCOUNT_CONFLICT',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses to replace a different Google subject already on the account', async () => {
+    prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({
       id: 'signed-in',
+      email: 'person@example.com',
+      googleSub: 'other-sub',
+      plan: 'pro',
     });
-    expect(prisma.user.update.mock.calls[0][0]).toMatchObject({
-      where: { id: 'signed-in' },
-      data: { googleSub: 'google-sub-1' },
+
+    await expect(linkGoogleIdentity('signed-in', identity)).rejects.toMatchObject({
+      code: 'GOOGLE_ACCOUNT_CONFLICT',
     });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses Google sign-in when the email account already has a different subject', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'email-account',
+      plan: 'pro',
+      googleSub: 'other-sub',
+      email: 'person@example.com',
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await expect(resolveGoogleAccount(identity)).rejects.toMatchObject({
+      code: 'GOOGLE_ACCOUNT_CONFLICT',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
 });
