@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AI_PROVIDER_HOST_PERMISSIONS, type FetchLike } from '@bookmark-assistant/types';
 import manifest from '../../public/manifest.json';
 import {
-  ORGANIZE_AI_KEY_STORAGE_KEY,
+  LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY,
   OrganizeError,
   deleteOrganizeKey,
   isOrganizeSenderAllowed,
@@ -71,7 +71,7 @@ describe('organize key storage', () => {
       code: 'permission_required',
     });
     expect(fetcher).not.toHaveBeenCalled();
-    expect(storage[ORGANIZE_AI_KEY_STORAGE_KEY]).toBeUndefined();
+    expect(storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]).toBeUndefined();
   });
 
   it('stores a validated key and exposes only the provider and last four characters', async () => {
@@ -80,7 +80,7 @@ describe('organize key storage', () => {
       provider: 'openai',
       last4: '1234',
     });
-    expect(storage[ORGANIZE_AI_KEY_STORAGE_KEY]).toMatchObject({
+    expect(storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]).toMatchObject({
       provider: 'openai',
       apiKey: 'sk-test-1234',
     });
@@ -92,7 +92,7 @@ describe('organize key storage', () => {
     await expect(saveOrganizeKey('openai', 'sk-bad', respond(401))).rejects.toMatchObject({
       code: 'invalid_api_key',
     });
-    expect(storage[ORGANIZE_AI_KEY_STORAGE_KEY]).toBeUndefined();
+    expect(storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]).toBeUndefined();
     expect(grantedOrigins.has('https://api.openai.com/*')).toBe(false);
   });
 
@@ -128,13 +128,13 @@ describe('organize key storage', () => {
     grantedOrigins.add('https://api.openai.com/*');
     await saveOrganizeKey('openai', 'sk-test-1234', respond(200));
     await deleteOrganizeKey();
-    expect(storage[ORGANIZE_AI_KEY_STORAGE_KEY]).toBeUndefined();
+    expect(storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]).toBeUndefined();
     expect(grantedOrigins.has('https://api.openai.com/*')).toBe(false);
     await expect(readOrganizeKeySummary()).resolves.toBeNull();
   });
 
   it('ignores a malformed stored key', async () => {
-    storage[ORGANIZE_AI_KEY_STORAGE_KEY] = { provider: 'nope', apiKey: 1 };
+    storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY] = { provider: 'nope', apiKey: 1 };
     await expect(readOrganizeKeySummary()).resolves.toBeNull();
   });
 });

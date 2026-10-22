@@ -23,7 +23,7 @@ import {
  * The organize key stays on this device and is sent only to the chosen provider.
  * It is not account-scoped: library organization never requires an account.
  */
-export const ORGANIZE_AI_KEY_STORAGE_KEY = 'organize_ai_key_v1';
+export const LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY = 'library_organize_provider_credential_v1';
 const API_KEY_MAX_LENGTH = 512;
 const BATCH_MAX_FOLDERS = 300;
 
@@ -103,13 +103,13 @@ export async function saveOrganizeKey(
     apiKey: trimmedKey,
     savedAt: new Date().toISOString(),
   };
-  await chrome.storage.local.set({ [ORGANIZE_AI_KEY_STORAGE_KEY]: stored });
+  await chrome.storage.local.set({ [LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]: stored });
   await releaseProviderPermissions(AI_PROVIDERS.filter((candidate) => candidate !== provider));
   return summarize(stored);
 }
 
 export async function deleteOrganizeKey(): Promise<void> {
-  await chrome.storage.local.remove(ORGANIZE_AI_KEY_STORAGE_KEY);
+  await chrome.storage.local.remove(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY);
   await releaseProviderPermissions(AI_PROVIDERS);
 }
 
@@ -161,8 +161,8 @@ async function assertProviderPermission(provider: AiProvider): Promise<void> {
 }
 
 async function readStoredKey(): Promise<StoredOrganizeKey | undefined> {
-  const value = (await chrome.storage.local.get(ORGANIZE_AI_KEY_STORAGE_KEY))[
-    ORGANIZE_AI_KEY_STORAGE_KEY
+  const value = (await chrome.storage.local.get(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY))[
+    LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY
   ] as Partial<StoredOrganizeKey> | undefined;
   if (!value || !isAiProvider(value.provider) || typeof value.apiKey !== 'string') return undefined;
   if (!value.apiKey) return undefined;
