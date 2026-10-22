@@ -13,7 +13,12 @@ import {
   withBookmarkType,
 } from '../core';
 import { extractPageContentFromDocument } from '../core';
-import { launchNotionOAuth, exchangeCodeForToken, debugOAuthSetup } from './oauth';
+import {
+  launchNotionOAuth,
+  exchangeCodeForToken,
+  signInWithGoogle,
+  debugOAuthSetup,
+} from './oauth';
 import {
   NOTION_CONNECTED_KEY,
   readNotionDestination,
@@ -684,6 +689,18 @@ async function refreshStoredEntitlements(context: AccountContext): Promise<void>
   }
 }
 
+async function signInFailure(err: unknown, context?: AccountContext) {
+  if (isStaleAccountStateError(err) || (context && !(await isAccountContextCurrent(context)))) {
+    return { success: false as const, error: 'Account state changed' };
+  }
+  const error = err instanceof Error ? err.message : String(err);
+  const code =
+    err && typeof err === 'object' && 'code' in err && typeof err.code === 'string'
+      ? err.code
+      : undefined;
+  return { success: false as const, error, ...(code ? { code } : {}) };
+}
+
 async function messageAccountContext(req: {
   accountRevision?: string | null;
 }): Promise<AccountContext> {
@@ -823,6 +840,66 @@ addMessageListener({
       return { success: true, accountRevision: context.revision! } as const;
     } catch (err) {
       console.error('❌ Account deletion failed:', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
+    }
+  },
+  [Messages.SIGN_IN_EMAIL_START]: async (req) => {
+    try {
+      await serverAPI.startEmailSignIn(req.email, req.locale);
+      return { success: true } as const;
+    } catch (err) {
+      return signInFailure(err);
+    }
+  },
+  [Messages.SIGN_IN_EMAIL_VERIFY]: async (req) => {
+    let context: AccountContext | undefined;
+    try {
+      context = await messageAccountContext(req);
+      const result = await serverAPI.verifyEmailSignIn(req.email, req.code, context);
+      const signedIn = await messageAccountContext({ accountRevision: result.accountRevision });
+      await refreshStoredEntitlements(signedIn);
+      return {
+        success: true,
+        accountCreated: result.accountCreated,
+        userEmail: result.userEmail,
+        accountRevision: result.accountRevision,
+      } as const;
+    } catch (err) {
+      return signInFailure(err, context);
+    }
+  },
+  [Messages.SIGN_IN_GOOGLE]: async (req) => {
+    let context: AccountContext | undefined;
+    try {
+      context = await messageAccountContext(req);
+      const result = await signInWithGoogle(context);
+      const signedIn = await messageAccountContext({ accountRevision: result.accountRevision });
+      await refreshStoredEntitlements(signedIn);
+      return {
+        success: true,
+        accountCreated: result.accountCreated,
+        userEmail: result.userEmail,
+        accountRevision: result.accountRevision,
+      } as const;
+    } catch (err) {
+      return signInFailure(err, context);
+    }
+  },
+  [Messages.SIGN_OUT]: async (req) => {
+    try {
+      const origin = await messageAccountContext(req);
+      const context = await serverAPI.logout(origin);
+      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
+      return { success: true, accountRevision: context.revision! } as const;
+    } catch (err) {
+      return signInFailure(err);
+    }
+  },
+  [Messages.GET_DEPLOYMENT_PROFILE]: async () => {
+    try {
+      const profile = await serverAPI.getDeploymentProfile();
+      return { success: true, profile } as const;
+    } catch (err) {
       return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
     }
   },

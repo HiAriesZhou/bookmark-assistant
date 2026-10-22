@@ -54,6 +54,8 @@ export const prisma = new Proxy({} as PrismaClient, {
 export const userCompatSelect = {
   id: true,
   email: true,
+  emailVerifiedAt: true,
+  googleSub: true,
   notionUserId: true,
   notionAccessToken: true,
   notionRefreshToken: true,
@@ -135,6 +137,8 @@ export class UserPrismaRepo {
       id: u.id,
       userId: u.notionUserId || '',
       email: u.email || undefined,
+      emailVerifiedAt: u.emailVerifiedAt,
+      googleSub: u.googleSub,
       notionAccessToken: u.notionAccessToken || '',
       notionRefreshToken: u.notionRefreshToken || undefined,
       notionWorkspaceId: u.notionWorkspaceId || undefined,

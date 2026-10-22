@@ -163,6 +163,14 @@ export const config = {
   // Notion API Configuration
   notionClientId: process.env.NOTION_CLIENT_ID!,
   notionClientSecret: process.env.NOTION_CLIENT_SECRET!,
+  // Public Google client id plus the confidential client secret. Both are required
+  // before Google sign-in is advertised. The secret is never returned to clients.
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  // Email sign-in. Hosted deployments stay disabled until RESEND_API_KEY is set.
+  // Self-hosted deployments without it print the one-time code to the server log.
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  emailFrom: process.env.EMAIL_FROM || 'Bookmark Assistant <login@bookmarkassistant.com>',
   // Upgrade to new Notion API release; allow env override for safe rollout
   notionApiVersion: process.env.NOTION_API_VERSION || '2025-09-03',
 

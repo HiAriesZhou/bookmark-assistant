@@ -957,5 +957,41 @@
   },
   "service_data_deleted_title": {
     "message": "服务端账户已删除"
+  },
+  "account_title": {
+    "message": "账号"
+  },
+  "account_email_label": {
+    "message": "邮箱"
+  },
+  "account_send_code": {
+    "message": "发送验证码"
+  },
+  "account_code_label": {
+    "message": "验证码"
+  },
+  "account_sign_in": {
+    "message": "登录"
+  },
+  "account_signing_in": {
+    "message": "正在登录"
+  },
+  "account_sign_in_google": {
+    "message": "用 Google 登录"
+  },
+  "account_link_google": {
+    "message": "关联 Google"
+  },
+  "account_sign_out": {
+    "message": "退出登录"
+  },
+  "account_signed_in_label": {
+    "message": "已登录"
+  },
+  "account_signed_out_notion_only": {
+    "message": "此服务器通过 Notion 登录。请在同步目的地页面连接 Notion。"
+  },
+  "account_prior_notion_hint": {
+    "message": "如果你以前通过 Notion 使用过 Bookmark Assistant，请用 Notion 账号的邮箱登录。"
   }
 }

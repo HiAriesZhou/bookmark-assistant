@@ -75,7 +75,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant processes only the information needed for local bookmark management and library reports, Notion sync, optional AI features, billing, and support.',
     effectiveLabel: 'Effective',
     updatedLabel: 'Last updated',
-    date: 'October 12, 2026',
+    date: 'October 22, 2026',
     contentsLabel: 'On this page',
     backHome: 'Back to Bookmark Assistant',
     language: '中文',
@@ -102,7 +102,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
           'When you connect or sync, Bookmark Assistant processes the information required to perform the action you requested.',
         ],
         bullets: [
-          'Account information, including the email and identifiers returned through the Notion OAuth flow. Local bookmark management does not require an account.',
+          'Account information: the email address used for email sign-in, a Google account identifier when you choose Google sign-in, and the email and identifiers returned through the Notion OAuth flow. Local bookmark management does not require an account.',
+          'Email sign-in codes are stored only as a hash. A code is valid for 10 minutes. Code records are removed after 24 hours by routine cleanup. Hosted service logs do not contain the code.',
           'Notion OAuth tokens, workspace identifiers, selected database or data-source identifiers, and template connection settings. These are retained until you disconnect Notion or delete the account.',
           'Bookmark, Reading List, and current-page fields selected for sync, such as title, URL, folder, source type, reading status, description, tags, and favicon when available.',
           'Notion page identifiers and stable item identifiers required to update entries and avoid duplicates.',
@@ -156,7 +157,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         id: 'sharing',
         title: '9. Service providers and data use',
         paragraphs: [
-          'Information is shared only as needed to provide the action you requested: with Notion for authorized sync, with your selected AI provider for optional generation, with Paddle for billing, and with infrastructure providers that host Bookmark Assistant.',
+          'Information is shared only as needed to provide the action you requested: with Resend to deliver email sign-in codes, with Google when you choose Google sign-in, with Notion for authorized sync, with your selected AI provider for optional generation, and with infrastructure providers that host Bookmark Assistant.',
+          'Paddle processes billing for the hosted service.',
           'We do not sell personal data, use it for advertising, or use it for creditworthiness or lending decisions. Each third-party service processes information under its own terms and privacy policy.',
         ],
       },
@@ -173,7 +175,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         title: '11. Security and international processing',
         paragraphs: [
           'Bookmark Assistant uses HTTPS in transit, access controls, input minimization, fixed provider endpoints, and application-level encryption for stored AI credentials. No internet service can guarantee absolute security.',
-          'Notion, Paddle, your selected AI provider, and hosting infrastructure may process information in countries other than your own, subject to their terms and safeguards.',
+          'Resend, Google, Notion, your selected AI provider, and hosting infrastructure may process information in countries other than your own, subject to their terms and safeguards.',
+          'Paddle may process hosted billing information in countries other than your own, subject to its terms and safeguards.',
         ],
       },
       {
@@ -200,7 +203,7 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
       'Bookmark Assistant 只处理本地书签管理与报告、Notion 同步、可选 AI、支付和支持所必需的信息。',
     effectiveLabel: '生效日期',
     updatedLabel: '最后更新',
-    date: '2026 年 10 月 12 日',
+    date: '2026 年 10 月 22 日',
     contentsLabel: '本页目录',
     backHome: '返回 Bookmark Assistant',
     language: 'English',
@@ -225,7 +228,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         title: '3. 账户、Notion 连接与同步数据',
         paragraphs: ['连接或同步时，Bookmark Assistant 会处理完成你所请求操作必需的信息。'],
         bullets: [
-          '账户信息，包括 Notion OAuth 流程返回的邮箱与标识符。管理本地书签不需要账户。',
+          '账户信息：邮箱登录使用的邮箱地址、选择 Google 登录时的 Google 账号标识，以及 Notion OAuth 流程返回的邮箱与标识符。管理本地书签不需要账户。',
+          '邮箱登录验证码只以哈希形式保存。验证码有效期为 10 分钟。验证码记录会在 24 小时后由例行清理删除。托管服务的日志不包含验证码。',
           'Notion OAuth Token、工作区标识、所选数据库或数据源标识，以及模板连接设置。这些信息保留到你断开 Notion 或删除账户。',
           '你选择同步的书签、阅读清单和当前页面字段，例如标题、URL、目录、来源类型、阅读状态、描述、标签，以及可用时的网站图标。',
           '更新条目和避免重复所需的 Notion 页面标识与稳定项目标识。',
@@ -279,7 +283,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         id: 'sharing',
         title: '9. 服务提供商与数据用途',
         paragraphs: [
-          '信息只会在提供你所请求操作所必需的范围内共享：授权同步使用 Notion、可选生成使用你选择的 AI 服务商、支付使用 Paddle，以及由基础设施提供商托管 Bookmark Assistant。',
+          '信息只会在提供你所请求操作所必需的范围内共享：通过 Resend 发送邮箱登录验证码、在你选择 Google 登录时使用 Google、授权同步使用 Notion、可选生成使用你选择的 AI 服务商，以及由基础设施提供商托管 Bookmark Assistant。',
+          '托管服务的支付由 Paddle 处理。',
           '我们不出售个人数据，不将其用于广告，也不用于信用评估或借贷决定。各第三方服务依据其自身条款和隐私政策处理信息。',
         ],
       },
@@ -296,7 +301,8 @@ const privacyCopy: Record<WebsiteLocale, PrivacyCopy> = {
         title: '11. 安全与跨境处理',
         paragraphs: [
           'Bookmark Assistant 使用 HTTPS 传输、访问控制、输入最小化、固定服务商端点，并对保存的 AI 凭据进行应用层加密。任何互联网服务都无法保证绝对安全。',
-          'Notion、Paddle、你选择的 AI 服务商和托管基础设施可能在你所在国家或地区以外处理信息，并受其条款与保护措施约束。',
+          'Resend、Google、Notion、你选择的 AI 服务商和托管基础设施可能在你所在国家或地区以外处理信息，并受其条款与保护措施约束。',
+          'Paddle 可能在你所在国家或地区以外处理托管服务的支付信息，并受其条款与保护措施约束。',
         ],
       },
       {

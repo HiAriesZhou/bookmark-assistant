@@ -2,6 +2,8 @@
 
 import { Router } from 'express';
 import oauthRoutes from './oauth';
+import authRoutes from './auth';
+import deploymentRoutes from './deployment';
 import notionRoutes from './notion';
 import bookmarkRoutes from './bookmarks';
 import userRoutes from './user';
@@ -15,6 +17,8 @@ const router: import('express').Router = Router();
 
 // Mount all route modules
 router.use('/oauth', oauthRoutes);
+router.use('/auth', authRoutes);
+router.use('/deployment', deploymentRoutes);
 router.use('/notion', notionRoutes);
 router.use('/bookmarks', bookmarkRoutes);
 router.use('/user', userRoutes);

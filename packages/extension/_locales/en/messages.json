@@ -965,5 +965,41 @@
   },
   "service_data_deleted_title": {
     "message": "Service account deleted"
+  },
+  "account_title": {
+    "message": "Account"
+  },
+  "account_email_label": {
+    "message": "Email"
+  },
+  "account_send_code": {
+    "message": "Send code"
+  },
+  "account_code_label": {
+    "message": "Code"
+  },
+  "account_sign_in": {
+    "message": "Sign in"
+  },
+  "account_signing_in": {
+    "message": "Signing in"
+  },
+  "account_sign_in_google": {
+    "message": "Sign in with Google"
+  },
+  "account_link_google": {
+    "message": "Link Google"
+  },
+  "account_sign_out": {
+    "message": "Sign out"
+  },
+  "account_signed_in_label": {
+    "message": "Signed in"
+  },
+  "account_signed_out_notion_only": {
+    "message": "This server signs in through Notion. Connect Notion from the destination page."
+  },
+  "account_prior_notion_hint": {
+    "message": "If you have used Bookmark Assistant through Notion before, sign in with that Notion account's email."
   }
 }

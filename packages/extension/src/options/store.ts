@@ -16,13 +16,18 @@ import { create } from 'zustand';
 import { CACHE_KEYS, WATCHED_CACHE_KEYS } from '../utils/cache';
 import { sendMessage, Messages } from '../utils/message';
 import type { DashboardSnapshot, SyncEnrichmentStatus } from '../dashboard/types';
-import type { DeploymentMode, DeploymentCapabilities } from '@bookmark-assistant/types';
+import type {
+  DeploymentMode,
+  DeploymentCapabilities,
+  SignInMethod,
+} from '@bookmark-assistant/types';
 import { productConfig } from '../product-config';
 
 const defaultDeployment = {
   deploymentMode: (productConfig.officialService ? 'hosted' : 'self-hosted') as DeploymentMode,
   commerceEnabled: productConfig.officialService,
   capabilities: undefined as DeploymentCapabilities | undefined,
+  signInMethods: [] as readonly SignInMethod[],
 };
 
 const FREE_INTERVAL_HOURS = 24;
@@ -111,8 +116,11 @@ export type AppState = {
   isConnecting: boolean;
   /** A Notion destination is linked to the service account. */
   isConnected: boolean;
-  /** A service account session exists (created by connecting Notion). */
+  /** A service account session exists. */
   isSignedIn: boolean;
+  signInMethods: readonly SignInMethod[];
+  hasGoogleSignIn: boolean;
+  showPriorNotionHint: boolean;
   isSyncing: boolean;
   syncEnrichment?: SyncEnrichmentStatus;
   isRefreshingProfile: boolean;
@@ -157,6 +165,7 @@ export type AppState = {
   saveSyncSettings: (nextIntervalHours?: number) => Promise<void>;
   refreshEntitlements: (forceRefresh?: boolean) => Promise<void>;
   refreshConnection: () => Promise<void>;
+  loadSignInMethods: () => Promise<void>;
 
   // Config
   pricing: { monthly: number; yearly: number };
@@ -172,6 +181,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   isConnecting: false,
   isConnected: false,
   isSignedIn: false,
+  signInMethods: [],
+  hasGoogleSignIn: false,
+  showPriorNotionHint: false,
   isSyncing: false,
   syncEnrichment: undefined,
   isRefreshingProfile: false,
@@ -322,6 +334,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         'purchase_type',
         'subscription_source',
         'subscription_expires_at',
+        'account_created_notice',
+        'has_google_sign_in',
         'cached_pricing',
         CACHE_KEYS.dashboard_snapshot,
       ]);
@@ -352,10 +366,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       const notionConnected = hasNotionDestination(stored);
       const validPricing = parseCachedPricing(cached_pricing) || get().pricing;
 
+      const cachedDeployment =
+        stored.deployment_profile?.apiOrigin === productConfig.apiUrl
+          ? {
+              ...stored.deployment_profile,
+              signInMethods: Array.isArray(stored.deployment_profile.signInMethods)
+                ? stored.deployment_profile.signInMethods
+                : get().signInMethods,
+            }
+          : defaultDeployment;
       set({
-        ...(stored.deployment_profile?.apiOrigin === productConfig.apiUrl
-          ? stored.deployment_profile
-          : defaultDeployment),
+        ...cachedDeployment,
+        hasGoogleSignIn: stored.has_google_sign_in === true,
+        showPriorNotionHint: stored.account_created_notice === true,
         isConnected: notionConnected,
         isSignedIn: hasSession,
         isConnecting: !!is_connecting,
@@ -449,6 +472,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
           ...profile.state,
           isSignedIn: true,
+          hasGoogleSignIn: response.profile.hasGoogleSignIn === true,
           isConnected: response.profile.hasNotionAccess === true,
           ...(typeof response.profile.email === 'string'
             ? { userEmail: response.profile.email }
@@ -509,6 +533,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  loadSignInMethods: async () => {
+    if (get().isSignedIn) return;
+    try {
+      const response = await sendMessage({ type: Messages.GET_DEPLOYMENT_PROFILE });
+      if (get().isSignedIn || !response.success || !response.profile) return;
+      set({
+        signInMethods: [...response.profile.signInMethods],
+        deploymentMode: response.profile.deploymentMode,
+        commerceEnabled: response.profile.commerceEnabled,
+      });
+    } catch (error) {
+      console.warn('[Account] Failed to load sign-in methods:', error);
+    }
+  },
+
   getEffectiveLimits: () => ({
     minIntervalHours: get().isPro ? PRO_MIN_INTERVAL_HOURS : FREE_INTERVAL_HOURS,
   }),
@@ -550,6 +589,9 @@ async function handleAccountStateChange(changes: { [key: string]: chrome.storage
     ...(!isSignedIn
       ? {
           ...defaultDeployment,
+          signInMethods: state.signInMethods,
+          hasGoogleSignIn: false,
+          showPriorNotionHint: false,
           isPro: false,
           plan: 'free' as const,
           userId: '',
@@ -651,9 +693,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       if (changes[CACHE_KEYS.deployment_profile]) {
         const deployment = changes[CACHE_KEYS.deployment_profile].newValue;
+        const signInMethods = useAppStore.getState().signInMethods;
         useAppStore.setState(
-          deployment?.apiOrigin === productConfig.apiUrl ? deployment : defaultDeployment
+          deployment?.apiOrigin === productConfig.apiUrl
+            ? {
+                ...deployment,
+                signInMethods: Array.isArray(deployment.signInMethods)
+                  ? deployment.signInMethods
+                  : signInMethods,
+              }
+            : { ...defaultDeployment, signInMethods }
         );
+      }
+      if ('account_created_notice' in changes) {
+        useAppStore.setState({
+          showPriorNotionHint: changes.account_created_notice.newValue === true,
+        });
+      }
+      if ('has_google_sign_in' in changes) {
+        useAppStore.setState({
+          hasGoogleSignIn: changes.has_google_sign_in.newValue === true,
+        });
       }
       if (changes['purchase_type']) {
         const purchaseType = changes['purchase_type'].newValue as 'monthly' | 'yearly' | undefined;

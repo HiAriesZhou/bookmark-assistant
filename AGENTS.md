@@ -32,10 +32,11 @@ unrelated changes.
   Hosted Free/Pro and self-hosted capabilities are decided by server configuration
   and authentication, not client flags. Cache maintenance and plan grants
   (`cache`, `entitlement`) use local commands, not HTTP administrator endpoints.
-- Notion OAuth creates the service account; plans belong to that account, not to
-  the Notion connection. Disconnecting Notion keeps the account, session and plan;
-  only the explicit account deletion removes the server record. Local bookmark
-  management never requires an account.
+- Email and Google sign-in create or adopt the service account. During phase 1
+  and phase 2, Notion authorization can still create an account. Plans belong to
+  that account, not to the Notion connection. Disconnecting Notion keeps the
+  account, session and plan; only the explicit account deletion removes the server
+  record. Local bookmark management never requires an account.
 - Types hold the shared KnowledgeItem, AI and deployment contracts. Shared holds
   brand artwork and scrollbar styles. Website: Next.js. Marketing: public copy and
   headless rendering/validation tools.

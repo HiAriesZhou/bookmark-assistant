@@ -14,6 +14,15 @@ vi.mock('../config', () => ({
     get commerceEnabled() {
       return state.commerceEnabled;
     },
+    resendApiKey: '',
+    googleClientId: '',
+    googleClientSecret: '',
+    jwtSecret: 'test-jwt-secret',
+    allowedExtensionIds: ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'],
+    rateLimits: {
+      auth: { windowMs: 60_000, max: 100 },
+      api: { windowMs: 60_000, max: 100 },
+    },
   },
 }));
 vi.mock('../services/userPrisma', () => ({
@@ -21,6 +30,7 @@ vi.mock('../services/userPrisma', () => ({
   prisma: {},
 }));
 vi.mock('../middleware/auth', () => ({
+  validateExtension: (_req: any, _res: any, next: () => void) => next(),
   validateSession: (req: any, _res: any, next: () => void) => {
     req.user = { userId: 'fixture-user' };
     next();
