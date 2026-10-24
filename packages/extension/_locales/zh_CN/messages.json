@@ -979,6 +979,12 @@
   "account_sign_in_google": {
     "message": "用 Google 登录"
   },
+  "account_sign_in_intro": {
+    "message": "登录后，可在任意设备使用你的套餐和服务功能。"
+  },
+  "account_or_divider": {
+    "message": "或"
+  },
   "account_link_google": {
     "message": "关联 Google"
   },

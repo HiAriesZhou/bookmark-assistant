@@ -987,6 +987,12 @@
   "account_sign_in_google": {
     "message": "Sign in with Google"
   },
+  "account_sign_in_intro": {
+    "message": "Sign in to use your plan and service features on any device."
+  },
+  "account_or_divider": {
+    "message": "or"
+  },
   "account_link_google": {
     "message": "Link Google"
   },

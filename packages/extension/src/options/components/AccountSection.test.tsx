@@ -70,16 +70,81 @@ describe('AccountSection', () => {
     });
   }
 
-  it('shows email and Google controls only for enabled sign-in methods', async () => {
-    await render();
-    expect(container.querySelector('input[type="email"]')).not.toBeNull();
-    expect(container.textContent).toContain('account_sign_in_google');
+  const googleButton = () =>
+    Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('account_sign_in_google')
+    );
+  const orDivider = () => container.querySelector('[role="separator"]');
+  const emailInput = () => container.querySelector<HTMLInputElement>('input[type="email"]');
 
-    sendMessage.mockResolvedValue(profile(['notion']));
-    useAppStore.setState({ signInMethods: ['notion'] });
+  async function changeInput(input: HTMLInputElement | null, value: string) {
+    await act(async () => {
+      if (!input) return;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await Promise.resolve();
+    });
+  }
+
+  it('offers Google first, then an or divider, then email when both methods are enabled', async () => {
     await render();
-    expect(container.querySelector('input[type="email"]')).toBeNull();
-    expect(container.textContent).not.toContain('account_sign_in_google');
+    expect(container.textContent).toContain('account_sign_in_intro');
+    const google = googleButton();
+    expect(google?.querySelector('svg')).not.toBeNull();
+    expect(orDivider()?.textContent).toBe('account_or_divider');
+    const email = emailInput();
+    expect(email).not.toBeNull();
+    expect(google!.compareDocumentPosition(orDivider()!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(orDivider()!.compareDocumentPosition(email!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows only the email form without a divider when Google is disabled', async () => {
+    sendMessage.mockResolvedValue(profile(['email', 'notion']));
+    await render();
+    expect(container.textContent).toContain('account_sign_in_intro');
+    expect(emailInput()).not.toBeNull();
+    expect(googleButton()).toBeUndefined();
+    expect(orDivider()).toBeNull();
+  });
+
+  it('shows only the Google button without a divider when email is disabled', async () => {
+    sendMessage.mockResolvedValue(profile(['google', 'notion']));
+    await render();
+    expect(container.textContent).toContain('account_sign_in_intro');
+    expect(googleButton()).toBeDefined();
+    expect(emailInput()).toBeNull();
+    expect(orDivider()).toBeNull();
+  });
+
+  it('points Notion-only servers to the destination page', async () => {
+    sendMessage.mockResolvedValue(profile(['notion']));
+    await render();
+    expect(emailInput()).toBeNull();
+    expect(googleButton()).toBeUndefined();
+    expect(orDivider()).toBeNull();
+    expect(container.textContent).toContain('account_signed_out_notion_only');
+    expect(container.textContent).not.toContain('account_sign_in_intro');
+  });
+
+  it('asks for the emailed code after sending it', async () => {
+    await render();
+    await changeInput(emailInput(), ' person@example.com ');
+    const send = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'account_send_code'
+    );
+    await act(async () => {
+      send?.click();
+      await Promise.resolve();
+    });
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'SIGN_IN_EMAIL_START', email: 'person@example.com' })
+    );
+    expect(container.querySelector('input[autocomplete="one-time-code"]')).not.toBeNull();
+    expect(
+      Array.from(container.querySelectorAll('button')).some(
+        (button) => button.textContent === 'account_sign_in'
+      )
+    ).toBe(true);
   });
 
   it('shows the signed-in email, sign-out, and the prior Notion hint for a new account', async () => {
@@ -93,5 +158,7 @@ describe('AccountSection', () => {
     expect(container.textContent).toContain('person@example.com');
     expect(container.textContent).toContain('account_sign_out');
     expect(container.textContent).toContain('account_prior_notion_hint');
+    expect(emailInput()).toBeNull();
+    expect(orDivider()).toBeNull();
   });
 });
