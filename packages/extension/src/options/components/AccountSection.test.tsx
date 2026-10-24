@@ -98,6 +98,23 @@ describe('AccountSection', () => {
     expect(orDivider()!.compareDocumentPosition(email!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
+  it('centers the signed-out login directly on the page without a card or label column', async () => {
+    await render();
+    const stack = googleButton()?.closest('.mx-auto');
+    expect(stack?.contains(emailInput()!)).toBe(true);
+    const intro = stack?.querySelector('p');
+    expect(intro?.textContent).toBe('account_sign_in_intro');
+    expect(intro?.classList.contains('text-center')).toBe(true);
+    expect(container.querySelector('.bg-ui-surface')).toBeNull();
+    const bordered = Array.from(container.querySelectorAll('[class~="border"]'));
+    expect(bordered.every((element) => ['BUTTON', 'INPUT'].includes(element.tagName))).toBe(true);
+    expect(
+      Array.from(container.querySelectorAll('*')).some(
+        (element) => element.textContent === 'account_sign_in'
+      )
+    ).toBe(false);
+  });
+
   it('shows only the email form without a divider when Google is disabled', async () => {
     sendMessage.mockResolvedValue(profile(['email', 'notion']));
     await render();
@@ -158,6 +175,7 @@ describe('AccountSection', () => {
     expect(container.textContent).toContain('person@example.com');
     expect(container.textContent).toContain('account_sign_out');
     expect(container.textContent).toContain('account_prior_notion_hint');
+    expect(container.querySelector('.bg-ui-surface')).not.toBeNull();
     expect(emailInput()).toBeNull();
     expect(orDivider()).toBeNull();
   });

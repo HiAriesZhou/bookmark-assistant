@@ -89,7 +89,7 @@ export function AccountSection() {
   };
 
   return (
-    <SettingsGroup id="account" title={t('account_title')}>
+    <SettingsGroup id="account" title={t('account_title')} plain={!isSignedIn}>
       {isSignedIn ? (
         <>
           <SettingsRow
@@ -130,91 +130,88 @@ export function AccountSection() {
           ) : null}
         </>
       ) : emailEnabled || googleEnabled ? (
-        <SettingsRow
-          label={t('account_sign_in')}
-          description={t('account_sign_in_intro')}
-          control={
-            <div className="flex flex-col gap-3">
-              {googleEnabled ? (
-                <button
-                  type="button"
-                  className={GOOGLE_BUTTON}
-                  disabled={busy}
-                  onClick={() => void run(() => signInWithGoogleAccount())}
-                >
-                  <GoogleMark />
-                  {t('account_sign_in_google')}
-                </button>
-              ) : null}
-              {googleEnabled && emailEnabled ? (
-                <div
-                  role="separator"
-                  aria-orientation="horizontal"
-                  className="flex items-center gap-3 text-xs text-ui-subtle before:h-px before:flex-1 before:bg-ui-line after:h-px after:flex-1 after:bg-ui-line"
-                >
-                  {t('account_or_divider')}
-                </div>
-              ) : null}
-              {emailEnabled ? (
-                <form
-                  className="flex flex-col gap-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (codeSent) {
-                      void run(async () => {
-                        await verifyEmailSignIn(email.trim(), code.trim());
-                      });
-                      return;
-                    }
-                    void run(async () => {
-                      await startEmailSignIn(email.trim(), locale);
-                      setCodeSent(true);
-                    });
-                  }}
-                >
-                  <input
-                    id="account-email"
-                    type="email"
-                    autoComplete="email"
-                    aria-label={t('account_email_label')}
-                    placeholder={t('account_email_label')}
-                    className="library-input w-full"
-                    value={email}
-                    disabled={busy}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                  {codeSent ? (
-                    <input
-                      id="account-code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      aria-label={t('account_code_label')}
-                      placeholder={t('account_code_label')}
-                      className="library-input w-full"
-                      value={code}
-                      disabled={busy}
-                      onChange={(event) => setCode(event.target.value)}
-                    />
-                  ) : null}
-                  <button
-                    type="submit"
-                    className={`${ACTION_BUTTON} w-full`}
-                    disabled={busy || (codeSent ? code : email).trim().length === 0}
-                  >
-                    {codeSent
-                      ? busy
-                        ? t('account_signing_in')
-                        : t('account_sign_in')
-                      : t('account_send_code')}
-                  </button>
-                </form>
-              ) : null}
+        <div className="mx-auto flex w-full max-w-xs flex-col gap-3 py-4">
+          <p className="text-center text-sm leading-6 text-ui-subtle">
+            {t('account_sign_in_intro')}
+          </p>
+          {googleEnabled ? (
+            <button
+              type="button"
+              className={GOOGLE_BUTTON}
+              disabled={busy}
+              onClick={() => void run(() => signInWithGoogleAccount())}
+            >
+              <GoogleMark />
+              {t('account_sign_in_google')}
+            </button>
+          ) : null}
+          {googleEnabled && emailEnabled ? (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              className="flex items-center gap-3 text-xs text-ui-subtle before:h-px before:flex-1 before:bg-ui-line after:h-px after:flex-1 after:bg-ui-line"
+            >
+              {t('account_or_divider')}
             </div>
-          }
-        />
+          ) : null}
+          {emailEnabled ? (
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (codeSent) {
+                  void run(async () => {
+                    await verifyEmailSignIn(email.trim(), code.trim());
+                  });
+                  return;
+                }
+                void run(async () => {
+                  await startEmailSignIn(email.trim(), locale);
+                  setCodeSent(true);
+                });
+              }}
+            >
+              <input
+                id="account-email"
+                type="email"
+                autoComplete="email"
+                aria-label={t('account_email_label')}
+                placeholder={t('account_email_label')}
+                className="library-input w-full"
+                value={email}
+                disabled={busy}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+              {codeSent ? (
+                <input
+                  id="account-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  aria-label={t('account_code_label')}
+                  placeholder={t('account_code_label')}
+                  className="library-input w-full"
+                  value={code}
+                  disabled={busy}
+                  onChange={(event) => setCode(event.target.value)}
+                />
+              ) : null}
+              <button
+                type="submit"
+                className={`${ACTION_BUTTON} w-full`}
+                disabled={busy || (codeSent ? code : email).trim().length === 0}
+              >
+                {codeSent
+                  ? busy
+                    ? t('account_signing_in')
+                    : t('account_sign_in')
+                  : t('account_send_code')}
+              </button>
+            </form>
+          ) : null}
+        </div>
       ) : (
-        <p className="px-4 py-3 text-sm leading-6 text-ui-subtle">
+        <p className="mx-auto max-w-sm py-4 text-center text-sm leading-6 text-ui-subtle">
           {t('account_signed_out_notion_only')}
         </p>
       )}
