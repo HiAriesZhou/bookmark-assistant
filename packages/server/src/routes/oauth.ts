@@ -12,7 +12,7 @@ import {
   readOptionalSessionUserId,
   SessionTokenError,
 } from '../services/session';
-import { findAccountByEmail } from '../services/account';
+import { findOrCreateByVerifiedEmail } from '../services/account';
 
 const router: import('express').Router = Router();
 
@@ -167,59 +167,33 @@ router.post('/exchange', validateExtension, async (req, res: Response) => {
         'OAuth update existing user'
       );
     } else {
-      // 3. Step 2: Try Reconciliation via Email (if Step 1 failed)
+      // Email and Google sign-in share this resolver. Notion can still create an account
+      // in this phase when no session is present.
       if (notionEmail) {
-        const paidUser = await retryPrismaOperation(
-          () => findAccountByEmail(notionEmail),
+        const account = await retryPrismaOperation(
+          () => findOrCreateByVerifiedEmail(notionEmail),
           3,
-          'OAuth find account by email'
+          'OAuth find or create account by email'
         );
-
-        if (paidUser) {
-          console.log('🔗 Found existing paid user by email. Linking Notion account...');
-          // MERGE: Link Notion account to existing paid user (with retry)
-          user = await retryPrismaOperation(
-            () =>
-              prisma.user.update({
-                where: { id: paidUser.id },
-                data: {
-                  notionUserId: notionUserId,
-                  notionAccessToken: tokenData.access_token,
-                  notionRefreshToken: tokenData.refresh_token,
-                  notionWorkspaceId: tokenData.workspace_id,
-                  ...(tokenData.workspace_name
-                    ? { notionWorkspaceName: tokenData.workspace_name }
-                    : {}),
-                  lastActivity: new Date(),
-                },
-                select: userCompatSelect,
-              }),
-            3,
-            'OAuth merge user accounts'
-          );
-        } else {
-          console.log('📝 New user creation from Notion OAuth email');
-          // CREATE NEW (with retry)
-          user = await retryPrismaOperation(
-            () =>
-              prisma.user.create({
-                data: {
-                  email: notionEmail,
-                  notionUserId: notionUserId,
-                  notionAccessToken: tokenData.access_token,
-                  notionRefreshToken: tokenData.refresh_token,
-                  notionWorkspaceId: tokenData.workspace_id,
-                  ...(tokenData.workspace_name
-                    ? { notionWorkspaceName: tokenData.workspace_name }
-                    : {}),
-                  plan: 'free',
-                },
-                select: userCompatSelect,
-              }),
-            3,
-            'OAuth create new user'
-          );
-        }
+        user = await retryPrismaOperation(
+          () =>
+            prisma.user.update({
+              where: { id: account.id },
+              data: {
+                notionUserId: notionUserId,
+                notionAccessToken: tokenData.access_token,
+                notionRefreshToken: tokenData.refresh_token,
+                notionWorkspaceId: tokenData.workspace_id,
+                ...(tokenData.workspace_name
+                  ? { notionWorkspaceName: tokenData.workspace_name }
+                  : {}),
+                lastActivity: new Date(),
+              },
+              select: userCompatSelect,
+            }),
+          3,
+          'OAuth link Notion by verified email'
+        );
       } else {
         console.warn('⚠️ No email provided by Notion. Cannot reconcile or create user.');
         return res.status(400).json({

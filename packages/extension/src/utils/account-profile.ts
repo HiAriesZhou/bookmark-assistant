@@ -1,14 +1,18 @@
-import type { DeploymentProfile } from '@bookmark-assistant/types';
+import type { DeploymentProfile, SignInMethod } from '@bookmark-assistant/types';
 import type { UserProfile } from '../background/server-api';
 
 /** One server profile supplies both account views and the background-owned cache. */
 export function mapAccountProfile(profile: UserProfile, apiOrigin: string) {
   const isPro = profile.isPro === true;
   const deploymentMode = profile.deploymentMode === 'self-hosted' ? 'self-hosted' : 'hosted';
+  const signInMethods: SignInMethod[] = Array.isArray(profile.signInMethods)
+    ? [...profile.signInMethods]
+    : [];
   const deployment: DeploymentProfile = {
     deploymentMode,
     commerceEnabled: deploymentMode === 'hosted' && (profile.commerceEnabled ?? true),
     capabilities: profile.capabilities || { autoSync: isPro, batchAi: isPro },
+    signInMethods,
   };
   const subscriptionExpiresAt = profile.expiresAt ?? null;
   return {

@@ -6,6 +6,8 @@ export interface UserData {
   id?: string; // Internal ID (CUID)
   userId: string; // Notion User ID (Legacy name, maps to notionUserId)
   email?: string; // Required for new schema
+  emailVerifiedAt?: Date | null;
+  googleSub?: string | null;
   notionAccessToken: string;
   notionRefreshToken?: string;
   databases?: any[];

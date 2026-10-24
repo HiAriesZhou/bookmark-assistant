@@ -98,6 +98,8 @@ const ACCOUNT_STATE_KEYS = [
   'subscription_expires_at',
   'entitlements_cached_at',
   'deployment_profile',
+  'account_created_notice',
+  'has_google_sign_in',
 ];
 const SYNC_PROGRESS_KEYS = [
   'last_sync',
@@ -422,6 +424,100 @@ class ServerAPIClient {
     }
   }
 
+  async startEmailSignIn(email: string, locale?: string): Promise<void> {
+    await this.makeRequest('/api/auth/email/start', {
+      method: 'POST',
+      body: JSON.stringify({ email, locale }),
+      timeoutMs: 15_000,
+    });
+  }
+
+  async verifyEmailSignIn(
+    email: string,
+    code: string,
+    expectedContext?: AccountContext
+  ): Promise<AccountSignInResult> {
+    const context = expectedContext ?? (await readAccountContext());
+    const response = await this.makeRequest<AccountSignInResponse>(
+      '/api/auth/email/verify',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, code }),
+        timeoutMs: 15_000,
+      },
+      context
+    );
+    return this.commitSignIn(response, context);
+  }
+
+  async signInWithGoogle(
+    body: { code: string; redirectUri: string; codeVerifier: string },
+    expectedContext?: AccountContext
+  ): Promise<AccountSignInResult> {
+    const context = expectedContext ?? (await readAccountContext());
+    const response = await this.makeRequest<AccountSignInResponse>(
+      '/api/auth/google/exchange',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+        timeoutMs: 0,
+      },
+      context
+    );
+    return this.commitSignIn(response, context);
+  }
+
+  async getDeploymentProfile(): Promise<DeploymentProfile> {
+    return this.makeRequest<DeploymentProfile>('/api/deployment', {
+      method: 'GET',
+      timeoutMs: 10_000,
+    });
+  }
+
+  private async commitSignIn(
+    response: AccountSignInResponse,
+    context: AccountContext
+  ): Promise<AccountSignInResult> {
+    const sessionToken = response.sessionToken;
+    const userId = response.userId;
+    if (!sessionToken || !userId) {
+      throw new Error('Server did not return a session token');
+    }
+    const accountRevision = crypto.randomUUID();
+    const userChanged = context.userId == null || context.userId !== userId;
+    await withCurrentAccount(context, async () => {
+      this.clearUserProfileCache();
+      this.sessionToken = sessionToken;
+      await chrome.storage.local.set({
+        [ACCOUNT_REVISION_KEY]: accountRevision,
+        session_token: sessionToken,
+        user_id: userId,
+        ...(response.userEmail ? { user_email: response.userEmail } : {}),
+        [NOTION_CONNECTED_KEY]: response.hasNotionAccess === true,
+        account_created_notice: response.accountCreated === true,
+      });
+      if (userChanged) {
+        await chrome.storage.local.remove([
+          ...SYNC_PROGRESS_KEYS,
+          'oauth_template_database_id',
+          'last_sync_error',
+          'dashboard_last_sync',
+          'dashboard_recent_activity',
+          'dashboard_saved_today',
+          'dashboard_snapshot',
+        ]);
+      }
+    });
+    return {
+      sessionToken,
+      userId,
+      userEmail: response.userEmail,
+      accountCreated: response.accountCreated === true,
+      hasNotionAccess: response.hasNotionAccess === true,
+      accountRevision,
+    };
+  }
+
   async syncBookmarks(
     bookmarksOrPayload: BookmarkData[] | LinkSyncPayload,
     options: {
@@ -611,6 +707,7 @@ class ServerAPIClient {
           await chrome.storage.local.set({
             ...profile.cache,
             [NOTION_CONNECTED_KEY]: !!res.profile.hasNotionAccess,
+            has_google_sign_in: res.profile.hasGoogleSignIn === true,
             ...(res.profile.email ? { user_email: res.profile.email } : {}),
           });
           if (requestVersion !== this.profileRequestVersion) throw new StaleAccountStateError();
@@ -768,6 +865,23 @@ function buildLinkSyncPayload(items: BookmarkData[]): LinkSyncPayload {
 }
 
 // Export singleton instance
+type AccountSignInResponse = {
+  sessionToken?: string;
+  userId?: string;
+  userEmail?: string;
+  accountCreated?: boolean;
+  hasNotionAccess?: boolean;
+};
+
+export type AccountSignInResult = {
+  sessionToken: string;
+  userId: string;
+  userEmail?: string;
+  accountCreated: boolean;
+  hasNotionAccess: boolean;
+  accountRevision: string;
+};
+
 export const serverAPI = new ServerAPIClient();
 
 // Structured error carrying HTTP status and retry hints

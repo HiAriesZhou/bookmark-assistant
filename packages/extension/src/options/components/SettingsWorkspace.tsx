@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
+import { AccountSection } from './AccountSection';
 import { BillingSection } from './BillingSection';
 import { ServiceDataSection } from './ServiceDataSection';
 import { SyncSettingsSection } from './SyncSettingsSection';
@@ -73,6 +74,7 @@ export function SettingsWorkspace({ active = true }: { active?: boolean }) {
         </h1>
       </header>
       <div id="settings" aria-label={t('settings_workspace_label')} className="mt-8 space-y-9">
+        <AccountSection />
         <AiSettingsSection active={active} onUpgrade={() => togglePlans(true)} />
         <SyncSettingsSection onUpgrade={() => togglePlans(true)} />
         {deploymentMode === 'self-hosted' ? (
