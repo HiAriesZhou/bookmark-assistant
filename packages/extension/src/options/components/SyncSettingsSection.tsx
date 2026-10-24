@@ -3,9 +3,15 @@ import { createTranslator } from '../../utils/i18n';
 import { Switch } from '../../components/ui/switch';
 import { useAppStore } from '../store';
 import { useToast } from '../hook/useToast';
-import { ProBadge, SettingsGroup, SettingsRow } from './Workspace';
+import { DestinationRequiredNotice, ProBadge, SettingsGroup, SettingsRow } from './Workspace';
 
-export function SyncSettingsSection({ onUpgrade }: { onUpgrade: () => void }) {
+export function SyncSettingsSection({
+  onUpgrade,
+  onOpenDestinations,
+}: {
+  onUpgrade: () => void;
+  onOpenDestinations: () => void;
+}) {
   const { t } = createTranslator();
   const { show } = useToast();
   const {
@@ -71,6 +77,13 @@ export function SyncSettingsSection({ onUpgrade }: { onUpgrade: () => void }) {
           />
         }
       />
+
+      {planAllowsAutoSync && !isConnected ? (
+        <DestinationRequiredNotice
+          message={t('sync_needs_destination')}
+          onOpenDestinations={onOpenDestinations}
+        />
+      ) : null}
 
       {autoSyncAllowed && autoSync ? (
         <SettingsRow
