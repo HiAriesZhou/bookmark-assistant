@@ -10,8 +10,19 @@ import { AiCredentialNotFoundError } from '../services/ai-credential-service';
 import {
   AI_PROVIDER_DEFAULT_MODELS,
   AiProviderValidationError,
-  createAiProviderAdapter,
+  officialProviderForBaseUrl,
 } from '../services/ai-provider-adapters';
+import {
+  aiEndpointPolicy,
+  assertAiEndpointAllowed,
+  createAiProviderAdapterForEndpoint,
+  normalizeAiBaseUrl,
+} from '../services/ai-endpoint-policy';
+import {
+  AiProviderDetectionError,
+  AiProviderPausedError,
+  detectAiProvider,
+} from '../services/ai-provider-detection';
 import {
   createCredentialCipher,
   CredentialCipherConfigurationError,
@@ -43,6 +54,7 @@ import { cleanupExpiredAiDiagnosticsOpportunistically } from '../jobs/ai-diagnos
 import { runSinglePageAiWithRetry } from '../services/single-page-ai-runner';
 
 const router: import('express').Router = Router();
+const MAX_API_KEY_LENGTH = 4096;
 
 router.use(
   asyncHandler(async (_req, _res, next) => {
@@ -96,39 +108,75 @@ router.get(
   })
 );
 
+/**
+ * Saves a key without asking the user for a provider. `provider` is still
+ * honoured for older extension builds; `baseUrl` is only sent after detection
+ * fails and either names an official host or a compatible custom endpoint.
+ */
 router.put(
   '/credential',
   validateSession,
   asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const provider = req.body?.provider;
+    const requestedProvider = req.body?.provider;
     const apiKey = req.body?.apiKey;
-    if (!isAiProvider(provider) || typeof apiKey !== 'string' || !apiKey.trim()) {
+    const rawBaseUrl = req.body?.baseUrl;
+    if (
+      (requestedProvider !== undefined && !isAiProvider(requestedProvider)) ||
+      typeof apiKey !== 'string' ||
+      !apiKey.trim() ||
+      apiKey.length > MAX_API_KEY_LENGTH ||
+      (rawBaseUrl !== undefined && rawBaseUrl !== null && typeof rawBaseUrl !== 'string')
+    ) {
       return res.status(400).json({
         error: 'Invalid Request',
         code: 'invalid_credential_input',
-        message: 'Choose a supported AI provider and enter an API key.',
+        message: 'Enter an API key.',
       });
     }
 
-    try {
-      // Validate before encryption/persistence so a failed replacement leaves the old key intact.
-      if (!(await getProviderControl().isAllowed(provider, 'validation'))) {
-        return res.status(503).json({
-          error: 'AI Provider Paused',
-          code: 'service_provider_paused',
-          message: 'This AI provider is temporarily unavailable.',
+    const policy = aiEndpointPolicy(config);
+    let baseUrl: string | undefined;
+    if (typeof rawBaseUrl === 'string' && rawBaseUrl.trim()) {
+      try {
+        baseUrl = normalizeAiBaseUrl(rawBaseUrl, policy);
+        if (!officialProviderForBaseUrl(baseUrl)) await assertAiEndpointAllowed(baseUrl, policy);
+      } catch {
+        return res.status(400).json({
+          error: 'Invalid Request',
+          code: 'invalid_base_url',
+          message: policy.allowPrivateNetwork
+            ? 'Enter an http or https Base URL without credentials or query parameters.'
+            : 'Enter a public https Base URL without credentials, a port or query parameters.',
         });
       }
-      await createAiProviderAdapter(provider).validateApiKey(apiKey.trim());
-      const credential = await getCredentialService().saveVerifiedCredential(
-        req.user!.userId,
-        provider,
-        apiKey
+    }
+
+    try {
+      // Fail before contacting providers when key storage is unavailable.
+      const credentials = getCredentialService();
+      const providerControl = getProviderControl();
+      // Validate before encryption/persistence so a failed replacement leaves the old key intact.
+      const detected = await detectAiProvider(
+        { apiKey, baseUrl, provider: requestedProvider },
+        {
+          adapterFor: (provider, customBaseUrl) =>
+            createAiProviderAdapterForEndpoint(provider, policy, { baseUrl: customBaseUrl }),
+          isAllowed: (provider) => providerControl.isAllowed(provider, 'validation'),
+        }
       );
-      auditLog('ai_credential_verified', req.user!.userId, { provider });
+      const credential = await credentials.saveVerifiedCredential(
+        req.user!.userId,
+        detected.provider,
+        apiKey,
+        { baseUrl: detected.baseUrl }
+      );
+      auditLog('ai_credential_verified', req.user!.userId, {
+        provider: detected.provider,
+        customEndpoint: Boolean(detected.baseUrl),
+      });
       return res.status(201).json({ success: true, credential });
     } catch (error) {
-      return handleCredentialError(error, req, res, provider);
+      return handleCredentialError(error, req, res, requestedProvider, Boolean(baseUrl));
     }
   })
 );
@@ -519,7 +567,8 @@ router.post(
       credentials,
       notion: notionService,
       fetcher: new PublicPageFetcher(),
-      providerFor: (provider, model) => createAiProviderAdapter(provider, fetch, model),
+      providerFor: (provider, model, baseUrl) =>
+        createAiProviderAdapterForEndpoint(provider, aiEndpointPolicy(config), { model, baseUrl }),
       providerControl: getProviderControl(),
       diagnostics: new AiDiagnosticsService(),
     });
@@ -542,8 +591,28 @@ function handleCredentialError(
   error: unknown,
   req: AuthenticatedRequest,
   res: Response,
-  provider?: string
+  provider?: string,
+  customEndpoint = false
 ) {
+  if (error instanceof AiProviderDetectionError) {
+    auditLog('ai_credential_detection_failed', req.user?.userId || 'unknown', { customEndpoint });
+    return res.status(400).json({
+      error: 'AI Provider Not Detected',
+      code: error.code,
+      // The client may retry with a Base URL for an official host or compatible endpoint.
+      baseUrlAllowed: true,
+      message: customEndpoint
+        ? 'No supported provider protocol accepted this key at this Base URL.'
+        : 'No supported provider accepted this key. Check the key or enter a Base URL.',
+    });
+  }
+  if (error instanceof AiProviderPausedError) {
+    return res.status(503).json({
+      error: 'AI Provider Paused',
+      code: 'service_provider_paused',
+      message: 'This AI provider is temporarily unavailable.',
+    });
+  }
   if (error instanceof AiProviderValidationError) {
     auditLog('ai_credential_validation_failed', req.user?.userId || 'unknown', {
       provider: error.provider,
@@ -552,6 +621,7 @@ function handleCredentialError(
     return res.status(400).json({
       error: 'AI Provider Validation Failed',
       code: error.code,
+      provider: error.provider,
       message: providerValidationMessage(error.code),
     });
   }
@@ -579,7 +649,7 @@ function handleCredentialError(
 function providerValidationMessage(code: AiProviderValidationError['code']): string {
   switch (code) {
     case 'invalid_api_key':
-      return 'The API key was not accepted by the selected provider.';
+      return 'The API key was not accepted by the provider.';
     case 'insufficient_quota':
       return 'The provider account has no available quota or is rate limited.';
     case 'model_access':

@@ -13,6 +13,7 @@ const credentialSelect = {
   credentialVersion: true,
   status: true,
   verifiedAt: true,
+  baseUrl: true,
 } as const;
 
 export class PrismaAiCredentialStore implements AiCredentialStore {
@@ -129,6 +130,7 @@ function toPrismaCredential(credential: StoredAiProviderCredential) {
     credentialVersion: credential.credentialVersion,
     status: credential.status,
     verifiedAt: credential.verifiedAt,
+    baseUrl: credential.baseUrl ?? null,
   };
 }
 
@@ -147,6 +149,7 @@ function fromPrismaCredential(
         credentialVersion: number;
         status: string;
         verifiedAt: Date | null;
+        baseUrl: string | null;
       }
 ): StoredAiProviderCredential {
   return {
@@ -161,5 +164,6 @@ function fromPrismaCredential(
     credentialVersion: credential.credentialVersion,
     status: credential.status,
     verifiedAt: credential.verifiedAt,
+    baseUrl: credential.baseUrl,
   };
 }

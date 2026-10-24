@@ -10,6 +10,8 @@ export interface CredentialEncryptionContext {
   userId: string;
   provider: AiProvider;
   credentialVersion: number;
+  /** Bound only when present, so official-endpoint credentials keep their original AAD. */
+  baseUrl?: string | null;
 }
 
 export interface EncryptedCredential {
@@ -138,6 +140,7 @@ function buildAdditionalAuthenticatedData(context: CredentialEncryptionContext):
       context.userId,
       context.provider,
       String(context.credentialVersion),
+      ...(context.baseUrl ? [context.baseUrl] : []),
     ].join('\u001f'),
     'utf8'
   );

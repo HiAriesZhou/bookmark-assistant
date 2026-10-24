@@ -495,26 +495,21 @@ class ServerAPIClient {
     return this.makeRequest('/api/ai/settings', { method: 'GET' });
   }
   async getAiCredential(): Promise<{
-    credential: null | {
-      provider: 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'groq' | 'minimax';
-      keyLastFour: string;
-      status: 'verified' | 'invalid' | 'revoked';
-    };
-    providerModels: Record<
-      'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'groq' | 'minimax',
-      string
-    >;
+    credential: null | AiCredentialSummary;
+    providerModels: Record<AiCredentialSummary['provider'], string>;
   }> {
     return this.makeRequest('/api/ai/credential', { method: 'GET' });
   }
-  async saveAiCredential(
-    provider: 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'groq' | 'minimax',
-    apiKey: string
-  ): Promise<any> {
+  /** The server detects the provider; `baseUrl` is only sent after detection fails. */
+  async saveAiCredential(input: {
+    apiKey: string;
+    baseUrl?: string;
+  }): Promise<{ credential: AiCredentialSummary }> {
     return this.makeRequest('/api/ai/credential', {
       method: 'PUT',
-      body: JSON.stringify({ provider, apiKey }),
-      timeoutMs: 30_000,
+      body: JSON.stringify(input),
+      // Detection probes run in parallel on the server within one provider timeout.
+      timeoutMs: 45_000,
     });
   }
   async deleteAiCredential(): Promise<void> {
@@ -771,6 +766,16 @@ function buildLinkSyncPayload(items: BookmarkData[]): LinkSyncPayload {
 export const serverAPI = new ServerAPIClient();
 
 // Structured error carrying HTTP status and retry hints
+export interface AiCredentialSummary {
+  provider: 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'groq' | 'minimax';
+  keyLastFour: string;
+  status: 'verified' | 'invalid' | 'revoked';
+  /** Identity fields are absent from servers that predate provider auto-detection. */
+  model?: string;
+  host?: string;
+  baseUrl?: string | null;
+}
+
 export class APIError extends Error {
   status: number;
   retryAfterSeconds?: number;

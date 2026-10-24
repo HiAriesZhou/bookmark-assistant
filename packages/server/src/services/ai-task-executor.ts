@@ -75,7 +75,11 @@ export interface AiTaskExecutorDependencies {
   credentials: { getActiveCredential(userId: string): Promise<ActiveAiProviderCredential> };
   notion: AiTaskExecutionNotionClient;
   fetcher: Pick<PublicPageFetcher, 'fetch'>;
-  providerFor(provider: ActiveAiProviderCredential['provider'], model: string): AiProviderAdapter;
+  providerFor(
+    provider: ActiveAiProviderCredential['provider'],
+    model: string,
+    baseUrl?: string
+  ): AiProviderAdapter;
   providerControl?: {
     isAllowed(
       provider: ActiveAiProviderCredential['provider'],
@@ -180,7 +184,7 @@ export class AiTaskExecutor {
     let generated: Awaited<ReturnType<AiProviderAdapter['generate']>>;
     try {
       generated = await this.dependencies
-        .providerFor(credential.provider, task.model)
+        .providerFor(credential.provider, task.model, credential.baseUrl)
         .generate(credential.apiKey, prompt.prompt);
     } catch (error) {
       return this.handleProviderFailure(task, credential, startedAt, error);
@@ -197,7 +201,7 @@ export class AiTaskExecutor {
       ) {
         try {
           const compressed = await this.dependencies
-            .providerFor(credential.provider, task.model)
+            .providerFor(credential.provider, task.model, credential.baseUrl)
             .generate(credential.apiKey, buildAiSummaryCompressionPrompt(error.recoverableOutput));
           output = parseAiModelOutput(compressed.text, prompt.language);
           generated = mergeGenerationDiagnostics(generated, compressed);
