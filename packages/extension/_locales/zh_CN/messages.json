@@ -712,14 +712,20 @@
   "destination_sync_action": {
     "message": "同步"
   },
-  "ai_provider_label": {
-    "message": "服务商"
-  },
-  "ai_model_label": {
-    "message": "模型"
-  },
   "ai_model_managed_default": {
     "message": "默认模型"
+  },
+  "ai_service_label": {
+    "message": "AI 服务"
+  },
+  "ai_service_ready": {
+    "message": "已就绪"
+  },
+  "ai_service_not_configured": {
+    "message": "未配置"
+  },
+  "ai_service_auto_detect": {
+    "message": "根据 Key 自动识别"
   },
   "ai_api_key_label": {
     "message": "API Key"
@@ -730,20 +736,14 @@
   "ai_key_draft": {
     "message": "请保存并验证此 Key。"
   },
-  "ai_key_provider_needs_new": {
-    "message": "此服务商需要新的 Key。"
-  },
   "ai_key_replace": {
     "message": "请替换并验证已保存的 Key。"
   },
   "ai_key_privacy_hint": {
-    "message": "运行 AI 时，页面内容会发送给该服务商。"
+    "message": "运行 AI 时，页面内容会发送给识别出的服务商。"
   },
   "ai_key_placeholder": {
     "message": "粘贴 API Key"
-  },
-  "ai_key_placeholder_provider": {
-    "message": "粘贴此服务商的 Key"
   },
   "ai_key_placeholder_replace": {
     "message": "粘贴新 Key 以替换"
@@ -756,6 +756,18 @@
   },
   "ai_key_verifying": {
     "message": "正在验证 API Key"
+  },
+  "ai_key_not_detected": {
+    "message": "没有可用的服务商接受此 Key。请检查 Key，或在下方填写 Base URL。"
+  },
+  "ai_base_url_label": {
+    "message": "Base URL"
+  },
+  "ai_base_url_hint": {
+    "message": "可选。填写服务商的 API 地址或兼容接口后重新保存。"
+  },
+  "ai_base_url_invalid": {
+    "message": "请输入有效的 Base URL，不要包含账号密码或查询参数。"
   },
   "ai_batch_label": {
     "message": "批量生成"

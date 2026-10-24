@@ -720,14 +720,20 @@
   "destination_sync_action": {
     "message": "Sync"
   },
-  "ai_provider_label": {
-    "message": "Provider"
-  },
-  "ai_model_label": {
-    "message": "Model"
-  },
   "ai_model_managed_default": {
     "message": "Managed default"
+  },
+  "ai_service_label": {
+    "message": "AI service"
+  },
+  "ai_service_ready": {
+    "message": "Ready"
+  },
+  "ai_service_not_configured": {
+    "message": "Not configured"
+  },
+  "ai_service_auto_detect": {
+    "message": "Detected from your key"
   },
   "ai_api_key_label": {
     "message": "API key"
@@ -738,20 +744,14 @@
   "ai_key_draft": {
     "message": "Save and verify this key."
   },
-  "ai_key_provider_needs_new": {
-    "message": "A new key is required for this provider."
-  },
   "ai_key_replace": {
     "message": "Replace and verify the saved key."
   },
   "ai_key_privacy_hint": {
-    "message": "Page content is sent to this provider when AI runs."
+    "message": "Page content is sent to the detected provider when AI runs."
   },
   "ai_key_placeholder": {
     "message": "Paste API key"
-  },
-  "ai_key_placeholder_provider": {
-    "message": "Paste a key for this provider"
   },
   "ai_key_placeholder_replace": {
     "message": "Paste a new key to replace"
@@ -764,6 +764,18 @@
   },
   "ai_key_verifying": {
     "message": "Verifying API key"
+  },
+  "ai_key_not_detected": {
+    "message": "No supported provider accepted this key. Check it, or add a Base URL below."
+  },
+  "ai_base_url_label": {
+    "message": "Base URL"
+  },
+  "ai_base_url_hint": {
+    "message": "Optional. Enter the provider's API address or a compatible endpoint, then save again."
+  },
+  "ai_base_url_invalid": {
+    "message": "Enter a valid Base URL without credentials or query parameters."
   },
   "ai_batch_label": {
     "message": "Batch generation"

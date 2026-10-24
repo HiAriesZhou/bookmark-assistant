@@ -4,7 +4,10 @@ import { createCredentialCipher } from '../services/credential-cipher';
 import { AiSettingsService } from '../services/ai-settings-service';
 import { AiTaskExecutor } from '../services/ai-task-executor';
 import { AiTaskWorker, type AiTaskRunSummary } from '../services/ai-task-worker';
-import { createAiProviderAdapter } from '../services/ai-provider-adapters';
+import {
+  aiEndpointPolicy,
+  createAiProviderAdapterForEndpoint,
+} from '../services/ai-endpoint-policy';
 import { PublicPageFetcher } from '../services/public-page-fetcher';
 import { PrismaAiCredentialStore } from '../services/prisma-ai-credential-store';
 import { PrismaAiSettingsStore } from '../services/prisma-ai-settings-store';
@@ -32,7 +35,8 @@ function createWorker(): AiTaskWorker | undefined {
     credentials,
     notion: notionService,
     fetcher: new PublicPageFetcher(new PrismaPublicPageDomainLimiter()),
-    providerFor: (provider, model) => createAiProviderAdapter(provider, fetch, model),
+    providerFor: (provider, model, baseUrl) =>
+      createAiProviderAdapterForEndpoint(provider, aiEndpointPolicy(config), { model, baseUrl }),
     providerControl,
     diagnostics: new AiDiagnosticsService(),
   });
