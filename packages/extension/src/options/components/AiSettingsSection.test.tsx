@@ -80,7 +80,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
     });
@@ -100,6 +100,71 @@ describe('AiSettingsSection', () => {
     expect(serverAPI.getPendingAiSummary).not.toHaveBeenCalled();
   });
 
+  it('shows hosted Free accounts only the upgrade card without AI controls or requests', async () => {
+    const onUpgrade = vi.fn();
+    useAppStore.setState({
+      ...originalState,
+      deploymentMode: 'hosted',
+      commerceEnabled: true,
+      capabilities: { autoSync: false, batchAi: false },
+      isPro: false,
+      isConnected: true,
+    });
+
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <AiSettingsSection onUpgrade={onUpgrade} onOpenDestinations={() => undefined} />
+        </ToastProvider>
+      );
+    });
+
+    expect(container.textContent).toContain('Organize bookmarks with AI on Pro');
+    expect(container.querySelector('input')).toBeNull();
+    expect(container.querySelector('[role="switch"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Provider"]')).toBeNull();
+    expect(serverAPI.getAiSettings).not.toHaveBeenCalled();
+    expect(serverAPI.getAiCredential).not.toHaveBeenCalled();
+    await act(async () => findButton(container, 'Upgrade to Pro')?.click());
+    expect(onUpgrade).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['hosted Pro', { deploymentMode: 'hosted' as const, isPro: true }],
+    ['self-hosted', { deploymentMode: 'self-hosted' as const, isPro: false }],
+  ])('explains that %s AI needs a destination and links to it', async (_, plan) => {
+    const onOpenDestinations = vi.fn();
+    useAppStore.setState({
+      ...originalState,
+      ...plan,
+      capabilities: { autoSync: true, batchAi: true },
+      isConnected: false,
+    });
+
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={onOpenDestinations} />
+        </ToastProvider>
+      );
+    });
+
+    expect(container.textContent).not.toContain('Organize bookmarks with AI on Pro');
+    expect(container.querySelector('[role="note"]')?.textContent).toContain(
+      'AI results need a destination'
+    );
+    expect(container.querySelector<HTMLButtonElement>('[aria-label="Provider"]')?.disabled).toBe(
+      true
+    );
+    await act(async () => findButton(container, 'Go to Destinations')?.click());
+    expect(onOpenDestinations).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      useAppStore.setState({ isConnected: true });
+    });
+    expect(container.querySelector('[role="note"]')).toBeNull();
+  });
+
   it('clears account-scoped AI state and disables controls after disconnecting', async () => {
     useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
     vi.mocked(serverAPI.getAiSettings).mockResolvedValue({
@@ -112,7 +177,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
     });
@@ -147,7 +212,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -172,7 +237,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -229,7 +294,11 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection active onUpgrade={() => undefined} />
+          <AiSettingsSection
+            active
+            onUpgrade={() => undefined}
+            onOpenDestinations={() => undefined}
+          />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -239,7 +308,11 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection active={false} onUpgrade={() => undefined} />
+          <AiSettingsSection
+            active={false}
+            onUpgrade={() => undefined}
+            onOpenDestinations={() => undefined}
+          />
         </ToastProvider>
       );
       useAppStore.setState({
@@ -256,7 +329,11 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection active onUpgrade={() => undefined} />
+          <AiSettingsSection
+            active
+            onUpgrade={() => undefined}
+            onOpenDestinations={() => undefined}
+          />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -286,7 +363,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -317,7 +394,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
       await Promise.resolve();
@@ -349,7 +426,7 @@ describe('AiSettingsSection', () => {
     await act(async () => {
       root.render(
         <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} />
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
         </ToastProvider>
       );
       await Promise.resolve();

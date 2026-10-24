@@ -159,3 +159,29 @@ export function ProBadge({ onClick }: { onClick?: () => void }) {
     </button>
   );
 }
+
+/** Explains why destination-backed controls are unavailable and links to Destinations. */
+export function DestinationRequiredNotice({
+  message,
+  onOpenDestinations,
+}: {
+  message: string;
+  onOpenDestinations: () => void;
+}) {
+  const { t } = createTranslator();
+  return (
+    <div
+      role="note"
+      className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+    >
+      <p className="text-sm leading-6 text-ui-body">{message}</p>
+      <button
+        type="button"
+        onClick={onOpenDestinations}
+        className="inline-flex h-8 shrink-0 items-center justify-center self-start rounded-lg border border-ui-line bg-white px-3 text-xs font-medium text-ui-ink hover:border-ui-ink sm:self-auto"
+      >
+        {t('destination_required_action')}
+      </button>
+    </div>
+  );
+}

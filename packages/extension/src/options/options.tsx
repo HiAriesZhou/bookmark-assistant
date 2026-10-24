@@ -78,7 +78,7 @@ export default function Options() {
           ) : null}
           {route === 'settings' || visitedRoutes.has('settings') ? (
             <div hidden={route !== 'settings'}>
-              <SettingsWorkspace active={route === 'settings'} />
+              <SettingsWorkspace active={route === 'settings'} onNavigate={navigate} />
             </div>
           ) : null}
         </main>
