@@ -9,6 +9,37 @@ export const AI_PROVIDER_DEFAULT_MODELS: Readonly<Record<AiProvider, string>> = 
   minimax: 'MiniMax-M2.7',
 };
 
+/**
+ * Official API bases. A custom base URL replaces one of these and keeps the
+ * provider's protocol, authorization header and default model.
+ */
+export const AI_PROVIDER_BASE_URLS: Readonly<Record<AiProvider, string>> = {
+  openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta',
+  deepseek: 'https://api.deepseek.com',
+  groq: 'https://api.groq.com/openai/v1',
+  minimax: 'https://api.minimax.io/anthropic',
+};
+
+/** Returns the provider whose official API host matches, ignoring the path. */
+export function officialProviderForBaseUrl(baseUrl: string): AiProvider | undefined {
+  let hostname: string;
+  try {
+    hostname = new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+  return (Object.keys(AI_PROVIDER_BASE_URLS) as AiProvider[]).find(
+    (provider) => new URL(AI_PROVIDER_BASE_URLS[provider]).hostname === hostname
+  );
+}
+
+/** The host shown to users for a saved credential, including a custom port. */
+export function aiEndpointHost(provider: AiProvider, baseUrl?: string | null): string {
+  return new URL(baseUrl || AI_PROVIDER_BASE_URLS[provider]).host;
+}
+
 export type AiProviderValidationErrorCode =
   | 'invalid_api_key'
   | 'insufficient_quota'
@@ -67,7 +98,8 @@ const AI_PROVIDER_REQUEST_TIMEOUT_MS = 30_000;
 export function createAiProviderAdapter(
   provider: AiProvider,
   fetcher: FetchLike = fetch,
-  model = AI_PROVIDER_DEFAULT_MODELS[provider]
+  model = AI_PROVIDER_DEFAULT_MODELS[provider],
+  baseUrl: string = AI_PROVIDER_BASE_URLS[provider]
 ): AiProviderAdapter {
   return {
     provider,
@@ -76,7 +108,7 @@ export function createAiProviderAdapter(
       let response: Response;
       try {
         response = await fetcher(
-          ...withProviderTimeout(buildValidationRequest(provider, model, apiKey))
+          ...withProviderTimeout(buildValidationRequest(provider, baseUrl, model, apiKey))
         );
       } catch {
         throw new AiProviderValidationError('service_unavailable', provider);
@@ -89,7 +121,7 @@ export function createAiProviderAdapter(
       let response: Response;
       try {
         response = await fetcher(
-          ...withProviderTimeout(buildGenerationRequest(provider, model, apiKey, prompt))
+          ...withProviderTimeout(buildGenerationRequest(provider, baseUrl, model, apiKey, prompt))
         );
       } catch {
         throw new AiProviderGenerationError('provider_request_failed', provider);
@@ -116,6 +148,7 @@ function withProviderTimeout(request: [string, RequestInit]): [string, RequestIn
 
 function buildValidationRequest(
   provider: AiProvider,
+  baseUrl: string,
   model: string,
   apiKey: string
 ): [string, RequestInit] {
@@ -128,7 +161,7 @@ function buildValidationRequest(
   switch (provider) {
     case 'openai':
       return [
-        'https://api.openai.com/v1/responses',
+        `${baseUrl}/responses`,
         {
           ...common,
           headers: { ...common.headers, authorization: `Bearer ${apiKey}` },
@@ -142,7 +175,7 @@ function buildValidationRequest(
       ];
     case 'anthropic':
       return [
-        'https://api.anthropic.com/v1/messages',
+        messagesUrl(baseUrl),
         {
           ...common,
           headers: {
@@ -159,7 +192,7 @@ function buildValidationRequest(
       ];
     case 'gemini':
       return [
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`,
         {
           ...common,
           headers: { ...common.headers, 'x-goog-api-key': apiKey },
@@ -171,26 +204,15 @@ function buildValidationRequest(
       ];
     case 'deepseek':
     case 'groq':
-      return openAiCompatibleRequest(
-        openAiCompatibleBaseUrl(provider),
-        model,
-        apiKey,
-        'Reply with OK.',
-        16
-      );
+      return openAiCompatibleRequest(baseUrl, model, apiKey, 'Reply with OK.', 16);
     case 'minimax':
-      return anthropicCompatibleRequest(
-        'https://api.minimax.io/anthropic',
-        model,
-        apiKey,
-        'Reply with OK.',
-        16
-      );
+      return anthropicCompatibleRequest(baseUrl, model, apiKey, 'Reply with OK.', 16);
   }
 }
 
 function buildGenerationRequest(
   provider: AiProvider,
+  baseUrl: string,
   model: string,
   apiKey: string,
   prompt: string
@@ -204,7 +226,7 @@ function buildGenerationRequest(
   switch (provider) {
     case 'openai':
       return [
-        'https://api.openai.com/v1/responses',
+        `${baseUrl}/responses`,
         {
           ...common,
           headers: { ...common.headers, authorization: `Bearer ${apiKey}` },
@@ -213,7 +235,7 @@ function buildGenerationRequest(
       ];
     case 'anthropic':
       return [
-        'https://api.anthropic.com/v1/messages',
+        messagesUrl(baseUrl),
         {
           ...common,
           headers: {
@@ -230,7 +252,7 @@ function buildGenerationRequest(
       ];
     case 'gemini':
       return [
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        `${baseUrl}/models/${encodeURIComponent(model)}:generateContent`,
         {
           ...common,
           headers: { ...common.headers, 'x-goog-api-key': apiKey },
@@ -242,15 +264,9 @@ function buildGenerationRequest(
       ];
     case 'deepseek':
     case 'groq':
-      return openAiCompatibleRequest(openAiCompatibleBaseUrl(provider), model, apiKey, prompt, 600);
+      return openAiCompatibleRequest(baseUrl, model, apiKey, prompt, 600);
     case 'minimax':
-      return anthropicCompatibleRequest(
-        'https://api.minimax.io/anthropic',
-        model,
-        apiKey,
-        prompt,
-        600
-      );
+      return anthropicCompatibleRequest(baseUrl, model, apiKey, prompt, 600);
   }
 }
 
@@ -316,8 +332,9 @@ function extractGenerationResult(
   }
 }
 
-function openAiCompatibleBaseUrl(provider: 'deepseek' | 'groq'): string {
-  return provider === 'deepseek' ? 'https://api.deepseek.com' : 'https://api.groq.com/openai/v1';
+// Anthropic-style bases exclude the version segment; tolerate a pasted `/v1` suffix.
+function messagesUrl(baseUrl: string): string {
+  return baseUrl.endsWith('/v1') ? `${baseUrl}/messages` : `${baseUrl}/v1/messages`;
 }
 
 function openAiCompatibleRequest(
@@ -350,7 +367,7 @@ function anthropicCompatibleRequest(
   maxTokens: number
 ): [string, RequestInit] {
   return [
-    `${baseUrl}/v1/messages`,
+    messagesUrl(baseUrl),
     {
       method: 'POST',
       headers: {
@@ -397,6 +414,11 @@ async function classifyFailure(response: Response): Promise<AiProviderValidation
   }
   if (response.status === 404) {
     return 'model_access';
+  }
+  if (response.status === 400) {
+    // Gemini rejects unknown keys with 400 API_KEY_INVALID rather than 401.
+    const body = await response.text().catch(() => '');
+    return /api[_\s-]*key/i.test(body) ? 'invalid_api_key' : 'service_unavailable';
   }
 
   // Provider error bodies can contain account or organization details. Do not retain them.

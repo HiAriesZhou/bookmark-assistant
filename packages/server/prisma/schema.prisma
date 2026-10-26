@@ -93,6 +93,8 @@ model AiProviderCredential {
   credentialVersion Int      @default(1)
   status            String   @default("verified")
   verifiedAt        DateTime?
+  // Custom OpenAI/Anthropic/Gemini-compatible endpoint; null uses the provider's official API.
+  baseUrl           String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

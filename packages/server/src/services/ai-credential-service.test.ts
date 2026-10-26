@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { createCredentialCipher } from './credential-cipher';
+import { CredentialCipherIntegrityError } from './credential-cipher';
 import {
   AiCredentialNotFoundError,
   AiCredentialService,
@@ -45,9 +46,12 @@ describe('AiCredentialService', () => {
     const verifiedAt = new Date('2026-08-21T00:00:00.000Z');
 
     await expect(
-      service.saveVerifiedCredential('user-a', 'openai', '  sk-live-1234  ', verifiedAt)
+      service.saveVerifiedCredential('user-a', 'openai', '  sk-live-1234  ', { verifiedAt })
     ).resolves.toEqual({
       provider: 'openai',
+      model: 'gpt-5-mini',
+      host: 'api.openai.com',
+      baseUrl: null,
       keyLastFour: '1234',
       credentialVersion: 1,
       status: 'verified',
@@ -58,6 +62,9 @@ describe('AiCredentialService', () => {
     expect(stored.ciphertext).not.toContain('sk-live-1234');
     await expect(service.getCredentialSummary('user-a')).resolves.toEqual({
       provider: 'openai',
+      model: 'gpt-5-mini',
+      host: 'api.openai.com',
+      baseUrl: null,
       keyLastFour: '1234',
       credentialVersion: 1,
       status: 'verified',
@@ -67,6 +74,7 @@ describe('AiCredentialService', () => {
       provider: 'openai',
       apiKey: 'sk-live-1234',
       credentialVersion: 1,
+      baseUrl: undefined,
     });
     expect(store.reconcileTasksWithActiveCredential).toHaveBeenCalledWith('internal-user-a', {
       provider: 'openai',
@@ -90,6 +98,7 @@ describe('AiCredentialService', () => {
       provider: 'anthropic',
       apiKey: 'second-key-5678', // gitleaks:allow -- deterministic non-provider test fixture
       credentialVersion: 2,
+      baseUrl: undefined,
     });
     expect(store.reconcileTasksWithActiveCredential).toHaveBeenLastCalledWith('internal-user-a', {
       provider: 'anthropic',
@@ -110,6 +119,36 @@ describe('AiCredentialService', () => {
       credentialVersion: 1,
       model: 'gpt-5-mini',
     });
+  });
+
+  it('stores a custom endpoint, reports its host and binds it to the encrypted key', async () => {
+    const { store, service } = createService();
+
+    await expect(
+      service.saveVerifiedCredential('user-a', 'openai', 'gateway-key-1111', {
+        baseUrl: 'https://llm.example.com/v1',
+      })
+    ).resolves.toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5-mini',
+      host: 'llm.example.com',
+      baseUrl: 'https://llm.example.com/v1',
+    });
+    await expect(service.getActiveCredential('user-a')).resolves.toMatchObject({
+      apiKey: 'gateway-key-1111',
+      baseUrl: 'https://llm.example.com/v1',
+    });
+
+    // A database writer must not be able to redirect the stored key to another host.
+    const stored = store.records.get('internal-user-a')!;
+    store.records.set('internal-user-a', { ...stored, baseUrl: 'https://attacker.example' });
+    await expect(service.getActiveCredential('user-a')).rejects.toBeInstanceOf(
+      CredentialCipherIntegrityError
+    );
+    store.records.set('internal-user-a', { ...stored, baseUrl: null });
+    await expect(service.getActiveCredential('user-a')).rejects.toBeInstanceOf(
+      CredentialCipherIntegrityError
+    );
   });
 
   it('deletes a credential and does not reveal a missing-user distinction', async () => {

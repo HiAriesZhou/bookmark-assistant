@@ -153,7 +153,7 @@ describe('AiSettingsSection', () => {
     expect(container.querySelector('[role="note"]')?.textContent).toContain(
       'AI results need a destination'
     );
-    expect(container.querySelector<HTMLButtonElement>('[aria-label="Provider"]')?.disabled).toBe(
+    expect(container.querySelector<HTMLInputElement>('input[type="password"]')?.disabled).toBe(
       true
     );
     await act(async () => findButton(container, 'Go to Destinations')?.click());
@@ -192,9 +192,6 @@ describe('AiSettingsSection', () => {
     });
 
     expect(container.querySelector<HTMLInputElement>('input[type="password"]')?.disabled).toBe(
-      true
-    );
-    expect(container.querySelector<HTMLButtonElement>('[aria-label="Provider"]')?.disabled).toBe(
       true
     );
     expect(container.textContent).not.toContain('Save AI settings');
@@ -256,7 +253,7 @@ describe('AiSettingsSection', () => {
       await Promise.resolve();
     });
 
-    expect(serverAPI.saveAiCredential).toHaveBeenCalledWith('openai', 'sk-test');
+    expect(serverAPI.saveAiCredential).toHaveBeenCalledWith({ apiKey: 'sk-test' });
     expect(serverAPI.saveAiSettings).toHaveBeenCalledWith({
       singlePageEnabled: true,
       batchEnabled: false,
@@ -405,14 +402,14 @@ describe('AiSettingsSection', () => {
     expect(findButton(container, 'Retry')).toBeUndefined();
   });
 
-  it('disables generation while a replacement provider key is still a draft', async () => {
+  it('disables generation while a replacement key is still a draft', async () => {
     useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
     vi.mocked(serverAPI.getAiSettings).mockResolvedValue({
       settings: { singlePageEnabled: true, batchEnabled: true },
     });
     vi.mocked(serverAPI.getAiCredential).mockResolvedValue({
       credential: { provider: 'openai', keyLastFour: '1234', status: 'verified' },
-      providerModels: providerModels({ openai: 'gpt-5-mini', deepseek: 'deepseek-chat' }),
+      providerModels: providerModels({ openai: 'gpt-5-mini' }),
     });
     vi.mocked(serverAPI.getPendingAiSummary).mockResolvedValue({
       pending: 2,
@@ -423,24 +420,9 @@ describe('AiSettingsSection', () => {
       blocked: 0,
     });
 
-    await act(async () => {
-      root.render(
-        <ToastProvider>
-          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
-        </ToastProvider>
-      );
-      await Promise.resolve();
-    });
+    await renderSection();
     expect(findButton(container, 'Generate')).toBeDefined();
 
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[aria-label="Provider"]')?.click();
-    });
-    await act(async () => {
-      Array.from(document.querySelectorAll<HTMLButtonElement>('[role="option"]'))
-        .find((option) => option.textContent?.includes('DeepSeek'))
-        ?.click();
-    });
     await changeInput(container.querySelector<HTMLInputElement>('input[type="password"]'), 'sk-x');
 
     expect(container.textContent).toContain('Save and verify your changes first');
@@ -449,6 +431,136 @@ describe('AiSettingsSection', () => {
     expect(findButton(container, 'Generate')).toBeUndefined();
     expect(serverAPI.saveAiCredential).not.toHaveBeenCalled();
   });
+
+  it('configures AI from the key alone and shows the detected identity', async () => {
+    useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
+    vi.mocked(serverAPI.saveAiCredential).mockResolvedValue({
+      credential: {
+        provider: 'deepseek',
+        model: 'deepseek-v4-flash',
+        host: 'api.deepseek.com',
+        baseUrl: null,
+        keyLastFour: '4321',
+        status: 'verified',
+      },
+    });
+
+    await renderSection();
+    expect(container.querySelector('[aria-label="Provider"]')).toBeNull();
+    expect(container.querySelector('#ai-base-url')).toBeNull();
+    expect(container.textContent).toContain('Not configured');
+
+    await changeInput(
+      container.querySelector<HTMLInputElement>('input[type="password"]'),
+      'sk-detect-me'
+    );
+    await clickSave();
+
+    expect(serverAPI.saveAiCredential).toHaveBeenCalledExactlyOnceWith({ apiKey: 'sk-detect-me' });
+    expect(container.textContent).toContain('Ready');
+    expect(container.textContent).toContain('deepseek-v4-flash');
+    expect(container.textContent).toContain('DeepSeek · api.deepseek.com');
+    expect(container.textContent).toContain('Verified · ••••4321');
+    expect(container.querySelector('#ai-base-url')).toBeNull();
+  });
+
+  it('reveals an optional Base URL when the provider is not detected and retries with it', async () => {
+    useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
+    vi.mocked(serverAPI.saveAiCredential)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('server copy'), { code: 'provider_not_detected' })
+      )
+      .mockResolvedValueOnce({
+        credential: {
+          provider: 'openai',
+          model: 'gpt-5-mini',
+          host: 'llm.example.com',
+          baseUrl: 'https://llm.example.com/v1',
+          keyLastFour: '9876',
+          status: 'verified',
+        },
+      });
+
+    await renderSection();
+    const apiKey = container.querySelector<HTMLInputElement>('input[type="password"]');
+    await changeInput(apiKey, 'gateway-key');
+    await clickSave();
+
+    expect(container.textContent).toContain('No supported provider accepted this key.');
+    expect(container.textContent).not.toContain('server copy');
+    const baseUrl = container.querySelector<HTMLInputElement>('#ai-base-url');
+    expect(baseUrl).not.toBeNull();
+    expect(apiKey?.value).toBe('gateway-key');
+
+    await changeInput(baseUrl, ' https://llm.example.com/v1 ');
+    await clickSave();
+
+    expect(serverAPI.saveAiCredential).toHaveBeenLastCalledWith({
+      apiKey: 'gateway-key',
+      baseUrl: 'https://llm.example.com/v1',
+    });
+    expect(container.textContent).toContain('OpenAI · llm.example.com');
+    expect(container.querySelector<HTMLInputElement>('#ai-base-url')?.value).toBe(
+      'https://llm.example.com/v1'
+    );
+  });
+
+  it('shows a saved custom endpoint so a replacement key keeps it', async () => {
+    useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
+    vi.mocked(serverAPI.getAiCredential).mockResolvedValue({
+      credential: {
+        provider: 'anthropic',
+        model: 'claude-haiku-4-5',
+        host: 'gateway.example.com',
+        baseUrl: 'https://gateway.example.com',
+        keyLastFour: '5555',
+        status: 'verified',
+      },
+      providerModels: providerModels(),
+    });
+
+    await renderSection();
+
+    expect(container.textContent).toContain('claude-haiku-4-5');
+    expect(container.textContent).toContain('Anthropic · gateway.example.com');
+    expect(container.querySelector<HTMLInputElement>('#ai-base-url')?.value).toBe(
+      'https://gateway.example.com'
+    );
+  });
+
+  it('falls back to the provider default model from servers without identity fields', async () => {
+    useAppStore.setState({ ...originalState, isConnected: true, isPro: true });
+    vi.mocked(serverAPI.getAiCredential).mockResolvedValue({
+      credential: { provider: 'groq', keyLastFour: '1111', status: 'verified' },
+      providerModels: providerModels({ groq: 'openai/gpt-oss-20b' }),
+    });
+
+    await renderSection();
+
+    expect(container.textContent).toContain('openai/gpt-oss-20b');
+    expect(container.textContent).toContain('Groq');
+  });
+
+  async function renderSection() {
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <AiSettingsSection onUpgrade={() => undefined} onOpenDestinations={() => undefined} />
+        </ToastProvider>
+      );
+      await Promise.resolve();
+    });
+  }
+
+  async function clickSave() {
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Save and verify API key"]')?.click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
 });
 
 async function changeInput(input: HTMLInputElement | null, value: string) {

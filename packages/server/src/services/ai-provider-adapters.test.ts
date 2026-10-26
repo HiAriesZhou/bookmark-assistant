@@ -3,7 +3,9 @@ import {
   AI_PROVIDER_DEFAULT_MODELS,
   AiProviderGenerationError,
   AiProviderValidationError,
+  aiEndpointHost,
   createAiProviderAdapter,
+  officialProviderForBaseUrl,
   type FetchLike,
 } from './ai-provider-adapters';
 
@@ -58,6 +60,48 @@ describe('AI provider adapters', () => {
       provider: 'openai',
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['openai', 'https://llm.example.com/v1/responses'],
+    ['anthropic', 'https://llm.example.com/v1/messages'],
+    ['gemini', 'https://llm.example.com/v1/models/gemini-2.5-flash:generateContent'],
+    ['deepseek', 'https://llm.example.com/v1/chat/completions'],
+    ['groq', 'https://llm.example.com/v1/chat/completions'],
+    ['minimax', 'https://llm.example.com/v1/messages'],
+  ] as const)('sends %s requests to a custom base URL', async (provider, expectedUrl) => {
+    const fetcher = successfulFetch();
+    const adapter = createAiProviderAdapter(
+      provider,
+      fetcher,
+      AI_PROVIDER_DEFAULT_MODELS[provider],
+      'https://llm.example.com/v1'
+    );
+
+    await adapter.validateApiKey('test-key');
+    await adapter.generate('test-key', 'prompt').catch(() => undefined);
+    expect(vi.mocked(fetcher).mock.calls.map(([url]) => url)).toEqual([expectedUrl, expectedUrl]);
+  });
+
+  it('classifies a Gemini-style invalid key response as a rejected key', async () => {
+    const fetcher: FetchLike = vi.fn(
+      async () =>
+        new Response('{"error":{"status":"INVALID_ARGUMENT","message":"API key not valid."}}', {
+          status: 400,
+        })
+    );
+    await expect(
+      createAiProviderAdapter('gemini', fetcher).validateApiKey('bad-key')
+    ).rejects.toMatchObject({ code: 'invalid_api_key', provider: 'gemini' });
+  });
+
+  it('maps official hosts to providers and reports the endpoint host', () => {
+    expect(officialProviderForBaseUrl('https://api.deepseek.com/v1')).toBe('deepseek');
+    expect(officialProviderForBaseUrl('https://api.groq.com')).toBe('groq');
+    expect(officialProviderForBaseUrl('https://llm.example.com/v1')).toBeUndefined();
+    expect(aiEndpointHost('deepseek')).toBe('api.deepseek.com');
+    expect(aiEndpointHost('gemini')).toBe('generativelanguage.googleapis.com');
+    expect(aiEndpointHost('openai', 'http://localhost:4000/v1')).toBe('localhost:4000');
   });
 
   it('classifies provider network and timeout failures as unavailable', async () => {

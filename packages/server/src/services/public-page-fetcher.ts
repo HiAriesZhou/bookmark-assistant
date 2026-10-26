@@ -344,7 +344,7 @@ export function extractReadableText(rawBody: string, contentType: 'html' | 'plai
   );
 }
 
-function isBlockedHostname(hostname: string): boolean {
+export function isBlockedHostname(hostname: string): boolean {
   // URL.hostname keeps the brackets around IPv6 literals, e.g. "[::1]".
   const host = hostname
     .toLowerCase()

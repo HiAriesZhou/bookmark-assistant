@@ -1,7 +1,7 @@
 import type { AiProvider } from '@bookmark-assistant/types';
 import { isAiProvider } from './ai-provider';
 import type { CredentialCipher, EncryptedCredential } from './credential-cipher';
-import { AI_PROVIDER_DEFAULT_MODELS } from './ai-provider-adapters';
+import { AI_PROVIDER_DEFAULT_MODELS, aiEndpointHost } from './ai-provider-adapters';
 
 export type AiCredentialStatus = 'verified' | 'invalid' | 'revoked';
 
@@ -12,6 +12,8 @@ export interface StoredAiProviderCredential extends EncryptedCredential {
   credentialVersion: number;
   status: string;
   verifiedAt: Date | null;
+  /** Custom endpoint; null or undefined means the provider's official endpoint. */
+  baseUrl?: string | null;
 }
 
 export interface AiCredentialStore {
@@ -30,6 +32,9 @@ export interface AiCredentialStore {
 
 export interface AiCredentialSummary {
   provider: AiProvider;
+  model: string;
+  host: string;
+  baseUrl: string | null;
   keyLastFour: string;
   credentialVersion: number;
   status: AiCredentialStatus;
@@ -40,6 +45,7 @@ export interface ActiveAiProviderCredential {
   provider: AiProvider;
   apiKey: string;
   credentialVersion: number;
+  baseUrl?: string;
 }
 
 export class AiCredentialNotFoundError extends Error {
@@ -70,8 +76,10 @@ export class AiCredentialService {
     externalUserId: string,
     provider: AiProvider,
     apiKey: string,
-    verifiedAt = new Date()
+    options: { verifiedAt?: Date; baseUrl?: string | null } = {}
   ): Promise<AiCredentialSummary> {
+    const verifiedAt = options.verifiedAt ?? new Date();
+    const baseUrl = options.baseUrl || null;
     const userId = await this.requireInternalUserId(externalUserId);
     const normalizedKey = apiKey.trim();
     if (!normalizedKey) {
@@ -80,7 +88,12 @@ export class AiCredentialService {
 
     const current = await this.store.findCredential(userId);
     const credentialVersion = (current?.credentialVersion ?? 0) + 1;
-    const encrypted = this.cipher.encrypt(normalizedKey, { userId, provider, credentialVersion });
+    const encrypted = this.cipher.encrypt(normalizedKey, {
+      userId,
+      provider,
+      credentialVersion,
+      baseUrl,
+    });
     const credential: StoredAiProviderCredential = {
       userId,
       provider,
@@ -88,6 +101,7 @@ export class AiCredentialService {
       credentialVersion,
       status: 'verified',
       verifiedAt,
+      baseUrl,
       ...encrypted,
     };
 
@@ -136,11 +150,13 @@ export class AiCredentialService {
       userId,
       provider: credential.provider,
       credentialVersion: credential.credentialVersion,
+      baseUrl: credential.baseUrl,
     });
     return {
       provider: credential.provider,
       apiKey,
       credentialVersion: credential.credentialVersion,
+      baseUrl: credential.baseUrl || undefined,
     };
   }
 
@@ -170,6 +186,9 @@ function toSummary(credential: StoredAiProviderCredential): AiCredentialSummary 
 
   return {
     provider: credential.provider,
+    model: AI_PROVIDER_DEFAULT_MODELS[credential.provider],
+    host: aiEndpointHost(credential.provider, credential.baseUrl),
+    baseUrl: credential.baseUrl || null,
     keyLastFour: credential.keyLastFour,
     credentialVersion: credential.credentialVersion,
     status: credential.status,

@@ -9,26 +9,16 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { serverAPI } from '../../background/server-api';
+import { serverAPI, type AiCredentialSummary } from '../../background/server-api';
 import { Switch } from '../../components/ui/switch';
 import { createTranslator } from '../../utils/i18n';
 import { useToast } from '../hook/useToast';
 import { useAppStore } from '../store';
 import {
-  providerChangeRequiresNewKey,
+  aiCredentialIdentityLine,
   type AiSettingsProvider as Provider,
 } from './ai-settings-provider';
-import { SelectMenu, type SelectMenuOption } from './SelectMenu';
 import { DestinationRequiredNotice, ProBadge, SettingsGroup, SettingsRow } from './Workspace';
-
-const providers: SelectMenuOption[] = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'gemini', label: 'Google Gemini' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'groq', label: 'Groq' },
-  { value: 'minimax', label: 'MiniMax' },
-];
 
 type Translate = ReturnType<typeof createTranslator>['t'];
 
@@ -130,13 +120,13 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
   const [savingCredential, setSavingCredential] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [runningBatch, setRunningBatch] = useState(false);
-  const [provider, setProvider] = useState<Provider>('openai');
-  const [savedProvider, setSavedProvider] = useState<Provider>();
-  const [credentialStatus, setCredentialStatus] = useState<'verified' | 'invalid' | 'revoked'>();
+  const [credential, setCredential] = useState<AiCredentialSummary>();
   const [providerModels, setProviderModels] = useState<Partial<Record<Provider, string>>>({});
   const [apiKey, setApiKey] = useState('');
   const [apiKeyError, setApiKeyError] = useState('');
-  const [keyLastFour, setKeyLastFour] = useState<string>();
+  // Base URL stays hidden until detection fails or a saved key already uses one.
+  const [baseUrl, setBaseUrl] = useState('');
+  const [baseUrlVisible, setBaseUrlVisible] = useState(false);
   const [batchEnabled, setBatchEnabled] = useState(false);
   const [batchSummary, setBatchSummary] = useState<BatchSummary>();
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -148,20 +138,18 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
   const [recent, setRecent] = useState<RecentTask[]>([]);
   const pendingRequest = useRef(0);
   const lastEnrichmentRefresh = useRef('');
-  const providerNeedsKey = providerChangeRequiresNewKey(savedProvider, provider, apiKey);
   const settingsBusy = loading || savingSettings || savingCredential;
 
   useEffect(() => {
     let mounted = true;
     if (!isConnected) {
       setLoading(false);
-      setProvider('openai');
       setApiKey('');
       setApiKeyError('');
-      setSavedProvider(undefined);
-      setCredentialStatus(undefined);
+      setCredential(undefined);
+      setBaseUrl('');
+      setBaseUrlVisible(false);
       setProviderModels({});
-      setKeyLastFour(undefined);
       setBatchEnabled(false);
       pendingRequest.current += 1;
       lastEnrichmentRefresh.current = '';
@@ -193,11 +181,11 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
       }
       if (credentialResult.status === 'fulfilled') {
         setProviderModels(credentialResult.value.providerModels || {});
-        if (credentialResult.value.credential) {
-          setProvider(credentialResult.value.credential.provider);
-          setSavedProvider(credentialResult.value.credential.provider);
-          setCredentialStatus(credentialResult.value.credential.status);
-          setKeyLastFour(credentialResult.value.credential.keyLastFour);
+        const savedCredential = credentialResult.value.credential;
+        if (savedCredential) {
+          setCredential(savedCredential);
+          setBaseUrl(savedCredential.baseUrl || '');
+          setBaseUrlVisible(Boolean(savedCredential.baseUrl));
         }
       }
       setLoading(false);
@@ -263,22 +251,38 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
     });
   }
 
+  function showSavedBaseUrl(saved: AiCredentialSummary | undefined) {
+    setBaseUrl(saved?.baseUrl || '');
+    setBaseUrlVisible(Boolean(saved?.baseUrl));
+  }
+
   async function saveApiKey() {
     const nextKey = apiKey.trim();
+    const nextBaseUrl = baseUrlVisible ? baseUrl.trim() : '';
     if (!nextKey || savingCredential) return;
     setApiKeyError('');
     setSavingCredential(true);
     try {
-      const result = await serverAPI.saveAiCredential(provider, nextKey);
-      setKeyLastFour(result.credential.keyLastFour);
-      setSavedProvider(result.credential.provider);
-      setCredentialStatus(result.credential.status);
+      // The server detects the provider from the key; Base URL is only an optional retry hint.
+      const result = await serverAPI.saveAiCredential(
+        nextBaseUrl ? { apiKey: nextKey, baseUrl: nextBaseUrl } : { apiKey: nextKey }
+      );
+      setCredential(result.credential);
+      showSavedBaseUrl(result.credential);
       setApiKey('');
       await persistSettings();
       if (batchEnabled && active) void refreshPendingSummary();
       show({ variant: 'success', title: t('ai_toast_key_verified') });
     } catch (error) {
-      setApiKeyError(error instanceof Error ? error.message : t('ai_error_key_save'));
+      const code = (error as { code?: unknown } | null)?.code;
+      if (code === 'provider_not_detected') {
+        setBaseUrlVisible(true);
+        setApiKeyError(t('ai_key_not_detected'));
+      } else if (code === 'invalid_base_url') {
+        setApiKeyError(t('ai_base_url_invalid'));
+      } else {
+        setApiKeyError(error instanceof Error ? error.message : t('ai_error_key_save'));
+      }
     } finally {
       setSavingCredential(false);
     }
@@ -317,9 +321,8 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
     setApiKeyError('');
     try {
       await serverAPI.deleteAiCredential();
-      setKeyLastFour(undefined);
-      setSavedProvider(undefined);
-      setCredentialStatus(undefined);
+      setCredential(undefined);
+      showSavedBaseUrl(undefined);
       setApiKey('');
       show({ variant: 'success', title: t('ai_toast_key_removed') });
     } catch (error) {
@@ -392,10 +395,11 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
     if (next && !historyLoaded) void refreshHistory();
   };
 
-  const hasCredentialDraft =
-    Boolean(apiKey.trim()) || Boolean(savedProvider && savedProvider !== provider);
-  const hasVerifiedKey =
-    credentialStatus === 'verified' && savedProvider === provider && !hasCredentialDraft;
+  const hasCredentialDraft = Boolean(apiKey.trim());
+  const hasVerifiedKey = credential?.status === 'verified' && !hasCredentialDraft;
+  const detectedModel = credential
+    ? credential.model || providerModels[credential.provider] || t('ai_model_managed_default')
+    : undefined;
   const readyCount = batchSummary?.ready || 0;
   const retryableCount = batchSummary?.retryable || 0;
   const scheduledCount = batchSummary?.scheduled || 0;
@@ -451,17 +455,27 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
   ) : hasVerifiedKey ? (
     <span className="inline-flex items-center gap-1.5">
       <CircleCheck className="h-3.5 w-3.5 shrink-0 text-ui-success" />
-      {t('ai_key_verified', [keyLastFour || ''])}
+      {t('ai_key_verified', [credential?.keyLastFour || ''])}
     </span>
   ) : hasCredentialDraft ? (
     t('ai_key_draft')
-  ) : providerNeedsKey ? (
-    t('ai_key_provider_needs_new')
-  ) : credentialStatus ? (
+  ) : credential ? (
     t('ai_key_replace')
   ) : (
     t('ai_key_privacy_hint')
   );
+
+  const serviceStatus =
+    credential?.status === 'verified' ? (
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-ui-success" />
+        {t('ai_service_ready')}
+      </span>
+    ) : credential ? (
+      t('ai_key_replace')
+    ) : (
+      t('ai_service_not_configured')
+    );
 
   return (
     <SettingsGroup id="ai" title="AI">
@@ -473,28 +487,19 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
         />
       ) : null}
       <SettingsRow
-        label={t('ai_provider_label')}
+        label={t('ai_service_label')}
+        description={serviceStatus}
         control={
-          <SelectMenu
-            value={provider}
-            onChange={(value) => {
-              setProvider(value as Provider);
-              setApiKey('');
-              setApiKeyError('');
-            }}
-            options={providers}
-            ariaLabel={t('ai_provider_label')}
-            disabled={settingsBusy || !isConnected}
-          />
-        }
-      />
-
-      <SettingsRow
-        label={t('ai_model_label')}
-        control={
-          <p className="truncate px-3 text-xs font-medium text-ui-body">
-            {providerModels[provider] || t('ai_model_managed_default')}
-          </p>
+          credential ? (
+            <div className="min-w-0 px-3">
+              <p className="truncate text-sm font-medium text-ui-ink">{detectedModel}</p>
+              <p className="truncate text-xs text-ui-subtle">
+                {aiCredentialIdentityLine(credential)}
+              </p>
+            </div>
+          ) : (
+            <p className="truncate px-3 text-xs text-ui-subtle">{t('ai_service_auto_detect')}</p>
+          )
         }
       />
 
@@ -525,11 +530,7 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
               autoComplete="off"
               disabled={loading || savingCredential || !isConnected}
               placeholder={
-                hasVerifiedKey
-                  ? t('ai_key_placeholder_replace')
-                  : providerNeedsKey
-                    ? t('ai_key_placeholder_provider')
-                    : t('ai_key_placeholder')
+                hasVerifiedKey ? t('ai_key_placeholder_replace') : t('ai_key_placeholder')
               }
               aria-describedby="ai-key-status"
               aria-invalid={Boolean(apiKeyError)}
@@ -565,6 +566,37 @@ function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSet
           </div>
         }
       />
+
+      {baseUrlVisible ? (
+        <SettingsRow
+          label={t('ai_base_url_label')}
+          htmlFor="ai-base-url"
+          description={t('ai_base_url_hint')}
+          control={
+            <input
+              id="ai-base-url"
+              value={baseUrl}
+              onChange={(event) => {
+                setBaseUrl(event.target.value);
+                setApiKeyError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void saveApiKey();
+                }
+              }}
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              disabled={loading || savingCredential || !isConnected}
+              placeholder="https://api.example.com/v1"
+              className="library-input w-full min-w-0"
+            />
+          }
+        />
+      ) : null}
 
       <SettingsRow
         label={t('ai_batch_label')}
