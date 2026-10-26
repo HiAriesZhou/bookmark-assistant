@@ -75,11 +75,14 @@ export function SettingsGroup({
   id,
   title,
   action,
+  plain = false,
   children,
 }: {
   id: string;
   title: string;
   action?: ReactNode;
+  /** Render children straight on the page background instead of inside the bordered list. */
+  plain?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -90,9 +93,13 @@ export function SettingsGroup({
         </h2>
         {action}
       </div>
-      <div className="divide-y divide-ui-line rounded-xl border border-ui-line bg-ui-surface">
-        {children}
-      </div>
+      {plain ? (
+        children
+      ) : (
+        <div className="divide-y divide-ui-line rounded-xl border border-ui-line bg-ui-surface">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

@@ -11,12 +11,14 @@ describe('build configuration', () => {
     expect(config.publicEnv).toMatchObject({
       VITE_OFFICIAL_SERVICE: 'true',
       VITE_NOTION_CLIENT_ID: OFFICIAL_SERVICE.notionClientId,
+      VITE_GOOGLE_CLIENT_ID: OFFICIAL_SERVICE.googleClientId,
       VITE_PRIVACY_URL: OFFICIAL_SERVICE.privacyUrl,
     });
   });
   it('pins official links and the official Notion client ID for the official service', () => {
     const config = resolveBuildConfig({
       VITE_NOTION_CLIENT_ID: 'other-client',
+      VITE_GOOGLE_CLIENT_ID: 'other-google-client',
       VITE_WEBSITE_URL: 'https://self.example',
       VITE_FAQ_URL: 'https://self.example/faq',
       VITE_PRIVACY_URL: 'https://self.example/privacy',
@@ -27,6 +29,7 @@ describe('build configuration', () => {
     expect(config.websiteUrl).toBe(OFFICIAL_SERVICE.websiteUrl);
     expect(config.publicEnv).toMatchObject({
       VITE_NOTION_CLIENT_ID: OFFICIAL_SERVICE.notionClientId,
+      VITE_GOOGLE_CLIENT_ID: OFFICIAL_SERVICE.googleClientId,
       VITE_WEBSITE_URL: OFFICIAL_SERVICE.websiteUrl,
       VITE_FAQ_URL: OFFICIAL_SERVICE.faqUrl,
       VITE_PRIVACY_URL: OFFICIAL_SERVICE.privacyUrl,
@@ -39,16 +42,19 @@ describe('build configuration', () => {
     expect(config.apiUrl).toBe('http://localhost:3333');
     expect(config.officialService).toBe(false);
     expect(config.publicEnv.VITE_NOTION_CLIENT_ID).toBe('');
+    expect(config.publicEnv.VITE_GOOGLE_CLIENT_ID).toBe('');
     expect(config.publicEnv.VITE_PRIVACY_URL).toBe('');
   });
   it('lets a self-hosted build select its own HTTPS server and credentials', () => {
     const config = resolveBuildConfig({
       VITE_OAUTH_SERVER_URL: 'https://self-hosted.example',
       VITE_NOTION_CLIENT_ID: 'own-client',
+      VITE_GOOGLE_CLIENT_ID: 'own-google-client',
     });
     expect(config.apiUrl).toBe('https://self-hosted.example');
     expect(config.officialService).toBe(false);
     expect(config.publicEnv.VITE_NOTION_CLIENT_ID).toBe('own-client');
+    expect(config.publicEnv.VITE_GOOGLE_CLIENT_ID).toBe('own-google-client');
     expect(config.publicEnv.VITE_SUPPORT_URL).toBe('');
     expect(
       resolveBuildConfig({

@@ -11,10 +11,12 @@ datasource db {
 
 model User {
   // --- 1. Identity (Internal System) ---
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  emailVerifiedAt DateTime?
+  googleSub       String?   @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // --- 2. Payment Status (Paddle) ---
   plan                 String    @default("free") // "free", "pro"
@@ -49,6 +51,18 @@ model User {
 
   @@index([email])
   @@index([notionUserId])
+}
+
+model EmailLoginCode {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
 }
 
 model DescriptionCache {

@@ -5,6 +5,7 @@ import { createThrottledTask } from './throttled-task';
  */
 
 import { descriptionCache } from '../services/description-cache';
+import { deleteExpiredEmailLoginCodes } from '../services/email-login-code';
 
 /**
  * Clean up expired description cache entries
@@ -17,6 +18,7 @@ async function cleanupExpiredDescriptions(): Promise<void> {
 
     // Delete expired entries
     const deletedCount = await descriptionCache.cleanExpired();
+    const emailLoginCodesDeleted = await deleteExpiredEmailLoginCodes();
 
     // Get cache stats
     const stats = await descriptionCache.getStats();
@@ -25,6 +27,7 @@ async function cleanupExpiredDescriptions(): Promise<void> {
 
     console.log('[CacheCleanup] Cleanup completed:', {
       deletedCount,
+      emailLoginCodesDeleted,
       duration: `${duration}ms`,
       remainingEntries: stats.totalEntries,
       hitRate: `${(stats.hitRate * 100).toFixed(2)}%`,
