@@ -43,6 +43,7 @@ async function labels(page: Page) {
       >,
     [
       'nav_settings',
+      'account_login',
       'account_email_label',
       'account_send_code',
       'account_code_label',
@@ -122,13 +123,20 @@ test('signs in with an email code, shows the new-account hint, and signs out', a
     const page = await context.newPage();
     await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
     const text = await labels(page);
-    await expect(page.getByRole('heading', { name: text.nav_settings, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 1, name: new RegExp(text.account_login) })
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: text.account_sign_in_google })).toHaveCount(0);
     await page.getByLabel(text.account_email_label).fill('person@example.com');
     await page.getByRole('button', { name: text.account_send_code }).click();
     await page.getByLabel(text.account_code_label).fill('424242');
     await page.getByRole('button', { name: text.account_sign_in, exact: true }).click();
-    await expect(page.getByText('person@example.com', { exact: true })).toBeVisible();
+    // The same route switches in place from the login page to settings.
+    await expect(page.getByRole('heading', { name: text.nav_settings, exact: true })).toBeVisible();
+    await expect(
+      page.locator('#account').getByText('person@example.com', { exact: true })
+    ).toBeVisible();
     await expect(page.getByText(text.account_prior_notion_hint)).toBeVisible();
     await page.getByRole('button', { name: text.account_sign_out }).click();
     await expect(page.getByLabel(text.account_email_label)).toBeVisible();

@@ -1007,5 +1007,56 @@
   },
   "account_prior_notion_hint": {
     "message": "If you have used Bookmark Assistant through Notion before, sign in with that Notion account's email."
+  },
+  "account_login": {
+    "message": "Log in"
+  },
+  "account_local_no_account": {
+    "message": "Local bookmarks need no account"
+  },
+  "account_notion_fallback": {
+    "message": "Notion account"
+  },
+  "account_plan_free": {
+    "message": "Free"
+  },
+  "account_plan_pro": {
+    "message": "Pro"
+  },
+  "account_plan_self_hosted": {
+    "message": "Self-hosted"
+  },
+  "account_login_title": {
+    "message": "Log in to $1"
+  },
+  "account_continue_without_login": {
+    "message": "You can keep managing local bookmarks without signing in."
+  },
+  "account_login_ai_value": {
+    "message": "Sign in to upgrade to Pro and organize bookmarks with AI."
+  },
+  "settings_sections_label": {
+    "message": "Settings sections"
+  },
+  "settings_destinations_manage": {
+    "message": "Manage"
+  },
+  "ai_upgrade_title": {
+    "message": "Organize bookmarks with AI on Pro"
+  },
+  "ai_upgrade_desc": {
+    "message": "Pro adds AI summaries and tags with your own provider key, including batch processing for newly synced pages."
+  },
+  "ai_upgrade_action": {
+    "message": "Upgrade to Pro"
+  },
+  "ai_needs_destination": {
+    "message": "AI results need a destination to write to. Connect one first."
+  },
+  "sync_needs_destination": {
+    "message": "Scheduled sync needs a destination. Connect one first."
+  },
+  "destination_required_action": {
+    "message": "Go to Destinations"
   }
 }
