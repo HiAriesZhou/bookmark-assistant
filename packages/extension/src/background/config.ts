@@ -6,6 +6,9 @@ export interface AppConfig {
     clientId: string;
     serverUrl: string;
   };
+  google: {
+    clientId: string;
+  };
 
   // App Settings
   app: {
@@ -43,6 +46,9 @@ export const config: AppConfig = {
   notion: {
     clientId: getEnvVar('VITE_NOTION_CLIENT_ID', ''),
     serverUrl: productConfig.apiUrl,
+  },
+  google: {
+    clientId: getEnvVar('VITE_GOOGLE_CLIENT_ID', ''),
   },
   app: {
     name: productConfig.name,
@@ -83,6 +89,9 @@ export function debugConfig(): void {
   });
   console.log('Notion:', {
     clientId: config.notion.clientId ? '✅ Set' : '❌ Missing',
+  });
+  console.log('Google:', {
+    clientId: config.google.clientId ? '✅ Set' : '❌ Missing',
   });
   console.groupEnd();
 }

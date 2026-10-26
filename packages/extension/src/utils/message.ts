@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import type { AiGenerationStatus } from '@bookmark-assistant/types';
+import type { AiGenerationStatus, DeploymentProfile } from '@bookmark-assistant/types';
 import type { DashboardSnapshot } from '../dashboard/types';
 
 /** Current-page AI outcomes: server task statuses plus decisions made locally. */
@@ -44,6 +44,40 @@ export type MessageMap = {
   DELETE_ACCOUNT: {
     req: { accountRevision?: string | null };
     res: { success: boolean; error?: string; accountRevision?: string };
+  };
+  SIGN_IN_EMAIL_START: {
+    req: { email: string; locale?: string };
+    res: { success: boolean; error?: string; code?: string };
+  };
+  SIGN_IN_EMAIL_VERIFY: {
+    req: { email: string; code: string; accountRevision?: string | null };
+    res: {
+      success: boolean;
+      error?: string;
+      code?: string;
+      accountCreated?: boolean;
+      userEmail?: string;
+      accountRevision?: string;
+    };
+  };
+  SIGN_IN_GOOGLE: {
+    req: { accountRevision?: string | null };
+    res: {
+      success: boolean;
+      error?: string;
+      code?: string;
+      accountCreated?: boolean;
+      userEmail?: string;
+      accountRevision?: string;
+    };
+  };
+  SIGN_OUT: {
+    req: { accountRevision?: string | null };
+    res: { success: boolean; error?: string; accountRevision?: string };
+  };
+  GET_DEPLOYMENT_PROFILE: {
+    req: {};
+    res: { success: boolean; profile?: DeploymentProfile; error?: string };
   };
   RESTORE_PURCHASE: {
     req: { email: string };
@@ -91,6 +125,11 @@ export const Messages: { [K in MessageType]: K } = {
   GET_PRICING: 'GET_PRICING',
   DISCONNECT_NOTION: 'DISCONNECT_NOTION',
   DELETE_ACCOUNT: 'DELETE_ACCOUNT',
+  SIGN_IN_EMAIL_START: 'SIGN_IN_EMAIL_START',
+  SIGN_IN_EMAIL_VERIFY: 'SIGN_IN_EMAIL_VERIFY',
+  SIGN_IN_GOOGLE: 'SIGN_IN_GOOGLE',
+  SIGN_OUT: 'SIGN_OUT',
+  GET_DEPLOYMENT_PROFILE: 'GET_DEPLOYMENT_PROFILE',
   RESTORE_PURCHASE: 'RESTORE_PURCHASE',
   GET_PORTAL_LINK: 'GET_PORTAL_LINK',
   CANCEL_SUBSCRIPTION: 'CANCEL_SUBSCRIPTION',

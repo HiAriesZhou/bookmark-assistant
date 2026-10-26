@@ -142,7 +142,8 @@ test.describe('Bookmark Assistant Pro extension', () => {
     const page = await openExtensionPage(context, extensionId, 'options.html');
     const labels = await getLocalizedMessages(page, [
       'nav_destinations',
-      'nav_settings',
+      'account_login',
+      'primary_navigation',
       'library_all',
     ] as const);
 
@@ -161,9 +162,13 @@ test.describe('Bookmark Assistant Pro extension', () => {
     ).toBe(true);
     await page.getByRole('button', { name: labels.nav_destinations, exact: true }).click();
     await expect(page.getByRole('heading', { name: labels.nav_destinations })).toBeVisible();
-    await page.getByRole('button', { name: labels.nav_settings, exact: true }).click();
+    // The account entry replaces the settings gear; signed out, it opens the login page.
+    await page
+      .getByRole('navigation', { name: labels.primary_navigation })
+      .getByRole('button', { name: new RegExp(labels.account_login) })
+      .click();
     await expect(
-      page.getByRole('heading', { name: labels.nav_settings, exact: true })
+      page.getByRole('heading', { level: 1, name: new RegExp(labels.account_login) })
     ).toBeVisible();
     await allBookmarksButton.click();
     await expect(page.getByRole('heading', { name: labels.library_all })).toBeVisible();
@@ -513,6 +518,27 @@ test.describe('Bookmark Assistant Pro extension', () => {
       return;
     }
     await page.evaluate(() => chrome.storage.local.remove('cached_pricing'));
+    // Billing is account-scoped, so sign in as a hosted Free fixture first.
+    await context.route('**/api/user/profile', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          profile: {
+            userId: 'fixture',
+            isPro: false,
+            plan: 'free',
+            deploymentMode: 'hosted',
+            commerceEnabled: true,
+            capabilities: { autoSync: false, batchAi: false },
+            subscriptionSource: null,
+            expiresAt: null,
+          },
+        }),
+      })
+    );
+    await page.evaluate(() => chrome.storage.local.set({ session_token: 'fixture-session' }));
     const pricingRequest = context.waitForEvent('request', {
       predicate: (request) => request.url().endsWith('/api/pricing'),
     });
@@ -524,6 +550,8 @@ test.describe('Bookmark Assistant Pro extension', () => {
       .click();
 
     expect(new URL((await pricingRequest).url()).origin).toBe(expectedApiOrigin);
+    await context.unroute('**/api/user/profile');
+    await page.evaluate(() => chrome.runtime.sendMessage({ type: 'LOGOUT' }));
   });
 
   test('account deletion discards pending profile and sync replies in the actual extension', async () => {
@@ -673,7 +701,12 @@ test.describe('Bookmark Assistant Pro extension', () => {
     context.on('request', recordProtectedRequest);
 
     await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toBeVisible();
+    const labels = await getLocalizedMessages(page, ['account_login'] as const);
+    // Signed out, the settings route is only the login page.
+    await expect(
+      page.getByRole('heading', { level: 1, name: new RegExp(labels.account_login) })
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toHaveCount(0);
     await page.waitForTimeout(100);
     context.off('request', recordProtectedRequest);
 

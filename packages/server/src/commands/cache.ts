@@ -1,5 +1,6 @@
 /** Local operator-only maintenance. This command is never mounted over HTTP. */
 import { descriptionCache } from '../services/description-cache';
+import { deleteExpiredEmailLoginCodes } from '../services/email-login-code';
 import { prisma } from '../services/userPrisma';
 
 async function main() {
@@ -9,7 +10,10 @@ async function main() {
       console.log(await descriptionCache.getStats());
       break;
     case 'cleanup':
-      console.log({ deleted: await descriptionCache.cleanExpired() });
+      console.log({
+        deleted: await descriptionCache.cleanExpired(),
+        emailLoginCodesDeleted: await deleteExpiredEmailLoginCodes(),
+      });
       break;
     case 'invalidate':
       if (!value || !URL.canParse(value)) throw new Error('Provide a valid URL to invalidate.');

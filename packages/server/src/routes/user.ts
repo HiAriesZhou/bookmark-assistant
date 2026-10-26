@@ -7,6 +7,7 @@ import { userPrisma } from '../services/userPrisma';
 import { auditLog, sanitizeError, resolveProEntitlement } from '../utils';
 import { config } from '../config';
 import { deleteAccount, disconnectNotion } from '../services/account';
+import { currentSignInMethods } from '../services/deployment-profile';
 import type { DeploymentProfile } from '@bookmark-assistant/types';
 
 const router: import('express').Router = Router();
@@ -34,6 +35,7 @@ router.get('/profile', validateSession, async (req: AuthenticatedRequest, res: R
       deploymentMode: config.selfHosted ? 'self-hosted' : 'hosted',
       commerceEnabled: config.commerceEnabled,
       capabilities: { autoSync: entitlement.isPro, batchAi: entitlement.isPro },
+      signInMethods: currentSignInMethods(),
     };
     const profile = {
       ...deployment,
@@ -43,6 +45,7 @@ router.get('/profile', validateSession, async (req: AuthenticatedRequest, res: R
       databaseCount: userData.databases?.length || 0,
       lastActivity: userData.lastActivity,
       hasNotionAccess: !!userData.notionAccessToken,
+      hasGoogleSignIn: !!userData.googleSub,
       hasNotionDatabase: !!userData.notionDatabaseId,
       workspaceName: userData.notionWorkspaceName || null,
       databaseName: userData.notionDatabaseName || null,

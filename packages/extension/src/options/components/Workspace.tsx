@@ -75,11 +75,14 @@ export function SettingsGroup({
   id,
   title,
   action,
+  plain = false,
   children,
 }: {
   id: string;
   title: string;
   action?: ReactNode;
+  /** Render children straight on the page background instead of inside the bordered list. */
+  plain?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -90,9 +93,13 @@ export function SettingsGroup({
         </h2>
         {action}
       </div>
-      <div className="divide-y divide-ui-line rounded-xl border border-ui-line bg-ui-surface">
-        {children}
-      </div>
+      {plain ? (
+        children
+      ) : (
+        <div className="divide-y divide-ui-line rounded-xl border border-ui-line bg-ui-surface">
+          {children}
+        </div>
+      )}
     </section>
   );
 }
@@ -150,5 +157,31 @@ export function ProBadge({ onClick }: { onClick?: () => void }) {
     >
       {t('pro')}
     </button>
+  );
+}
+
+/** Explains why destination-backed controls are unavailable and links to Destinations. */
+export function DestinationRequiredNotice({
+  message,
+  onOpenDestinations,
+}: {
+  message: string;
+  onOpenDestinations: () => void;
+}) {
+  const { t } = createTranslator();
+  return (
+    <div
+      role="note"
+      className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+    >
+      <p className="text-sm leading-6 text-ui-body">{message}</p>
+      <button
+        type="button"
+        onClick={onOpenDestinations}
+        className="inline-flex h-8 shrink-0 items-center justify-center self-start rounded-lg border border-ui-line bg-white px-3 text-xs font-medium text-ui-ink hover:border-ui-ink sm:self-auto"
+      >
+        {t('destination_required_action')}
+      </button>
+    </div>
   );
 }
