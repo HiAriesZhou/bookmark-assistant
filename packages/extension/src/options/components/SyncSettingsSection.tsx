@@ -3,22 +3,16 @@ import { createTranslator } from '../../utils/i18n';
 import { Switch } from '../../components/ui/switch';
 import { useAppStore } from '../store';
 import { useToast } from '../hook/useToast';
-import { DestinationRequiredNotice, ProBadge, SettingsGroup, SettingsRow } from './Workspace';
+import { DestinationRequiredNotice, SettingsGroup, SettingsRow } from './Workspace';
 
-export function SyncSettingsSection({
-  onUpgrade,
-  onOpenDestinations,
-}: {
-  onUpgrade: () => void;
-  onOpenDestinations: () => void;
-}) {
+/** Scheduled sync for Pro and self-hosted; the settings workspace hides it for hosted Free. */
+export function SyncSettingsSection({ onOpenDestinations }: { onOpenDestinations: () => void }) {
   const { t } = createTranslator();
   const { show } = useToast();
   const {
     isPro,
     isConnected,
     capabilities,
-    deploymentMode,
     autoSync,
     intervalHours,
     setAutoSync,
@@ -62,11 +56,6 @@ export function SyncSettingsSection({
     <SettingsGroup id="sync" title={t('nav_sync_settings')}>
       <SettingsRow
         label={t('auto_sync_label')}
-        badge={
-          planAllowsAutoSync || deploymentMode === 'self-hosted' ? undefined : (
-            <ProBadge onClick={onUpgrade} />
-          )
-        }
         controlAlign="end"
         control={
           <Switch

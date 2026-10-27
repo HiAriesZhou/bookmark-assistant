@@ -42,7 +42,6 @@ async function labels(page: Page) {
         string
       >,
     [
-      'nav_settings',
       'account_login',
       'account_email_label',
       'account_send_code',
@@ -133,9 +132,10 @@ test('signs in with an email code, shows the new-account hint, and signs out', a
     await page.getByLabel(text.account_code_label).fill('424242');
     await page.getByRole('button', { name: text.account_sign_in, exact: true }).click();
     // The same route switches in place from the login page to settings.
-    await expect(page.getByRole('heading', { name: text.nav_settings, exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: text.account_sign_out })).toBeVisible();
+    // The signed-in identity lives in the sidebar account entry.
     await expect(
-      page.locator('#account').getByText('person@example.com', { exact: true })
+      page.locator('aside').getByText('person@example.com', { exact: true })
     ).toBeVisible();
     await expect(page.getByText(text.account_prior_notion_hint)).toBeVisible();
     await page.getByRole('button', { name: text.account_sign_out }).click();

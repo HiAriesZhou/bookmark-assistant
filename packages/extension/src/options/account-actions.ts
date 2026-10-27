@@ -1,4 +1,4 @@
-import { Messages, sendMessage } from '../utils/message';
+import { Messages, OAUTH_MESSAGE_TIMEOUT_MS, sendMessage } from '../utils/message';
 import {
   readAccountContext,
   isAccountContextCurrent,
@@ -98,10 +98,11 @@ export async function verifyEmailSignIn(email: string, code: string) {
 
 export async function signInWithGoogleAccount() {
   const context = await readAccountContext();
-  const result = await sendMessage({
-    type: Messages.SIGN_IN_GOOGLE,
-    accountRevision: context.revision,
-  });
+  // The background waits for the user to finish Google's consent window.
+  const result = await sendMessage(
+    { type: Messages.SIGN_IN_GOOGLE, accountRevision: context.revision },
+    { timeoutMs: OAUTH_MESSAGE_TIMEOUT_MS }
+  );
   if (!result.success && !(await isAccountContextCurrent(context)))
     throw new StaleAccountStateError();
   if (!result.success) throw new Error(result.error || 'Failed to sign in with Google');

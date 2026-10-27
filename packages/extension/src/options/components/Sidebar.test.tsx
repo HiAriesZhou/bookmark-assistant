@@ -100,7 +100,10 @@ describe('account entry', () => {
       expect(nav.querySelectorAll('button')[0].textContent).toContain('nav_destinations');
       expect(nav.textContent).not.toContain('nav_settings');
       expect(entry.textContent).toContain('account_login');
-      expect(entry.textContent).toContain('account_local_no_account');
+      // The hint lives in the tooltip so the entry stays one row high.
+      // The hint is screen-reader text and a tooltip, so the entry stays one row high.
+      expect(entry.querySelector('.sr-only')?.textContent).toBe('account_local_no_account');
+      expect(entry.getAttribute('title')).toBe('account_local_no_account');
       await act(async () => entry.click());
       expect(onNavigate).toHaveBeenCalledWith('settings');
     } finally {
@@ -126,7 +129,29 @@ describe('account entry', () => {
       expect(entry.textContent).toContain('person@example.com');
       expect(entry.textContent).toContain(badge);
       expect(entry.textContent).not.toContain('account_login');
-      expect(entry.textContent?.includes('localhost')).toBe(plan.deploymentMode === 'self-hosted');
+      expect(entry.getAttribute('title')?.includes('localhost')).toBe(
+        plan.deploymentMode === 'self-hosted'
+      );
+      // Avatar, name and plan pill share a single 36px row.
+      expect(entry.className).toContain('h-9');
+    } finally {
+      await cleanupTestRoot(root, container);
+    }
+  });
+
+  it('holds the plan badge place instead of showing Free while the plan loads', async () => {
+    const { container, root, entry } = await renderEntry({
+      deploymentMode: 'hosted',
+      isSignedIn: true,
+      isPro: false,
+      isRefreshingProfile: true,
+      capabilities: undefined,
+      userEmail: 'person@example.com',
+    });
+    try {
+      expect(entry.textContent).toContain('person@example.com');
+      expect(entry.textContent).not.toContain('account_plan_free');
+      expect(entry.textContent).not.toContain('account_plan_pro');
     } finally {
       await cleanupTestRoot(root, container);
     }

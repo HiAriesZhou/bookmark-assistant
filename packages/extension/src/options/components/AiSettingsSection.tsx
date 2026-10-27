@@ -71,43 +71,9 @@ type AiSettingsSectionProps = {
   active?: boolean;
 };
 
-/** Hosted Free accounts see only the upgrade card; Pro and self-hosted get the configuration. */
+/** Pro and self-hosted AI configuration; the settings workspace hides it for hosted Free. */
 export function AiSettingsSection(props: AiSettingsSectionProps) {
-  const hostedFree = useAppStore(
-    (state) => state.deploymentMode === 'hosted' && !(state.capabilities?.batchAi ?? state.isPro)
-  );
-  return hostedFree ? (
-    <AiUpgradeCard onUpgrade={props.onUpgrade} />
-  ) : (
-    <AiConfiguration {...props} />
-  );
-}
-
-function AiUpgradeCard({ onUpgrade }: { onUpgrade: () => void }) {
-  const { t } = createTranslator();
-  const commerceEnabled = useAppStore((state) => state.commerceEnabled);
-  return (
-    <SettingsGroup id="ai" title="AI">
-      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-        <div className="flex min-w-0 gap-3">
-          <Sparkles aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-ui-subtle" />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-ui-ink">{t('ai_upgrade_title')}</p>
-            <p className="mt-0.5 text-xs leading-5 text-ui-subtle">{t('ai_upgrade_desc')}</p>
-          </div>
-        </div>
-        {commerceEnabled ? (
-          <button
-            type="button"
-            onClick={onUpgrade}
-            className="inline-flex h-9 shrink-0 items-center justify-center self-start rounded-lg bg-ui-control px-4 text-sm font-medium text-white hover:bg-ui-control-hover sm:self-auto"
-          >
-            {t('ai_upgrade_action')}
-          </button>
-        ) : null}
-      </div>
-    </SettingsGroup>
-  );
+  return <AiConfiguration {...props} />;
 }
 
 function AiConfiguration({ onUpgrade, onOpenDestinations, active = true }: AiSettingsSectionProps) {

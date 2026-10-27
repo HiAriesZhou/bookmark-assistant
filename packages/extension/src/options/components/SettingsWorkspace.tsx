@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+// GitHub's mark belongs to GitHub; it only identifies where the source is hosted (see NOTICE).
+import { Github } from 'lucide-react';
 import { createTranslator } from '../../utils/i18n';
 import { AccountSection, AccountSignIn } from './AccountSection';
-import { BillingSection } from './BillingSection';
-import { ServiceDataSection } from './ServiceDataSection';
+import { AccountActions } from './AccountActions';
+import { PLAN_UPGRADE_ID } from './PlanRows';
 import { SyncSettingsSection } from './SyncSettingsSection';
 import { AiSettingsSection } from './AiSettingsSection';
-import { DestinationsSummarySection } from './DestinationsSummarySection';
-import { useAppStore } from '../store';
+import { selectPlanPending, useAppStore } from '../store';
 import { productConfig } from '../../product-config';
 import type { RouteId } from '../router';
 
@@ -18,21 +19,24 @@ export function SettingsWorkspace({
   onNavigate: (to: RouteId) => void;
 }) {
   const { t } = createTranslator();
-  const [plansExpanded, setPlansExpanded] = useState(false);
   const {
-    fetchPricing,
     isSignedIn,
     userId,
     refreshDashboard,
     refreshEntitlements,
-    commerceEnabled,
     deploymentMode,
+    capabilities,
+    isPro,
   } = useAppStore();
+  const planPending = useAppStore(selectPlanPending);
+  // Hosted Free shows no Pro feature entries; self-hosted servers include every capability.
+  const selfHosted = deploymentMode === 'self-hosted';
+  const showAi = !planPending && (selfHosted || (capabilities?.batchAi ?? isPro));
+  const showSync = !planPending && (selfHosted || (capabilities?.autoSync ?? isPro));
   // Remote state is requested once per account, so a later sign-in never shows the previous plan.
   const accountKey = isSignedIn ? `account:${userId}` : '';
   const requestedRemoteState = useRef<string>();
   const requestedEntitlements = useRef<string>();
-  const requestedPricing = useRef(false);
   const openDestinations = () => onNavigate('destinations');
   const supportLinks = [
     {
@@ -48,13 +52,6 @@ export function SettingsWorkspace({
       url: productConfig.termsUrl,
     },
   ];
-  const sections = [
-    { id: 'account', label: t('account_title') },
-    { id: 'ai', label: 'AI' },
-    { id: 'sync', label: t('nav_sync_settings') },
-    { id: 'destinations-summary', label: t('nav_destinations') },
-  ];
-
   useEffect(() => {
     const key = accountKey || 'signed-out';
     if (requestedRemoteState.current === key) return;
@@ -72,98 +69,70 @@ export function SettingsWorkspace({
     void refreshEntitlements();
   }, [accountKey, refreshEntitlements]);
 
-  const togglePlans = (next?: boolean) => {
-    if (!commerceEnabled || deploymentMode === 'self-hosted') return;
-    const shouldExpand = next ?? !plansExpanded;
-    setPlansExpanded(shouldExpand);
-    if (shouldExpand) {
-      if (!requestedPricing.current) {
-        requestedPricing.current = true;
-        void fetchPricing();
-      }
-      window.requestAnimationFrame(() => {
-        const comparison = document.getElementById('plan-comparison');
-        comparison?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        comparison?.querySelector<HTMLElement>('h3')?.focus({ preventScroll: true });
-      });
-    }
-  };
-
-  const scrollToSection = (id: string) =>
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const showUpgrade = () =>
+    document
+      .getElementById(PLAN_UPGRADE_ID)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   return (
-    <div className="mx-auto max-w-3xl">
+    // A full-height column, so the footer sits at the bottom of the pane on short pages.
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
       {isSignedIn ? (
-        <>
-          <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-semibold tracking-[-0.04em] text-library-ink">
-              {t('nav_settings')}
-            </h1>
-            <nav
-              aria-label={t('settings_sections_label')}
-              className="flex w-full gap-0.5 overflow-x-auto rounded-lg border border-ui-line bg-ui-surface p-0.5 sm:w-auto"
-            >
-              {sections.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => scrollToSection(section.id)}
-                  className="h-7 flex-1 whitespace-nowrap rounded-md px-2.5 text-xs font-medium text-ui-subtle hover:bg-ui-surface-hover hover:text-ui-ink sm:flex-none"
-                >
-                  {section.label}
-                </button>
-              ))}
-            </nav>
-          </header>
-          <div id="settings" aria-label={t('settings_workspace_label')} className="mt-8 space-y-9">
-            <AccountSection />
-            {deploymentMode === 'self-hosted' ? (
-              <p className="text-sm text-library-muted">{t('deployment_self_hosted')}</p>
-            ) : commerceEnabled ? (
-              <BillingSection plansExpanded={plansExpanded} onTogglePlans={togglePlans} />
-            ) : null}
+        <div id="settings" aria-label={t('settings_workspace_label')} className="space-y-9">
+          <AccountSection />
+          {showAi ? (
             <AiSettingsSection
               active={active}
-              onUpgrade={() => togglePlans(true)}
+              onUpgrade={showUpgrade}
               onOpenDestinations={openDestinations}
             />
-            <SyncSettingsSection
-              onUpgrade={() => togglePlans(true)}
-              onOpenDestinations={openDestinations}
-            />
-            <DestinationsSummarySection onOpenDestinations={openDestinations} />
-            <ServiceDataSection />
-          </div>
-        </>
+          ) : null}
+          {showSync ? <SyncSettingsSection onOpenDestinations={openDestinations} /> : null}
+          <AccountActions />
+        </div>
       ) : (
-        <div id="settings" aria-label={t('settings_workspace_label')}>
-          <AccountSignIn />
+        <div
+          id="settings"
+          aria-label={t('settings_workspace_label')}
+          className="flex flex-1 flex-col"
+        >
+          <AccountSignIn onOpenDestinations={openDestinations} />
         </div>
       )}
-      <footer
-        className={`mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs text-library-muted ${isSignedIn ? '' : 'justify-center'}`}
-      >
-        <a
-          href="LICENSE.txt"
-          target="_blank"
-          rel="noreferrer"
-          className="hover:text-library-ink hover:underline"
-        >
-          GPL-3.0-only
-        </a>
-        {supportLinks
-          .filter((link) => link.url)
-          .map((link) => (
-            <button
-              key={link.label}
-              type="button"
-              onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
-              className="hover:text-library-ink hover:underline"
-            >
-              {link.label}
-            </button>
-          ))}
+      <footer className="mt-auto flex flex-col items-center gap-3 px-1 pt-10 text-xs text-library-muted">
+        {isSignedIn ? (
+          <a
+            href={productConfig.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-center leading-5 hover:text-library-ink hover:underline"
+          >
+            <Github aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            {t('footer_star_request')}
+          </a>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <a
+            href="LICENSE.txt"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-library-ink hover:underline"
+          >
+            GPL-3.0-only
+          </a>
+          {supportLinks
+            .filter((link) => link.url)
+            .map((link) => (
+              <button
+                key={link.label}
+                type="button"
+                onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                className="hover:text-library-ink hover:underline"
+              >
+                {link.label}
+              </button>
+            ))}
+        </div>
       </footer>
     </div>
   );

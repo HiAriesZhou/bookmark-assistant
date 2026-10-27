@@ -130,17 +130,9 @@
     "message": "打开选项",
     "description": "Link to open options page"
   },
-  "free": {
-    "message": "免费版",
-    "description": "Free plan label"
-  },
   "pro": {
     "message": "专业版",
     "description": "Pro plan label"
-  },
-  "upgrade": {
-    "message": "升级",
-    "description": "Button to upgrade to Pro"
   },
   "autoSyncEnabled": {
     "message": "自动同步已启用",
@@ -224,14 +216,8 @@
   "hours_unit": {
     "message": "小时"
   },
-  "subscription_free_current": {
-    "message": "免费版 · 当前方案"
-  },
   "subscription_trial_active": {
     "message": "Pro 试用 · 使用中"
-  },
-  "subscription_pro_active": {
-    "message": "Pro 方案 · 使用中"
   },
   "purchase_type_label": {
     "message": "购买类型"
@@ -260,15 +246,6 @@
   "view_plans": {
     "message": "查看方案"
   },
-  "feature_bookmarks_sync": {
-    "message": "同步书签与阅读列表"
-  },
-  "feature_local_library": {
-    "message": "本地书签管理"
-  },
-  "feature_manual_sync": {
-    "message": "随时手动同步"
-  },
   "feature_pro_interval": {
     "message": "最快每 $1 小时自动同步"
   },
@@ -277,9 +254,6 @@
   },
   "included": {
     "message": "已包含"
-  },
-  "plan_comparison_title": {
-    "message": "方案对比"
   },
   "about_version": {
     "message": "版本 $1",
@@ -309,10 +283,6 @@
     "message": "年付",
     "description": "Yearly billing"
   },
-  "best_value_badge": {
-    "message": "更划算",
-    "description": "Best value badge"
-  },
   "per_year": {
     "message": "/ 年",
     "description": "Per year suffix"
@@ -320,10 +290,6 @@
   "pro_plan_desc": {
     "message": "自动同步与批量 AI，让书签库保持有序",
     "description": "Pro plan description"
-  },
-  "free_plan_desc": {
-    "message": "本地管理与手动同步",
-    "description": "Free plan description"
   },
   "confirm_disconnect_message": {
     "message": "这会移除 Notion 工作区连接及其同步状态。套餐保留在你的账户上，已写入 Notion 的页面也会保留。",
@@ -388,10 +354,6 @@
   "next_billing_date_label": {
     "message": "下次账单日期",
     "description": "Next billing date label"
-  },
-  "no_email_linked": {
-    "message": "未关联邮箱",
-    "description": "No email linked"
   },
   "payment_activating_desc": {
     "message": "正在激活你的 Pro 方案…",
@@ -504,10 +466,6 @@
   "saving": {
     "message": "保存中…",
     "description": "Status when saving page"
-  },
-  "subscription_management_title": {
-    "message": "订阅方案",
-    "description": "Subscription management title"
   },
   "support": {
     "message": "支持",
@@ -940,24 +898,6 @@
   "subscription_local_mode_desc": {
     "message": "管理 Chrome 书签不需要账户或套餐。连接 Notion 后可同步，并可使用 Pro。"
   },
-  "service_data_title": {
-    "message": "服务端数据"
-  },
-  "service_data_delete_label": {
-    "message": "删除服务端账户"
-  },
-  "service_data_delete_desc": {
-    "message": "永久删除服务端账户及其 Notion 连接、AI Key 和 AI 记录。"
-  },
-  "service_data_delete_desc_with_email": {
-    "message": "已关联 $EMAIL$。删除后会永久移除服务端账户及其 Notion 连接、AI Key 和 AI 记录。",
-    "placeholders": {
-      "email": {
-        "content": "$1",
-        "example": "person@example.com"
-      }
-    }
-  },
   "service_data_delete_action": {
     "message": "删除账户"
   },
@@ -1003,11 +943,38 @@
   "account_sign_out": {
     "message": "退出登录"
   },
-  "account_signed_in_label": {
-    "message": "已登录"
+  "account_sign_in_methods_failed": {
+    "message": "无法连接登录服务器。请检查网络后重试。"
+  },
+  "account_sign_in_methods_retry": {
+    "message": "重试"
+  },
+  "footer_star_request": {
+    "message": "如果 Bookmark Assistant 对你有帮助，欢迎点个 Star 支持一下。"
+  },
+  "account_plan_label": {
+    "message": "套餐"
+  },
+  "plan_current": {
+    "message": "当前套餐"
+  },
+  "feature_everything_in_free": {
+    "message": "包含 Free 全部功能"
+  },
+  "free_plan_desc": {
+    "message": "本地管理与手动同步"
+  },
+  "feature_local_library": {
+    "message": "本地书签管理"
+  },
+  "feature_bookmarks_sync": {
+    "message": "同步书签与阅读列表"
+  },
+  "feature_manual_sync": {
+    "message": "随时手动同步"
   },
   "account_signed_out_notion_only": {
-    "message": "此服务器通过 Notion 登录。请在同步目的地页面连接 Notion。"
+    "message": "此服务器通过 Notion 登录，请先连接同步目标。"
   },
   "account_prior_notion_hint": {
     "message": "如果你以前通过 Notion 使用过 Bookmark Assistant，请用 Notion 账号的邮箱登录。"
@@ -1038,21 +1005,6 @@
   },
   "account_login_ai_value": {
     "message": "登录后可升级 Pro 使用 AI 整理书签。"
-  },
-  "settings_sections_label": {
-    "message": "设置分区"
-  },
-  "settings_destinations_manage": {
-    "message": "管理"
-  },
-  "ai_upgrade_title": {
-    "message": "升级 Pro，用 AI 整理书签"
-  },
-  "ai_upgrade_desc": {
-    "message": "Pro 使用你自己的服务商 Key 生成 AI 摘要和标签，并可批量处理新同步的页面。"
-  },
-  "ai_upgrade_action": {
-    "message": "升级到 Pro"
   },
   "ai_needs_destination": {
     "message": "AI 结果需要写入一个目标，请先连接。"

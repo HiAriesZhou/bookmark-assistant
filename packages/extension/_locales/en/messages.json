@@ -134,17 +134,9 @@
     "message": "Open Options",
     "description": "Link to open options page"
   },
-  "free": {
-    "message": "Free",
-    "description": "Free plan label"
-  },
   "pro": {
     "message": "Pro",
     "description": "Pro plan label"
-  },
-  "upgrade": {
-    "message": "Upgrade",
-    "description": "Button to upgrade to Pro"
   },
   "autoSyncEnabled": {
     "message": "Auto-sync enabled",
@@ -238,17 +230,9 @@
     "message": "Please connect to Notion first before upgrading.",
     "description": "Upgrade requires connection"
   },
-  "subscription_management_title": {
-    "message": "Plan",
-    "description": "Subscription management title"
-  },
   "next_billing_date_label": {
     "message": "Next Billing Date",
     "description": "Next billing date label"
-  },
-  "no_email_linked": {
-    "message": "No email linked",
-    "description": "No email linked"
   },
   "billing_monthly": {
     "message": "Monthly",
@@ -257,10 +241,6 @@
   "billing_yearly": {
     "message": "Yearly",
     "description": "Yearly billing"
-  },
-  "best_value_badge": {
-    "message": "Best Value",
-    "description": "Best value badge"
   },
   "per_month": {
     "message": "/ month",
@@ -273,10 +253,6 @@
   "pro_plan_desc": {
     "message": "Automatic sync and batch AI for an organized library",
     "description": "Pro plan description"
-  },
-  "free_plan_desc": {
-    "message": "Local management with manual sync",
-    "description": "Free plan description"
   },
   "loading": {
     "message": "Loading...",
@@ -480,14 +456,8 @@
   "hours_unit": {
     "message": "hours"
   },
-  "subscription_free_current": {
-    "message": "Free Plan · Current"
-  },
   "subscription_trial_active": {
     "message": "Pro Trial · Active"
-  },
-  "subscription_pro_active": {
-    "message": "Pro Plan · Active"
   },
   "purchase_type_label": {
     "message": "Purchase type"
@@ -516,15 +486,6 @@
   "view_plans": {
     "message": "View plans"
   },
-  "feature_bookmarks_sync": {
-    "message": "Bookmarks and Reading List sync"
-  },
-  "feature_local_library": {
-    "message": "Local bookmark management"
-  },
-  "feature_manual_sync": {
-    "message": "Sync manually whenever you need"
-  },
   "feature_pro_interval": {
     "message": "Automatic sync from every $1 hours"
   },
@@ -533,9 +494,6 @@
   },
   "included": {
     "message": "Included"
-  },
-  "plan_comparison_title": {
-    "message": "Plan comparison"
   },
   "destination_not_configured": {
     "message": "Not configured"
@@ -948,24 +906,6 @@
   "subscription_local_mode_desc": {
     "message": "Managing Chrome bookmarks needs no account or plan. Connect Notion to sync and to use Pro."
   },
-  "service_data_title": {
-    "message": "Service data"
-  },
-  "service_data_delete_label": {
-    "message": "Delete service account"
-  },
-  "service_data_delete_desc": {
-    "message": "Permanently removes the server-side account with its Notion connection, AI key and AI records."
-  },
-  "service_data_delete_desc_with_email": {
-    "message": "Linked to $EMAIL$. Deleting permanently removes the server-side account with its Notion connection, AI key and AI records.",
-    "placeholders": {
-      "email": {
-        "content": "$1",
-        "example": "person@example.com"
-      }
-    }
-  },
   "service_data_delete_action": {
     "message": "Delete account"
   },
@@ -1011,8 +951,35 @@
   "account_sign_out": {
     "message": "Sign out"
   },
-  "account_signed_in_label": {
-    "message": "Signed in"
+  "account_sign_in_methods_failed": {
+    "message": "Couldn't reach the sign-in server. Check your connection and try again."
+  },
+  "account_sign_in_methods_retry": {
+    "message": "Try again"
+  },
+  "footer_star_request": {
+    "message": "If Bookmark Assistant helps you, a star would mean a lot."
+  },
+  "account_plan_label": {
+    "message": "Plan"
+  },
+  "plan_current": {
+    "message": "Current plan"
+  },
+  "feature_everything_in_free": {
+    "message": "Everything in Free"
+  },
+  "free_plan_desc": {
+    "message": "Local management with manual sync"
+  },
+  "feature_local_library": {
+    "message": "Local bookmark management"
+  },
+  "feature_bookmarks_sync": {
+    "message": "Bookmarks and Reading List sync"
+  },
+  "feature_manual_sync": {
+    "message": "Sync manually whenever you need"
   },
   "account_signed_out_notion_only": {
     "message": "This server signs in through Notion. Connect Notion from the destination page."
@@ -1046,21 +1013,6 @@
   },
   "account_login_ai_value": {
     "message": "Sign in to upgrade to Pro and organize bookmarks with AI."
-  },
-  "settings_sections_label": {
-    "message": "Settings sections"
-  },
-  "settings_destinations_manage": {
-    "message": "Manage"
-  },
-  "ai_upgrade_title": {
-    "message": "Organize bookmarks with AI on Pro"
-  },
-  "ai_upgrade_desc": {
-    "message": "Pro adds AI summaries and tags with your own provider key, including batch processing for newly synced pages."
-  },
-  "ai_upgrade_action": {
-    "message": "Upgrade to Pro"
   },
   "ai_needs_destination": {
     "message": "AI results need a destination to write to. Connect one first."

@@ -36,7 +36,7 @@ describe('SyncSettingsSection', () => {
     await act(async () =>
       root.render(
         <ToastProvider>
-          <SyncSettingsSection onUpgrade={vi.fn()} onOpenDestinations={onOpenDestinations} />
+          <SyncSettingsSection onOpenDestinations={onOpenDestinations} />
         </ToastProvider>
       )
     );
@@ -63,12 +63,5 @@ describe('SyncSettingsSection', () => {
     await render({ isPro: true, isConnected: true });
     expect(autoSyncSwitch()?.disabled).toBe(false);
     expect(container.querySelector('[role="note"]')).toBeNull();
-  });
-
-  it('keeps the Pro badge instead of the destination hint for Free', async () => {
-    await render({ isPro: false, isConnected: false });
-    expect(autoSyncSwitch()?.disabled).toBe(true);
-    expect(container.querySelector('[role="note"]')).toBeNull();
-    expect(container.textContent).toContain('pro');
   });
 });

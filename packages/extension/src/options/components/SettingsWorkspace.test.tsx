@@ -9,20 +9,12 @@ vi.mock('./AccountSection', () => ({
   AccountSection: () => <section>Account section</section>,
   AccountSignIn: () => <section>Login page</section>,
 }));
-vi.mock('./BillingSection', () => ({ BillingSection: () => <section>Billing section</section> }));
 vi.mock('./AiSettingsSection', () => ({ AiSettingsSection: () => <section>AI section</section> }));
 vi.mock('./SyncSettingsSection', () => ({
   SyncSettingsSection: () => <section>Sync section</section>,
 }));
-vi.mock('./ServiceDataSection', () => ({
-  ServiceDataSection: () => <section>Service data section</section>,
-}));
-vi.mock('./DestinationsSummarySection', () => ({
-  DestinationsSummarySection: ({ onOpenDestinations }: { onOpenDestinations: () => void }) => (
-    <button type="button" onClick={onOpenDestinations}>
-      Destinations summary
-    </button>
-  ),
+vi.mock('./AccountActions', () => ({
+  AccountActions: () => <section>Account actions</section>,
 }));
 
 describe('SettingsWorkspace', () => {
@@ -66,45 +58,72 @@ describe('SettingsWorkspace', () => {
   it('renders only the login page while signed out', async () => {
     await render();
     expect(container.textContent).toContain('Login page');
-    for (const hidden of [
-      'Account section',
-      'Billing section',
-      'AI section',
-      'Sync section',
-      'Destinations summary',
-      'Service data section',
-      'settings_sections_label',
-    ]) {
+    for (const hidden of ['Account section', 'AI section', 'Sync section', 'Account actions']) {
       expect(container.textContent).not.toContain(hidden);
     }
     expect(container.querySelector('nav')).toBeNull();
     expect(refreshEntitlements).not.toHaveBeenCalled();
   });
 
-  it('orders signed-in sections from account to the danger zone', async () => {
-    useAppStore.setState({ isSignedIn: true, userId: 'user-a' });
+  it('orders Pro sections from account to the account actions without a title or section nav', async () => {
+    useAppStore.setState({
+      isSignedIn: true,
+      userId: 'user-a',
+      isPro: true,
+      capabilities: { autoSync: true, batchAi: true },
+    });
     await render();
     const text = container.textContent ?? '';
-    const order = [
-      'Account section',
-      'Billing section',
-      'AI section',
-      'Sync section',
-      'Destinations summary',
-      'Service data section',
-    ].map((label) => text.indexOf(label));
+    const order = ['Account section', 'AI section', 'Sync section', 'Account actions'].map(
+      (label) => text.indexOf(label)
+    );
     expect(order.every((index) => index >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(text).not.toContain('Login page');
-    expect(
-      Array.from(container.querySelectorAll('nav button')).map((button) => button.textContent)
-    ).toEqual(['account_title', 'AI', 'nav_sync_settings', 'nav_destinations']);
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('nav')).toBeNull();
+  });
 
-    const summary = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Destinations summary'
+  it.each([
+    ['hosted Free', { capabilities: { autoSync: false, batchAi: false } }],
+    // The plan is unknown right after sign-in, so Pro entries wait instead of flashing.
+    ['loading', { capabilities: undefined, isRefreshingProfile: true }],
+  ])('shows only the account group and account actions for %s', async (_, plan) => {
+    useAppStore.setState({ isSignedIn: true, userId: 'user-a', isPro: false, ...plan });
+    await render();
+    const text = container.textContent ?? '';
+    for (const shown of ['Account section', 'Account actions']) expect(text).toContain(shown);
+    expect(text).not.toContain('AI section');
+    expect(text).not.toContain('Sync section');
+  });
+
+  it('asks for a GitHub star in the footer only after sign-in', async () => {
+    await render();
+    expect(container.textContent).not.toContain('footer_star_request');
+    useAppStore.setState({ isSignedIn: true, userId: 'user-a' });
+    await render();
+    const footer = container.querySelector('footer');
+    // The whole sentence is the link, led by the GitHub mark.
+    const star = Array.from(footer?.querySelectorAll('a') ?? []).find(
+      (link) => link.textContent === 'footer_star_request'
     );
-    await act(async () => summary?.click());
-    expect(onNavigate).toHaveBeenCalledWith('destinations');
+    expect(star?.getAttribute('href')).toMatch(/^https:\/\//);
+    expect(star?.getAttribute('rel')).toBe('noreferrer');
+    expect(star?.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    // Sections never contain the legal and support links.
+    expect(container.querySelector('#settings')?.textContent).not.toContain('GPL-3.0-only');
+  });
+
+  it('shows every capability on self-hosted servers', async () => {
+    useAppStore.setState({
+      isSignedIn: true,
+      userId: 'user-a',
+      deploymentMode: 'self-hosted',
+      capabilities: { autoSync: true, batchAi: true },
+    });
+    await render();
+    expect(container.textContent).toContain('AI section');
+    expect(container.textContent).toContain('Sync section');
   });
 
   it('switches in place after sign-in and requests entitlements for every new account', async () => {
@@ -112,7 +131,7 @@ describe('SettingsWorkspace', () => {
     expect(container.textContent).toContain('Login page');
 
     await setAccount({ isSignedIn: true, userId: 'user-a' });
-    expect(container.textContent).toContain('AI section');
+    expect(container.textContent).toContain('Account section');
     expect(refreshEntitlements).toHaveBeenCalledTimes(1);
 
     await render();

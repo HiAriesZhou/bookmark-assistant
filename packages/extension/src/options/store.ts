@@ -165,7 +165,8 @@ export type AppState = {
   saveSyncSettings: (nextIntervalHours?: number) => Promise<void>;
   refreshEntitlements: (forceRefresh?: boolean) => Promise<void>;
   refreshConnection: () => Promise<void>;
-  loadSignInMethods: () => Promise<void>;
+  /** Resolves false when the server could not be reached, so the login page can offer a retry. */
+  loadSignInMethods: () => Promise<boolean>;
 
   // Config
   pricing: { monthly: number; yearly: number };
@@ -173,6 +174,16 @@ export type AppState = {
   getEffectiveLimits: () => { minIntervalHours: number };
   getPricing: () => { monthly: number; yearly: number };
 };
+
+/**
+ * True while a signed-in account's plan is still unknown: the server profile has
+ * not arrived yet, so plan-gated sections must not fall back to the Free view.
+ */
+export function selectPlanPending(
+  state: Pick<AppState, 'isSignedIn' | 'capabilities' | 'isRefreshingProfile'>
+): boolean {
+  return state.isSignedIn && state.capabilities === undefined && state.isRefreshingProfile;
+}
 
 // Zustand store
 export const useAppStore = create<AppState>((set, get) => ({
@@ -534,17 +545,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadSignInMethods: async () => {
-    if (get().isSignedIn) return;
+    if (get().isSignedIn) return true;
     try {
       const response = await sendMessage({ type: Messages.GET_DEPLOYMENT_PROFILE });
-      if (get().isSignedIn || !response.success || !response.profile) return;
+      if (get().isSignedIn) return true;
+      if (!response.success || !response.profile) return false;
       set({
         signInMethods: [...response.profile.signInMethods],
         deploymentMode: response.profile.deploymentMode,
         commerceEnabled: response.profile.commerceEnabled,
       });
+      return true;
     } catch (error) {
       console.warn('[Account] Failed to load sign-in methods:', error);
+      return false;
     }
   },
 
@@ -581,11 +595,16 @@ async function handleAccountStateChange(changes: { [key: string]: chrome.storage
     dashboardRefreshRequest = null;
   }
   const shouldClearDashboard = accountChanged || isConnected !== state.isConnected;
+  const signedInNow = !!sessionChange && !sessionChange.oldValue && !!sessionChange.newValue;
+  const refreshesPlan = signedInNow || (isSignedIn && accountChanged);
 
   useAppStore.setState({
     isSignedIn,
     isConnected,
     ...(accountChanged ? { isRefreshingProfile: false, isDashboardLoading: false } : {}),
+    // Mark the new account's plan as loading in the same update that signs it in, so
+    // no frame renders the Free view before the server profile arrives.
+    ...(refreshesPlan ? { isRefreshingProfile: true, capabilities: undefined } : {}),
     ...(!isSignedIn
       ? {
           ...defaultDeployment,
@@ -612,8 +631,7 @@ async function handleAccountStateChange(changes: { [key: string]: chrome.storage
   });
   if (shouldClearDashboard) void chrome.storage.local.remove(CACHE_KEYS.dashboard_snapshot);
 
-  const signedInNow = !!sessionChange && !sessionChange.oldValue && !!sessionChange.newValue;
-  if (signedInNow || (isSignedIn && accountChanged)) {
+  if (refreshesPlan) {
     void useAppStore.getState().refreshEntitlements(true);
   }
 }

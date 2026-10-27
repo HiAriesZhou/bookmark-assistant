@@ -140,7 +140,8 @@ export const Messages: { [K in MessageType]: K } = {
   GET_DASHBOARD_STATE: 'GET_DASHBOARD_STATE',
 };
 
-// Notion OAuth can include template duplication and server-side database resolution.
+// Notion OAuth can include template duplication and server-side database resolution;
+// Google sign-in waits for the user in the consent window.
 export const OAUTH_MESSAGE_TIMEOUT_MS = 300_000;
 // Base Notion capture is independent from AI and should acknowledge quickly.
 export const SAVE_CURRENT_PAGE_MESSAGE_TIMEOUT_MS = 120_000;

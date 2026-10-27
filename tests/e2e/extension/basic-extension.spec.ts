@@ -627,7 +627,7 @@ test.describe('Bookmark Assistant Pro extension', () => {
         ).id;
       }, revision);
       await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-      await expect(page.locator('#service-data')).toBeVisible();
+      await expect(page.locator('#account-actions')).toBeVisible();
       const profileReply = page.evaluate(() =>
         chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true })
       );
@@ -639,14 +639,14 @@ test.describe('Bookmark Assistant Pro extension', () => {
       await Promise.all([profileGate.ready, syncGate.ready]);
       const labels = await getLocalizedMessages(page, ['service_data_delete_action'] as const);
       await page
-        .locator('#service-data')
+        .locator('#account-actions')
         .getByRole('button', { name: labels.service_data_delete_action })
         .click();
       await page
         .getByRole('alertdialog')
         .getByRole('button', { name: labels.service_data_delete_action })
         .click();
-      await expect(page.locator('#service-data')).toHaveCount(0);
+      await expect(page.locator('#account-actions')).toHaveCount(0);
       const keys = [
         'session_token',
         'is_pro',
@@ -674,7 +674,7 @@ test.describe('Bookmark Assistant Pro extension', () => {
       syncGate.release();
       expect((await profileReply).success).toBe(false);
       expect((await syncReply).success).toBe(false);
-      await expect(page.locator('#service-data')).toHaveCount(0);
+      await expect(page.locator('#account-actions')).toHaveCount(0);
       expect(await page.evaluate((keys) => chrome.storage.local.get(keys), keys)).toEqual(cleared);
     } finally {
       profileGate.release();
