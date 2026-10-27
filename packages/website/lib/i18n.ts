@@ -31,9 +31,10 @@ export function isWebsiteItemVisible(status: 'released' | 'prepared', copy: Webs
   return status === 'released' || isAiPublished(copy);
 }
 
-export function localePath(locale: WebsiteLocale, page: 'home' | 'privacy'): string {
-  if (locale === 'zh-CN') return page === 'home' ? '/zh-CN' : '/zh-CN/privacy';
-  return page === 'home' ? '/' : '/privacy';
+export function localePath(locale: WebsiteLocale, page: 'home' | 'privacy' | 'signin'): string {
+  const prefix = locale === 'zh-CN' ? '/zh-CN' : '';
+  if (page === 'home') return prefix || '/';
+  return `${prefix}/${page}`;
 }
 
 export function alternateLocale(locale: WebsiteLocale): WebsiteLocale {

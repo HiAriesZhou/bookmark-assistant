@@ -86,6 +86,21 @@
   transform: translateY(0) rotate(9deg);
 }
 
+/* Accounts live in the extension; the link explains where to sign in. */
+.editorial-signin {
+  display: inline-flex;
+  height: 44px;
+  align-items: center;
+  color: #596254;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+.editorial-signin:hover {
+  color: #24382b;
+}
+
 .editorial-install {
   display: inline-flex;
   width: 112px;

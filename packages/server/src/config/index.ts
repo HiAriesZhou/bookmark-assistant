@@ -2,6 +2,7 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
+import { resolvePaddleCheckoutUrl } from '../services/paddle-checkout-url';
 
 // Capture the runtime-selected environment before local dotenv files are loaded.
 // A developer's `.env.local` must not downgrade an explicit production process.
@@ -264,6 +265,11 @@ export const config = {
     apiKey: process.env.PADDLE_API_KEY || '',
     environment: process.env.PADDLE_ENVIRONMENT || 'sandbox',
     webhookSecret: process.env.PADDLE_WEBHOOK_SECRET || '',
+    // Page that opens Paddle checkouts; see resolvePaddleCheckoutUrl.
+    checkoutUrl: resolvePaddleCheckoutUrl({
+      checkoutUrl: process.env.PADDLE_CHECKOUT_URL,
+      websiteUrl: process.env.WEBSITE_URL?.split(',')[0],
+    }),
     priceIds: {
       proMonthly: process.env.PADDLE_PRO_MONTHLY_PRICE_ID || '',
       proYearly:

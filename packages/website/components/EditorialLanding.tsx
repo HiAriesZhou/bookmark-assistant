@@ -18,6 +18,7 @@ import {
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Logo } from '@/components/icons/Logo';
 import type { WebsiteCopy, WebsiteLocale } from '@/lib/i18n';
+import { localePath } from '@/lib/i18n';
 import {
   CHROME_WEB_STORE_URL,
   PRODUCT_HUNT_URL,
@@ -482,6 +483,9 @@ export function EditorialLanding({ copy, locale }: { copy: WebsiteCopy; locale: 
               </a>
             ))}
           </nav>
+          <a className="editorial-signin" href={localePath(locale, 'signin')}>
+            {t('Log in', '登录')}
+          </a>
           <InstallLink label={copy.ctas.primary} navigation />
         </div>
       </header>

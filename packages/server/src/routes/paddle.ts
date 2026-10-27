@@ -92,6 +92,8 @@ async function createCheckout(req: Request, res: Response) {
       ...(email && {
         customerEmail: email,
       }),
+      // Without it Paddle uses the dashboard's default payment link, which must also run Paddle.js.
+      ...(config.paddle.checkoutUrl && { checkout: { url: config.paddle.checkoutUrl } }),
     });
 
     // Get the checkout URL from the transaction (hosted checkout page)
