@@ -52,6 +52,8 @@ describe('AccountActions', () => {
 
     await act(async () => button('service_data_delete_action')?.click());
     expect(document.body.textContent).toContain('service_data_delete_confirm_message');
+    // The irreversible dialog names the account being deleted.
+    expect(document.body.textContent).toContain('service_data_delete_confirm_account');
   });
 
   it('signs out from the bottom action', async () => {

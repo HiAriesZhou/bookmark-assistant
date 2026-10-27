@@ -1,4 +1,3 @@
-import { isStaleAccountStateError } from '../../utils/account-state';
 import { useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { deleteServiceAccount, signOutAccount } from '../account-actions';
@@ -14,30 +13,23 @@ import { useAccountAction } from '../hook/useAccountAction';
 export function AccountActions() {
   const { t } = createTranslator();
   const { show } = useToast();
-  const { isSignedIn, refreshDashboard } = useAppStore();
+  const { isSignedIn, userEmail, refreshDashboard } = useAppStore();
   const { busy: signingOut, run } = useAccountAction();
+  const { busy: deleting, run: runDelete } = useAccountAction();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   if (!isSignedIn) return null;
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    try {
+  const handleDelete = () =>
+    runDelete(async () => {
       await deleteServiceAccount(refreshDashboard);
       setConfirmOpen(false);
       show({ variant: 'success', title: t('service_data_deleted_title') });
-    } catch (error) {
-      if (isStaleAccountStateError(error)) return;
-      show({
-        variant: 'error',
-        title: t('error'),
-        description: error instanceof Error ? error.message : String(error),
-      });
-    } finally {
-      setDeleting(false);
-    }
-  };
+    });
+  // Deletion cannot be undone, so the dialog names the account it removes.
+  const deleteMessage = userEmail
+    ? `${t('service_data_delete_confirm_account', [userEmail])} ${t('service_data_delete_confirm_message')}`
+    : t('service_data_delete_confirm_message');
 
   return (
     <section
@@ -64,7 +56,7 @@ export function AccountActions() {
       <ConfirmDialog
         open={confirmOpen}
         title={t('service_data_delete_confirm_title')}
-        description={t('service_data_delete_confirm_message')}
+        description={deleteMessage}
         confirmLabel={t('service_data_delete_action')}
         cancelLabel={t('action_cancel')}
         busy={deleting}

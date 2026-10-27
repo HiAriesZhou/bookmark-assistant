@@ -355,14 +355,6 @@
     "message": "下次账单日期",
     "description": "Next billing date label"
   },
-  "payment_activating_desc": {
-    "message": "正在激活你的 Pro 方案…",
-    "description": "Payment activating description"
-  },
-  "payment_success_title": {
-    "message": "付款成功！",
-    "description": "Payment success title"
-  },
   "per_month": {
     "message": "/ 月",
     "description": "Per month suffix"
@@ -892,12 +884,6 @@
   "deployment_self_hosted": {
     "message": "自托管 · 全部功能可用"
   },
-  "subscription_local_mode": {
-    "message": "本地模式"
-  },
-  "subscription_local_mode_desc": {
-    "message": "管理 Chrome 书签不需要账户或套餐。连接 Notion 后可同步，并可使用 Pro。"
-  },
   "service_data_delete_action": {
     "message": "删除账户"
   },
@@ -972,6 +958,9 @@
   },
   "feature_manual_sync": {
     "message": "随时手动同步"
+  },
+  "service_data_delete_confirm_account": {
+    "message": "账户：$1。"
   },
   "account_signed_out_notion_only": {
     "message": "此服务器通过 Notion 登录，请先连接同步目标。"

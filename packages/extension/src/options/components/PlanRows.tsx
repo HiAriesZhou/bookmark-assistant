@@ -10,6 +10,7 @@ import {
   type SubscriptionKind,
 } from '../subscription-view-model';
 import { useToast } from '../hook/useToast';
+import { useUpgradeActivation } from '../hook/useUpgradeActivation';
 import { SettingsRow } from './Workspace';
 
 // The AI section links here when a Free account reaches a Pro feature.
@@ -28,10 +29,9 @@ function formatCurrency(value: number) {
 
 function planTitle(
   kind: SubscriptionKind,
-  t: (key: string, substitutions?: string | string[]) => string,
-  localMode: boolean
+  t: (key: string, substitutions?: string | string[]) => string
 ) {
-  if (kind === 'free') return t(localMode ? 'subscription_local_mode' : 'account_plan_free');
+  if (kind === 'free') return t('account_plan_free');
   if (kind === 'trial') return t('subscription_trial_active');
   if (kind === 'loading') return t('loading');
   return t('account_plan_pro');
@@ -56,14 +56,12 @@ function HostedPlanRows() {
   const {
     plan,
     isPro,
-    isSignedIn,
     userId,
     userEmail,
     purchaseType,
     subscriptionSource,
     subscriptionExpiresAt,
     isOptionsInitialized,
-    refreshEntitlements,
     getPricing,
     fetchPricing,
   } = useAppStore();
@@ -100,35 +98,7 @@ function HostedPlanRows() {
   useEffect(() => {
     if (offersUpgrade) void fetchPricing();
   }, [offersUpgrade, fetchPricing]);
-  // No service account yet: local management needs no plan, so show local mode, not Free.
-  const localMode = !isSignedIn && subscription.kind === 'free';
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('upgraded') !== 'true') return;
-    window.history.replaceState({}, '', window.location.pathname);
-    show({
-      title: t('payment_success_title'),
-      description: t('payment_activating_desc'),
-      variant: 'success',
-      duration: 5000,
-    });
-
-    const checkEntitlements = async (retries = 3, delay = 2000) => {
-      await refreshEntitlements(true);
-      if (!useAppStore.getState().isPro && retries > 0) {
-        window.setTimeout(() => void checkEntitlements(retries - 1, delay * 1.5), delay);
-      } else if (useAppStore.getState().isPro) {
-        show({
-          title: t('pro_activated_title'),
-          description: t('pro_activated_desc'),
-          variant: 'success',
-          duration: 3000,
-        });
-      }
-    };
-    void checkEntitlements();
-  }, [refreshEntitlements, show, t]);
+  const { expectUpgrade } = useUpgradeActivation();
 
   useEffect(() => {
     if (!['paddle-monthly', 'paddle-yearly'].includes(subscription.kind)) {
@@ -163,6 +133,8 @@ function HostedPlanRows() {
         userEmail: userEmail || undefined,
         successUrl: `${import.meta.env.VITE_WEBSITE_URL || ''}/success`,
       });
+      // Checkout runs in another tab; the plan refreshes when the user comes back.
+      expectUpgrade();
     } catch (error) {
       show({
         variant: 'error',
@@ -204,15 +176,11 @@ function HostedPlanRows() {
   };
 
   const fields: Array<[string, string]> = [];
-  if (subscription.kind === 'paddle-monthly') {
-    fields.push([t('purchase_type_label'), t('billing_monthly')]);
-    if (nextBillingDate) {
-      fields.push([t('next_billing_date_label'), formatDate(nextBillingDate)]);
-    } else if (!hasLoadedBillingInfo) {
-      fields.push([t('next_billing_date_label'), t('loading')]);
-    }
-  } else if (subscription.kind === 'paddle-yearly') {
-    fields.push([t('purchase_type_label'), t('billing_yearly')]);
+  if (subscription.kind === 'paddle-monthly' || subscription.kind === 'paddle-yearly') {
+    fields.push([
+      t('purchase_type_label'),
+      t(subscription.kind === 'paddle-monthly' ? 'billing_monthly' : 'billing_yearly'),
+    ]);
     if (nextBillingDate) {
       fields.push([t('next_billing_date_label'), formatDate(nextBillingDate)]);
     } else if (!hasLoadedBillingInfo) {
@@ -232,14 +200,13 @@ function HostedPlanRows() {
       {/* The plan reads like the billing fields below it: a label and the account's value. */}
       <SettingsRow
         label={t('account_plan_label')}
-        description={localMode ? t('subscription_local_mode_desc') : undefined}
         controlAlign="end"
         control={
           <div className="flex items-center gap-3">
             <p
               className={`text-sm ${subscription.kind === 'loading' ? 'text-ui-subtle' : 'font-medium text-ui-ink'}`}
             >
-              {planTitle(subscription.kind, t, localMode)}
+              {planTitle(subscription.kind, t)}
             </p>
             {action === 'manage-portal' ? (
               <button

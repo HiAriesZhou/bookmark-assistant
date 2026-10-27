@@ -6,6 +6,9 @@ import { ToastProvider } from '../hook/ToastProvider';
 import { useAppStore } from '../store';
 import { PlanRows } from './PlanRows';
 
+const openPaddleCheckout = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock('../../lib/paddle', () => ({ openPaddleCheckout }));
+
 describe('PlanRows', () => {
   let container: HTMLDivElement;
   let root: TestRoot;
@@ -79,21 +82,6 @@ describe('PlanRows', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('shows local mode instead of Free before a service account exists', async () => {
-    useAppStore.setState({ isSignedIn: false });
-    await act(async () =>
-      root.render(
-        <ToastProvider>
-          <PlanRows />
-        </ToastProvider>
-      )
-    );
-    // The plan row's value, not the comparison below it, says local mode.
-    const planRow = container.firstElementChild;
-    expect(planRow?.textContent).toContain('subscription_local_mode');
-    expect(planRow?.textContent).not.toContain('account_plan_free');
-  });
-
   it('shows the Free plan for a service account without Pro', async () => {
     useAppStore.setState({ isSignedIn: true, userEmail: 'person@example.com' });
     await act(async () =>
@@ -152,6 +140,32 @@ describe('PlanRows', () => {
     expect(container.firstElementChild?.textContent).toContain('account_plan_free');
     expect(container.textContent).not.toContain('loading');
     expect(container.querySelector('#plan-upgrade')).not.toBeNull();
+  });
+
+  it('refreshes the plan when the user returns from checkout', async () => {
+    const refreshEntitlements = vi.fn(async () => undefined);
+    useAppStore.setState({
+      isSignedIn: true,
+      userId: 'user-a',
+      capabilities: { autoSync: false, batchAi: false },
+      refreshEntitlements,
+    });
+    await act(async () =>
+      root.render(
+        <ToastProvider>
+          <PlanRows />
+        </ToastProvider>
+      )
+    );
+    const upgrade = [...container.querySelectorAll('button')].find(
+      (button) => button.textContent === 'action_upgrade_pro'
+    );
+    await act(async () => upgrade?.click());
+    expect(openPaddleCheckout).toHaveBeenCalledOnce();
+    expect(refreshEntitlements).not.toHaveBeenCalled();
+
+    await act(async () => window.dispatchEvent(new Event('focus')));
+    expect(refreshEntitlements).toHaveBeenCalledWith(true);
   });
 
   it('shows no Pro offer to Pro accounts', async () => {

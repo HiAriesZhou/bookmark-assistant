@@ -210,14 +210,6 @@
     "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
     "description": "Confirm disconnect message"
   },
-  "payment_success_title": {
-    "message": "Payment Successful!",
-    "description": "Payment success title"
-  },
-  "payment_activating_desc": {
-    "message": "Activating your Pro plan...",
-    "description": "Payment activating description"
-  },
   "pro_activated_title": {
     "message": "Pro Activated",
     "description": "Pro activated title"
@@ -900,12 +892,6 @@
   "deployment_self_hosted": {
     "message": "Self-hosted · All features available"
   },
-  "subscription_local_mode": {
-    "message": "Local mode"
-  },
-  "subscription_local_mode_desc": {
-    "message": "Managing Chrome bookmarks needs no account or plan. Connect Notion to sync and to use Pro."
-  },
   "service_data_delete_action": {
     "message": "Delete account"
   },
@@ -980,6 +966,9 @@
   },
   "feature_manual_sync": {
     "message": "Sync manually whenever you need"
+  },
+  "service_data_delete_confirm_account": {
+    "message": "Account: $1."
   },
   "account_signed_out_notion_only": {
     "message": "This server signs in through Notion. Connect Notion from the destination page."

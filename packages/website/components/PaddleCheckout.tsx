@@ -1,6 +1,11 @@
 'use client';
 
-import { CheckoutEventNames, initializePaddle } from '@paddle/paddle-js';
+import {
+  CheckoutEventNames,
+  initializePaddle,
+  type Paddle,
+  type PaddleEventData,
+} from '@paddle/paddle-js';
 import { CreditCard, LoaderCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PRODUCT_NAME, SUPPORT_EMAIL } from '@/lib/product-links';
@@ -8,8 +13,10 @@ import { STANDALONE_BODY, STANDALONE_PRIMARY, StandalonePage } from '@/component
 
 type Status = 'opening' | 'open' | 'missing' | 'unavailable' | 'closed';
 
-// Paddle.js refuses a second initialization, and React may run effects twice in development.
-let initializing = false;
+// Paddle.js initializes once per page session; later mounts reuse it and route events to
+// the mounted page through this listener.
+let paddleReady: Promise<Paddle | undefined> | undefined;
+let onCheckoutEvent: (event: PaddleEventData) => void = () => undefined;
 
 /**
  * Landing page for Paddle checkout links. The server creates the transaction and Paddle sends
@@ -20,7 +27,8 @@ export function PaddleCheckout() {
   const [status, setStatus] = useState<Status>('opening');
 
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).get('_ptxn')) {
+    const transactionId = new URLSearchParams(window.location.search).get('_ptxn');
+    if (!transactionId) {
       setStatus('missing');
       return;
     }
@@ -29,23 +37,30 @@ export function PaddleCheckout() {
       setStatus('unavailable');
       return;
     }
-    if (initializing) return;
-    initializing = true;
-    initializePaddle({
+    let loaded = false;
+    onCheckoutEvent = (event) => {
+      if (event.name === CheckoutEventNames.CHECKOUT_LOADED) {
+        loaded = true;
+        setStatus('open');
+      }
+      if (event.name === CheckoutEventNames.CHECKOUT_COMPLETED) window.location.assign('/success');
+      if (event.name === CheckoutEventNames.CHECKOUT_CLOSED) setStatus('closed');
+      // Errors inside an open checkout are shown by Paddle; only one that never loaded is fatal.
+      if (event.name === CheckoutEventNames.CHECKOUT_ERROR && !loaded) setStatus('unavailable');
+    };
+    const firstLoad = !paddleReady;
+    paddleReady ??= initializePaddle({
       token,
       environment:
         process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'production',
       checkout: { settings: { variant: 'one-page' } },
-      eventCallback: (event) => {
-        if (event.name === CheckoutEventNames.CHECKOUT_LOADED) setStatus('open');
-        if (event.name === CheckoutEventNames.CHECKOUT_COMPLETED)
-          window.location.assign('/success');
-        if (event.name === CheckoutEventNames.CHECKOUT_CLOSED) setStatus('closed');
-        if (event.name === CheckoutEventNames.CHECKOUT_ERROR) setStatus('unavailable');
-      },
-    })
+      eventCallback: (event) => onCheckoutEvent(event),
+    });
+    paddleReady
       .then((paddle) => {
-        if (!paddle) setStatus('unavailable');
+        if (!paddle) return setStatus('unavailable');
+        // Paddle.js opens ?_ptxn= only when it first initializes; later visits open it here.
+        if (!firstLoad) paddle.Checkout.open({ transactionId });
       })
       .catch(() => setStatus('unavailable'));
   }, []);

@@ -27,7 +27,7 @@ export default function SuccessPage() {
     >
       <p className={STANDALONE_BODY}>
         {COMMERCE_ENABLED
-          ? 'Open the extension and refresh your plan in Settings. Pro appears after Paddle finishes processing the purchase.'
+          ? 'Go back to the Bookmark Assistant settings tab. It switches to Pro on its own once Paddle confirms the payment. If you closed it, reopen Settings and press refresh next to Account.'
           : 'Self-hosted deployments include all features. Open your local bookmark library to continue.'}
       </p>
       <a

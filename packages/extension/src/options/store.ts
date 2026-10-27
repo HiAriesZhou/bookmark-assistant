@@ -441,9 +441,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   refreshEntitlements: async (forceRefresh = false) => {
-    const context = await readAccountContext();
-    if (!context.token) return;
     const requestId = ++entitlementRefreshId;
+    // A sign-in marks the plan as loading first, so every early exit must clear the flag.
+    const stopLoading = () => {
+      if (requestId === entitlementRefreshId) set({ isRefreshingProfile: false });
+    };
+    let context: Awaited<ReturnType<typeof readAccountContext>>;
+    try {
+      context = await readAccountContext();
+    } catch (error) {
+      console.error('Failed to read account state:', error);
+      stopLoading();
+      return;
+    }
+    if (!context.token) {
+      stopLoading();
+      return;
+    }
     set({ isRefreshingProfile: true });
     const isCurrent = async () =>
       (await isAccountContextCurrent(context)) && requestId === entitlementRefreshId;
