@@ -962,6 +962,12 @@
   "service_data_delete_confirm_account": {
     "message": "账户：$1。"
   },
+  "checkout_opening": {
+    "message": "正在打开安全结账…"
+  },
+  "checkout_frame_title": {
+    "message": "Paddle 结账"
+  },
   "account_signed_out_notion_only": {
     "message": "此服务器通过 Notion 登录，请先连接同步目标。"
   },

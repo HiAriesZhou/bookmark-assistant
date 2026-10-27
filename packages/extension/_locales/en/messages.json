@@ -970,6 +970,12 @@
   "service_data_delete_confirm_account": {
     "message": "Account: $1."
   },
+  "checkout_opening": {
+    "message": "Opening secure checkout…"
+  },
+  "checkout_frame_title": {
+    "message": "Paddle checkout"
+  },
   "account_signed_out_notion_only": {
     "message": "This server signs in through Notion. Connect Notion from the destination page."
   },

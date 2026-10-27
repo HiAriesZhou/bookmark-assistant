@@ -8,8 +8,9 @@ export const UPGRADE_POLL_INTERVAL_MS = 4_000;
 export const UPGRADE_POLL_ATTEMPTS = 15;
 
 /**
- * After a checkout opens in another tab, re-reads the plan whenever the user returns to this
- * page, for about a minute each time, and announces Pro once it arrives. The webhook decides
+ * Re-reads the plan after a checkout, for about a minute at a time, and announces Pro once
+ * it arrives: right away when the embedded checkout reports payment, or when the user returns
+ * from a checkout window. The webhook decides
  * the plan; this only stops the user from having to press refresh.
  */
 export function useUpgradeActivation() {
@@ -36,18 +37,21 @@ export function useUpgradeActivation() {
     });
   }, [isPro, show, stopPolling, t]);
 
+  const startPolling = useCallback(() => {
+    if (timer.current !== null) return;
+    let attempts = 0;
+    const poll = () => {
+      attempts += 1;
+      void refreshEntitlements(true);
+      if (attempts >= UPGRADE_POLL_ATTEMPTS) stopPolling();
+    };
+    timer.current = window.setInterval(poll, UPGRADE_POLL_INTERVAL_MS);
+    poll();
+  }, [refreshEntitlements, stopPolling]);
+
   useEffect(() => {
     const onReturn = () => {
-      if (!awaiting.current || document.visibilityState === 'hidden' || timer.current !== null)
-        return;
-      let attempts = 0;
-      const poll = () => {
-        attempts += 1;
-        void refreshEntitlements(true);
-        if (attempts >= UPGRADE_POLL_ATTEMPTS) stopPolling();
-      };
-      timer.current = window.setInterval(poll, UPGRADE_POLL_INTERVAL_MS);
-      poll();
+      if (awaiting.current && document.visibilityState !== 'hidden') startPolling();
     };
     window.addEventListener('focus', onReturn);
     document.addEventListener('visibilitychange', onReturn);
@@ -56,11 +60,18 @@ export function useUpgradeActivation() {
       document.removeEventListener('visibilitychange', onReturn);
       stopPolling();
     };
-  }, [refreshEntitlements, stopPolling]);
+  }, [startPolling, stopPolling]);
 
+  /** Checkout continues elsewhere (a window or tab); poll when the user comes back. */
   const expectUpgrade = useCallback(() => {
     awaiting.current = true;
   }, []);
 
-  return { expectUpgrade };
+  /** The embedded checkout reported payment; poll now until the webhook grants Pro. */
+  const checkNow = useCallback(() => {
+    awaiting.current = true;
+    startPolling();
+  }, [startPolling]);
+
+  return { expectUpgrade, checkNow };
 }

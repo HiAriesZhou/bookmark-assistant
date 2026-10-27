@@ -1,5 +1,6 @@
 import { PHASE_DEVELOPMENT_SERVER } from 'next/constants.js';
 import { prepareBrandAssets } from '../../scripts/prepare-brand-assets.mjs';
+import { checkoutFrameAncestors } from './lib/checkout-frame-ancestors.mjs';
 
 /** @type {(phase: string) => Promise<import('next').NextConfig>} */
 export default async function nextConfig(phase) {
@@ -31,6 +32,23 @@ export default async function nextConfig(phase) {
           hostname: 'images.unsplash.com',
         },
       ],
+    },
+    // Only this site and our extension may frame the checkout page.
+    async headers() {
+      return [
+        {
+          source: '/checkout',
+          headers: [
+            {
+              key: 'Content-Security-Policy',
+              value: checkoutFrameAncestors({
+                extensionIds: process.env.CHECKOUT_EXTENSION_IDS,
+                officialService: config.officialService,
+              }),
+            },
+          ],
+        },
+      ];
     },
     async rewrites() {
       return [

@@ -4,10 +4,13 @@ import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../hook/ToastProvider';
 import { useAppStore } from '../store';
+import { CHECKOUT_MESSAGE_SOURCE } from '@bookmark-assistant/types';
 import { PlanRows } from './PlanRows';
 
-const openPaddleCheckout = vi.hoisted(() => vi.fn(async () => undefined));
-vi.mock('../../lib/paddle', () => ({ openPaddleCheckout }));
+const createPaddleCheckoutUrl = vi.hoisted(() =>
+  vi.fn(async () => 'https://www.example.com/checkout?_ptxn=txn_123')
+);
+vi.mock('../../lib/paddle', () => ({ createPaddleCheckoutUrl, openCheckoutWindow: vi.fn() }));
 
 describe('PlanRows', () => {
   let container: HTMLDivElement;
@@ -142,7 +145,7 @@ describe('PlanRows', () => {
     expect(container.querySelector('#plan-upgrade')).not.toBeNull();
   });
 
-  it('refreshes the plan when the user returns from checkout', async () => {
+  it('pays in place and refreshes the plan as soon as the checkout reports payment', async () => {
     const refreshEntitlements = vi.fn(async () => undefined);
     useAppStore.setState({
       isSignedIn: true,
@@ -161,10 +164,21 @@ describe('PlanRows', () => {
       (button) => button.textContent === 'action_upgrade_pro'
     );
     await act(async () => upgrade?.click());
-    expect(openPaddleCheckout).toHaveBeenCalledOnce();
+    expect(createPaddleCheckoutUrl).toHaveBeenCalledOnce();
+    const frame = document.querySelector('iframe');
+    expect(frame?.src).toContain('embed=1');
     expect(refreshEntitlements).not.toHaveBeenCalled();
 
-    await act(async () => window.dispatchEvent(new Event('focus')));
+    await act(async () =>
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { source: CHECKOUT_MESSAGE_SOURCE, status: 'completed' },
+          origin: 'https://www.example.com',
+          source: frame?.contentWindow,
+        })
+      )
+    );
+    expect(document.querySelector('iframe')).toBeNull();
     expect(refreshEntitlements).toHaveBeenCalledWith(true);
   });
 

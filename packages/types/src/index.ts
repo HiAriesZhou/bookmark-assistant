@@ -75,3 +75,13 @@ export type {
 } from './knowledge-item.js';
 
 export { normalizeLinkUrl } from './urls.js';
+
+export {
+  CHECKOUT_EMBED_PARAM,
+  CHECKOUT_EMBED_STATUSES,
+  CHECKOUT_MESSAGE_SOURCE,
+  checkoutEmbedUrl,
+  isCheckoutEmbedMessage,
+} from './checkout.js';
+
+export type { CheckoutEmbedMessage, CheckoutEmbedStatus } from './checkout.js';

@@ -16,9 +16,10 @@ describe('useUpgradeActivation', () => {
   let container: HTMLDivElement;
   let root: TestRoot;
   let expectUpgrade: () => void = () => undefined;
+  let checkNow: () => void = () => undefined;
 
   function Probe() {
-    expectUpgrade = useUpgradeActivation().expectUpgrade;
+    ({ expectUpgrade, checkNow } = useUpgradeActivation());
     return null;
   }
 
@@ -65,6 +66,13 @@ describe('useUpgradeActivation', () => {
     expect(document.body.textContent).toContain('pro_activated_title');
     await act(async () => vi.advanceTimersByTime(UPGRADE_POLL_INTERVAL_MS * 5));
     expect(refreshEntitlements).toHaveBeenCalledTimes(3);
+  });
+
+  it('checks right away when the embedded checkout reports completion', async () => {
+    await act(async () => checkNow());
+    expect(refreshEntitlements).toHaveBeenCalledWith(true);
+    await act(async () => useAppStore.setState({ isPro: true }));
+    expect(document.body.textContent).toContain('pro_activated_title');
   });
 
   it('stops after a bounded number of attempts and resumes on the next return', async () => {

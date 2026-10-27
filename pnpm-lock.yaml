@@ -212,6 +212,9 @@ importers:
       '@bookmark-assistant/shared':
         specifier: workspace:*
         version: link:../shared
+      '@bookmark-assistant/types':
+        specifier: workspace:*
+        version: link:../types
       '@paddle/paddle-js':
         specifier: ^1.6.5
         version: 1.6.5

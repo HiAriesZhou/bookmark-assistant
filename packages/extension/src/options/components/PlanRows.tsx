@@ -1,6 +1,7 @@
 import { Check, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { openPaddleCheckout } from '../../lib/paddle';
+import { createPaddleCheckoutUrl } from '../../lib/paddle';
+import { CheckoutDialog } from './CheckoutDialog';
 import { createTranslator } from '../../utils/i18n';
 import { Messages, sendMessage } from '../../utils/message';
 import { PRO_MIN_INTERVAL_HOURS, selectPlanPending, useAppStore } from '../store';
@@ -98,7 +99,8 @@ function HostedPlanRows() {
   useEffect(() => {
     if (offersUpgrade) void fetchPricing();
   }, [offersUpgrade, fetchPricing]);
-  const { expectUpgrade } = useUpgradeActivation();
+  const { expectUpgrade, checkNow } = useUpgradeActivation();
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!['paddle-monthly', 'paddle-yearly'].includes(subscription.kind)) {
@@ -127,14 +129,14 @@ function HostedPlanRows() {
     }
     try {
       setIsCheckingOut(true);
-      await openPaddleCheckout({
-        pricing: billing,
-        userId,
-        userEmail: userEmail || undefined,
-        successUrl: `${import.meta.env.VITE_WEBSITE_URL || ''}/success`,
-      });
-      // Checkout runs in another tab; the plan refreshes when the user comes back.
-      expectUpgrade();
+      setCheckoutUrl(
+        await createPaddleCheckoutUrl({
+          pricing: billing,
+          userId,
+          userEmail: userEmail || undefined,
+          successUrl: `${import.meta.env.VITE_WEBSITE_URL || ''}/success`,
+        })
+      );
     } catch (error) {
       show({
         variant: 'error',
@@ -238,6 +240,18 @@ function HostedPlanRows() {
           price={formatCurrency(pricing[billing])}
           checkingOut={isCheckingOut}
           onUpgrade={() => void handleCheckout()}
+        />
+      ) : null}
+      {checkoutUrl ? (
+        <CheckoutDialog
+          checkoutUrl={checkoutUrl}
+          onClose={() => setCheckoutUrl(null)}
+          onCompleted={() => {
+            setCheckoutUrl(null);
+            checkNow();
+          }}
+          // The checkout moved to a window; the plan refreshes when the user comes back.
+          onFallback={expectUpgrade}
         />
       ) : null}
     </>
