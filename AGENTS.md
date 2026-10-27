@@ -14,6 +14,8 @@ unrelated changes.
   The Bookmark Assistant name and logo are protected by TRADEMARKS.md, not by
   hiding files. Preserve third-party licenses and trademark ownership; keep
   third-party logos out of the tree. Do not add commercial-use restrictions.
+- Public copy names the product Bookmark Assistant and its tiers Hosted Free, Hosted Pro
+  and Self-hosted. Do not describe editions as OSS / Commercial.
 - Product versions and runtime public copy have one source; profile-specific build
   resources go into ignored output directories. Never edit generated mirrors.
 - Keep README as an entry point. Product planning, strategy, architecture decisions
