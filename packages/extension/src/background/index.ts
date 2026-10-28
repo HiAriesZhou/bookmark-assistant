@@ -28,6 +28,7 @@ import {
 } from '../utils/destination-state';
 import { notionApi } from '../destinations/notion/notion-api';
 import { syncLinksToNotion } from '../destinations/notion/sync';
+import { readTabDescription } from './page-description';
 import { addMessageListener, Messages, type MessageResponse } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
 import { cleanupStorage } from '../utils/storage-cleanup';
@@ -353,14 +354,15 @@ async function saveCurrentPage(
     if (!tab || !tab.url || !tab.title) return { success: false, error: 'No active tab found' };
     if (!isWebPageUrl(tab.url)) return { success: false, error: 'Cannot save internal page' };
 
+    const description = tab.id === undefined ? '' : await readTabDescription(tab.id, tab.url);
     const bookmark =
       source === 'current_page'
         ? formatCurrentPageForSync(
-            { title: tab.title, url: tab.url, description: '' },
+            { title: tab.title, url: tab.url, description },
             { createSyncId: () => createSyncId('quick-save'), defaultPath: 'Quick Saves' }
           )
         : formatSavedLinkForSync(
-            { title: tab.title, url: tab.url, description: '', path: 'Quick Saves' },
+            { title: tab.title, url: tab.url, description, path: 'Quick Saves' },
             { createSyncId: () => createSyncId('quick-save'), source: 'context_menu' }
           );
 
