@@ -82,6 +82,63 @@ describe('NotionApi', () => {
     expect(links.records[0]).toMatchObject({ pageId: 'page-a', syncId: 'a' });
   });
 
+  it('lists databases and standalone pages but not database rows', async () => {
+    const { client, api } = fakeClient();
+    client.search.mockImplementation(async ({ filter }: any) =>
+      filter.value === 'data_source'
+        ? {
+            results: [
+              { id: 'ds-1', title: [{ plain_text: 'Bookmarks' }], parent: { database_id: 'db-1' } },
+            ],
+          }
+        : {
+            results: [
+              {
+                id: 'page-1',
+                parent: { type: 'workspace' },
+                properties: { title: { type: 'title', title: [{ plain_text: 'Inbox' }] } },
+              },
+              { id: 'row-1', parent: { type: 'data_source_id' }, properties: {} },
+            ],
+          }
+    );
+    await expect(api.listTargets(TOKEN)).resolves.toEqual({
+      databases: [{ id: 'db-1', title: 'Bookmarks' }],
+      pages: [{ id: 'page-1', title: 'Inbox' }],
+    });
+  });
+
+  it('creates a database whose fields match the property matchers', async () => {
+    const { client, api } = fakeClient();
+    client.request.mockResolvedValue({ id: 'db-new' });
+    await expect(api.createBookmarkDatabase(TOKEN, 'page-1', 'Bookmarks')).resolves.toEqual({
+      databaseId: 'db-new',
+    });
+    const body = client.request.mock.calls[0][0].body;
+    expect(body.parent).toEqual({ type: 'page_id', page_id: 'page-1' });
+    const created = body.initial_data_source.properties;
+    // A sample link maps onto every created field.
+    const { buildBookmarkPropertiesFromNotionSchema } = await import('./core');
+    const schema = Object.fromEntries(
+      Object.entries(created).map(([name, definition]) => [
+        name,
+        { type: Object.keys(definition as object)[0] },
+      ])
+    );
+    const mapped = buildBookmarkPropertiesFromNotionSchema(schema, {
+      title: 'A',
+      url: 'https://a.example',
+      tags: ['x'],
+      description: 'd',
+      path: 'Bar',
+      dateAdded: '2026-10-28T00:00:00.000Z',
+      syncId: 'a',
+      type: 'reading_list',
+      readState: 'READ',
+    } as any);
+    expect(Object.keys(mapped).sort()).toEqual(Object.keys(created).sort());
+  });
+
   it("reports an integration's workspace name", async () => {
     const { client, api } = fakeClient();
     client.users.me.mockResolvedValue({ name: 'BA', bot: { workspace_name: 'Aries' } });

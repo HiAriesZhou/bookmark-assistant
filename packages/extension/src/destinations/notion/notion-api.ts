@@ -32,6 +32,32 @@ const defaultCreateClient: CreateNotionClient = (token) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export type NotionTarget = { id: string; title: string };
+
+// Fields of a database the extension creates; names match the property matchers.
+export const BOOKMARK_DATABASE_PROPERTIES = {
+  Name: { title: {} },
+  URL: { url: {} },
+  Tags: { multi_select: {} },
+  Description: { rich_text: {} },
+  Folder: { rich_text: {} },
+  'Date Added': { date: {} },
+  'Sync ID': { rich_text: {} },
+  Source: { select: { options: [{ name: 'Bookmark' }, { name: 'ReadingList' }] } },
+  Type: { select: { options: [{ name: 'Bookmark' }, { name: 'Reading List' }] } },
+  Status: { select: { options: [{ name: 'Unread' }, { name: 'Done' }] } },
+} as const;
+
+const plainTitle = (parts: unknown) =>
+  Array.isArray(parts) ? parts.map((part: any) => part?.plain_text || '').join('') : '';
+
+function pageTitle(page: any): string {
+  const title = Object.values<any>(page?.properties || {}).find(
+    (property) => property?.type === 'title'
+  );
+  return plainTitle(title?.title);
+}
+
 export interface ExistingLinks {
   urls: string[];
   syncIds: string[];
@@ -105,6 +131,64 @@ export class NotionApi implements NotionLinkWriter {
       workspaceName:
         typeof self?.bot?.workspace_name === 'string' ? self.bot.workspace_name : undefined,
     };
+  }
+
+  /**
+   * Databases and standalone pages the token can open, for choosing where to sync.
+   * Database rows are not offered as parents.
+   */
+  async listTargets(token: string): Promise<{ databases: NotionTarget[]; pages: NotionTarget[] }> {
+    const [dataSources, pages]: any[] = await Promise.all([
+      this.withRetry(() =>
+        this.client(token).search({
+          filter: { property: 'object', value: 'data_source' },
+          page_size: 100,
+        } as any)
+      ),
+      this.withRetry(() =>
+        this.client(token).search({
+          filter: { property: 'object', value: 'page' },
+          page_size: 100,
+        } as any)
+      ),
+    ]);
+    const databases = new Map<string, NotionTarget>();
+    for (const source of dataSources?.results || []) {
+      const databaseId = source?.parent?.database_id;
+      if (typeof databaseId === 'string' && !databases.has(databaseId)) {
+        databases.set(databaseId, { id: databaseId, title: plainTitle(source.title) });
+      }
+    }
+    return {
+      databases: [...databases.values()],
+      pages: (pages?.results || [])
+        .filter(
+          (page: any) =>
+            typeof page?.id === 'string' &&
+            !['database_id', 'data_source_id'].includes(page?.parent?.type)
+        )
+        .map((page: any) => ({ id: page.id, title: pageTitle(page) })),
+    };
+  }
+
+  /** Creates a bookmark database under a page the token can edit. */
+  async createBookmarkDatabase(
+    token: string,
+    parentPageId: string,
+    title: string
+  ): Promise<{ databaseId: string }> {
+    await this.waitForRequestSlot();
+    const database: any = await this.client(token).request({
+      method: 'post',
+      path: 'databases',
+      body: {
+        parent: { type: 'page_id', page_id: parentPageId },
+        title: [{ type: 'text', text: { content: title } }],
+        initial_data_source: { properties: BOOKMARK_DATABASE_PROPERTIES },
+      },
+    });
+    if (typeof database?.id !== 'string') throw new Error('Notion did not create the database');
+    return { databaseId: database.id };
   }
 
   private async getDataSourceSchema(dataSourceId: string, token: string): Promise<any> {
