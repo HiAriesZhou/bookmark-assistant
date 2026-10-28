@@ -130,6 +130,15 @@ export async function sendMessage<T extends MessageType>(
 }
 
 // Background-side: add a single, typed message listener for a map of handlers
+/** Options and popup pages; content scripts and web pages are never accepted. */
+export function isExtensionPageSender(sender: chrome.runtime.MessageSender): boolean {
+  return (
+    sender.id === chrome.runtime.id &&
+    typeof sender.url === 'string' &&
+    sender.url.startsWith(chrome.runtime.getURL(''))
+  );
+}
+
 export function addMessageListener(
   handlers: Partial<{
     [K in MessageType]: (
@@ -147,6 +156,10 @@ export function addMessageListener(
     if (!type) return; // not ours
     const handler = handlers[type] as any;
     if (!handler) return; // not handled here
+    if (!isExtensionPageSender(sender)) {
+      sendResponse({ success: false, error: 'Unsupported sender' });
+      return;
+    }
     (async () => {
       try {
         const res = await handler(msg, sender);

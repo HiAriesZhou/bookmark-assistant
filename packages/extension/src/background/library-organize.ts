@@ -1,3 +1,4 @@
+import { isExtensionPageSender } from '../utils/message';
 import { AI_PROVIDERS, isAiProvider, type AiProvider } from '@bookmark-assistant/types';
 import {
   AI_PROVIDER_HOST_PERMISSIONS,
@@ -64,11 +65,7 @@ export class OrganizeError extends Error {
 
 /** Content scripts run inside web pages and must never spend the user's key. */
 export function isOrganizeSenderAllowed(sender: chrome.runtime.MessageSender): boolean {
-  return (
-    sender.id === chrome.runtime.id &&
-    typeof sender.url === 'string' &&
-    sender.url.startsWith(chrome.runtime.getURL(''))
-  );
+  return isExtensionPageSender(sender);
 }
 
 export async function readOrganizeKeySummary(): Promise<OrganizeKeySummary | null> {

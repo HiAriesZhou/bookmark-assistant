@@ -30,6 +30,7 @@ import { notionApi } from '../destinations/notion/notion-api';
 import { syncLinksToNotion } from '../destinations/notion/sync';
 import { readTabDescription } from './page-description';
 import { recordConnectionFailure } from './connection-health';
+import { isNotionId } from '../destinations/notion/ids';
 import {
   OrganizeError,
   deleteOrganizeKey,
@@ -127,6 +128,8 @@ async function performBookmarkSync(
 ): Promise<BookmarkSyncResult> {
   const context = expectedContext ?? (await readDestinationContext());
   await assertDestinationContextCurrent(context);
+  // Nothing to sync to: answer without recording a failed sync.
+  if (!context.token || !context.databaseId) return { success: false, error: 'Not connected' };
   return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), context);
 }
 
@@ -357,13 +360,15 @@ async function syncCapturedLink(
 }
 
 async function saveCurrentPage(
-  source: CurrentPageCaptureSource = 'current_page'
+  source: CurrentPageCaptureSource = 'current_page',
+  clickedTab?: chrome.tabs.Tab
 ): Promise<MessageResponse<'SAVE_CURRENT_PAGE'>> {
   const context = await readDestinationContext();
   try {
     if (!(await readNotionConnection())) return { success: false, error: 'Not connected' };
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // A context menu click names its tab; the popup saves the active tab of its window.
+    const tab = clickedTab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
     if (!tab || !tab.url || !tab.title) return { success: false, error: 'No active tab found' };
     if (!isWebPageUrl(tab.url)) return { success: false, error: 'Cannot save internal page' };
 
@@ -412,7 +417,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   // A page click saves the page; a link click saves only that link's URL.
   if (!info.linkUrl) {
-    await saveCurrentPage('context_menu');
+    await saveCurrentPage('context_menu', tab);
     return;
   }
   const url = info.linkUrl;
@@ -478,6 +483,7 @@ addMessageListener({
   [Messages.NOTION_LIST_TARGETS]: async (req) => {
     try {
       const token = req.token.trim();
+      if (!token) throw new Error('Enter a Notion token');
       const [self, targets] = await Promise.all([
         notionApi.getSelf(token),
         notionApi.listTargets(token),
@@ -491,6 +497,13 @@ addMessageListener({
     try {
       const context = await messageDestinationContext(req);
       const token = req.token.trim();
+      if (!token) throw new Error('Enter a Notion token');
+      if (req.databaseId !== undefined && !isNotionId(req.databaseId))
+        throw new Error('Choose a Notion database');
+      if (req.parentPageId !== undefined && !isNotionId(req.parentPageId))
+        throw new Error('Choose a Notion page');
+      // Check before creating anything, so a stale request leaves no extra database.
+      await assertDestinationContextCurrent(context);
       const databaseId =
         req.databaseId ||
         (req.parentPageId

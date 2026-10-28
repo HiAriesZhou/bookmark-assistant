@@ -75,6 +75,8 @@ async function getLocalizedMessages<K extends string>(
 
 // A synthetic token; the Notion API is answered by the fixture below and never reached.
 const FIXTURE_TOKEN = 'ntn_e2e_fixture_token';
+const FIXTURE_DATABASE_ID = '1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9';
+const FIXTURE_DATA_SOURCE_ID = '2a3b4c5d-6e7f-4081-9293-a4b5c6d7e8f9';
 const NOTION_API_PATTERN = 'https://api.notion.com/v1/**';
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
@@ -133,30 +135,30 @@ async function routeNotionFixture(
           ? [
               {
                 object: 'data_source',
-                id: 'ds-fixture',
+                id: FIXTURE_DATA_SOURCE_ID,
                 title: [{ plain_text: 'Fixture Reading' }],
-                parent: { type: 'database_id', database_id: 'db-fixture' },
+                parent: { type: 'database_id', database_id: FIXTURE_DATABASE_ID },
               },
             ]
           : [];
       return json(route, { object: 'list', results, has_more: false, next_cursor: null });
     }
-    if (path === 'databases/db-fixture') {
+    if (path === `databases/${FIXTURE_DATABASE_ID}`) {
       return json(route, {
         object: 'database',
-        id: 'db-fixture',
+        id: FIXTURE_DATABASE_ID,
         title: [{ plain_text: 'Fixture Reading' }],
-        data_sources: [{ id: 'ds-fixture', name: 'Fixture Reading' }],
+        data_sources: [{ id: FIXTURE_DATA_SOURCE_ID, name: 'Fixture Reading' }],
       });
     }
-    if (path === 'data_sources/ds-fixture') {
+    if (path === `data_sources/${FIXTURE_DATA_SOURCE_ID}`) {
       return json(route, {
         object: 'data_source',
-        id: 'ds-fixture',
+        id: FIXTURE_DATA_SOURCE_ID,
         properties: FIXTURE_PROPERTIES,
       });
     }
-    if (path === 'data_sources/ds-fixture/query') {
+    if (path === `data_sources/${FIXTURE_DATA_SOURCE_ID}/query`) {
       return json(route, { object: 'list', results: [], has_more: false, next_cursor: null });
     }
     if (path === 'pages' && request.method() === 'POST') {
@@ -599,7 +601,7 @@ test.describe('Bookmark Assistant extension', () => {
         chrome.storage.local.get(['notion_token', 'notion_database', 'destination_revision'])
       );
       expect(stored.notion_token).toBe(FIXTURE_TOKEN);
-      expect(stored.notion_database).toMatchObject({ id: 'db-fixture' });
+      expect(stored.notion_database).toMatchObject({ id: FIXTURE_DATABASE_ID });
       // The token never leaves local storage.
       expect(JSON.stringify(await page.evaluate(() => chrome.storage.sync.get()))).not.toContain(
         FIXTURE_TOKEN
@@ -627,11 +629,11 @@ test.describe('Bookmark Assistant extension', () => {
     let bookmarkIds: string[] = [];
     try {
       bookmarkIds = await page.evaluate(
-        async ({ revision, token }) => {
+        async ({ revision, token, databaseId }) => {
           await chrome.storage.local.clear();
           await chrome.storage.local.set({
             notion_token: token,
-            notion_database: { id: 'db-fixture', title: 'Fixture Reading' },
+            notion_database: { id: databaseId, title: 'Fixture Reading' },
             destination_revision: revision,
           });
           const created = [];
@@ -645,7 +647,7 @@ test.describe('Bookmark Assistant extension', () => {
           }
           return created.map((bookmark) => bookmark.id);
         },
-        { revision, token: FIXTURE_TOKEN }
+        { revision, token: FIXTURE_TOKEN, databaseId: FIXTURE_DATABASE_ID }
       );
       const syncReply = page.evaluate(
         (destinationRevision) =>
