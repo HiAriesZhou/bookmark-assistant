@@ -348,12 +348,6 @@
   "dashboard_connection_attention": {
     "message": "Notion connection interrupted"
   },
-  "dashboard_action_connect": {
-    "message": "Connect"
-  },
-  "dashboard_action_reconnect": {
-    "message": "Reconnect"
-  },
   "sync_interval_validation": {
     "message": "Minimum interval is $1 hours."
   },
