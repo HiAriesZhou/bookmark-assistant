@@ -206,6 +206,7 @@ test.describe('Bookmark Assistant extension', () => {
     expect(manifest.name).toContain(expectedProductName);
     expect(manifest.background?.service_worker).toBe('assets/background.js');
     expect(manifest.permissions).toContain('favicon');
+    expect(manifest.permissions).not.toContain('identity');
     // A new host permission would show a warning and disable existing installs on update;
     // the API is reached through CORS instead.
     expect(manifest.host_permissions ?? []).toEqual([]);

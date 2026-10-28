@@ -32,23 +32,21 @@ listing:
   supportUrl: https://www.bookmarkassistant.com/#faq
   matureContent: false
 privacy:
-  singlePurpose: Bookmark Assistant helps users manage saved web pages through a local Chrome bookmark library, with optional Notion synchronization and AI-assisted descriptions and tags.
+  singlePurpose: Bookmark Assistant helps users manage saved web pages through a local Chrome bookmark library, with optional synchronization to the user's own Notion workspace.
   permissionJustifications:
-    activeTab: Used only after an explicit user action that operates on the current page, such as choosing Save to Notion from the context menu while a Destination is connected. It provides temporary access to the current tab’s title and URL. It is not used to monitor tabs or browsing activity in the background.
-    alarms: Used to schedule optional Pro background sync and resume queued post-sync enrichment work without keeping the extension service worker continuously active. Alarms do not display notifications or track user activity.
+    activeTab: Used only after an explicit user action that saves the current page, such as Save current page in the popup or Save to Notion from the context menu while Notion is connected. It provides temporary access to the current tab’s title, URL and meta description. It is not used to monitor tabs or browsing activity in the background.
+    alarms: Used to schedule the optional background sync the user turns on, without keeping the extension service worker continuously active. Alarms do not display notifications or track user activity.
     bookmarks: Used to display and manage the user’s Chrome bookmark library. This includes searching bookmarks, displaying the folder tree, detecting duplicate URLs, editing bookmark titles and URLs, moving bookmarks between folders, and deleting bookmarks at the user’s request. When the user connects a Destination and starts a sync, the required bookmark fields are prepared for that requested operation.
     contextMenus: Used to provide a Save to Notion action for a page or link only while a Notion Destination is connected. The action runs only when explicitly selected by the user, and the menu is removed when the Destination is disconnected.
     favicon: Used only to display each saved bookmark’s website icon in the local bookmark library. The extension retrieves these icons through Chrome’s built-in Favicon API for URLs already present in the user’s bookmarks. It is not used to track browsing activity.
-    identity: Used to complete the user-initiated Notion OAuth connection through Chrome’s secure web authentication flow. Bookmark Assistant does not request or store the user’s Notion password.
     readingList: Used to read the user’s Chrome Reading List for local counts and optional user-initiated synchronization to a connected Destination. Bookmark Assistant does not use this permission to add, edit, or delete Reading List entries.
-    scripting: Used only after an explicit current-page action when optional AI processing is configured and eligible. Bookmark Assistant runs a packaged content-extraction function in the selected tab to obtain readable page content required for the requested AI result. It does not download or execute remote code.
-    storage: Used to store extension preferences, a local authentication session token, bookmark descriptions and tags managed by Bookmark Assistant, cached local reports, connection status, sync state, and background job state on the user’s device. This data is used only to provide extension functionality and is not used for advertising or cross-site tracking.
+    scripting: Used only when the user saves the current page. Bookmark Assistant runs a packaged function in that tab to read the page’s meta description, which is saved with the link. It does not read the page body, download or execute remote code.
+    storage: Used to store extension preferences, the user’s Notion token and selected database, bookmark descriptions and tags managed by Bookmark Assistant, cached local reports and sync state on the user’s device. This data stays in the browser, is sent only to Notion when the user syncs, and is not used for advertising or cross-site tracking.
   hostPermissionJustification: null
   remoteCode:
     uses: false
     justification: null
   collectedData:
-    - personallyIdentifiableInformation
     - authenticationInformation
     - webHistory
     - websiteContent
