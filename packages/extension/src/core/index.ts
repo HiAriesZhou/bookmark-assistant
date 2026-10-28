@@ -9,7 +9,7 @@ export type {
   FormatSavedLinkOptions,
   SyncFingerprintItem,
 } from './links';
-export type { PageContent } from './content';
+export type { PageDescription } from './content';
 export type { ChromeReadingListItemLike, FormatReadingListItemOptions } from './reading-list';
 export type { StorageCleanupPlan } from './storage-cleanup';
 export type {
@@ -31,7 +31,7 @@ export {
 
 export { isWebPageUrl, normalizeUrl } from './urls';
 
-export { extractPageContentFromDocument } from './content';
+export { readPageDescription } from './content';
 
 export { formatReadingListItemsForSync } from './reading-list';
 

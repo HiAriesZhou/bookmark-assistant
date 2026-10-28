@@ -1,75 +1,24 @@
-export interface PageContent {
-  text: string;
-  title: string;
+export interface PageDescription {
+  /** The document the description was read from, so callers can drop a stale read. */
+  url: string;
   description?: string;
-  keywords?: string[];
-  /** The document identity returned with extracted content for race-free callers. */
-  url?: string;
 }
 
-export function extractPageContentFromDocument(documentRef: Document = document): PageContent {
-  const getMetaContent = (selector: string): string | undefined => {
-    return documentRef.querySelector(selector)?.getAttribute('content') || undefined;
-  };
-
-  const title =
-    documentRef.title ||
-    documentRef.querySelector('h1')?.textContent?.trim() ||
-    getMetaContent('meta[property="og:title"]') ||
-    'Untitled';
-
-  const description =
-    getMetaContent('meta[name="description"]') ||
-    getMetaContent('meta[property="og:description"]') ||
-    getMetaContent('meta[name="twitter:description"]');
-
-  const keywordsContent = getMetaContent('meta[name="keywords"]');
-  const keywords = keywordsContent
-    ? keywordsContent
-        .split(',')
-        .map((keyword) => keyword.trim())
-        .filter(Boolean)
-    : undefined;
-
-  let content = '';
-  const contentSelectors = [
-    'main',
-    'article',
-    '[role="main"]',
-    '.content',
-    '.post-content',
-    '.entry-content',
-    '.article-content',
+/**
+ * Reads the page's own summary from its meta tags. It runs inside the page through
+ * chrome.scripting, so it must not reference anything outside its body.
+ */
+export function readPageDescription(documentRef: Document = document): PageDescription {
+  const maxLength = 1000;
+  const selectors = [
+    'meta[name="description"]',
+    'meta[property="og:description"]',
+    'meta[name="twitter:description"]',
   ];
-
-  for (const selector of contentSelectors) {
-    const element = documentRef.querySelector(selector) as HTMLElement | null;
-    if (element) {
-      const text = element.innerText || element.textContent || '';
-      if (text.trim().length > 100) {
-        content = text;
-        break;
-      }
-    }
+  for (const selector of selectors) {
+    const content = documentRef.querySelector(selector)?.getAttribute('content')?.trim();
+    if (content)
+      return { url: documentRef.location.href, description: content.slice(0, maxLength) };
   }
-
-  if (!content || content.trim().length < 100) {
-    const clonedBody = documentRef.body.cloneNode(true) as HTMLElement;
-    const removableElements = clonedBody.querySelectorAll(
-      'script, style, nav, footer, aside, .sidebar, .navigation'
-    );
-    removableElements.forEach((element) => element.remove());
-
-    content = clonedBody.innerText || clonedBody.textContent || '';
-  }
-
-  content = content.trim().replace(/\s+/g, ' ');
-
-  return {
-    text: content.substring(0, 5000),
-    title: title.trim(),
-    description,
-    keywords,
-    url: documentRef.location?.href,
-  };
+  return { url: documentRef.location.href };
 }
