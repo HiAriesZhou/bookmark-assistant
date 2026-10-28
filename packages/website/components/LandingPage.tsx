@@ -1,10 +1,9 @@
 import { EditorialLanding } from '@/components/EditorialLanding';
-import { Pricing } from '@/components/sections/Pricing';
 import { FAQ } from '@/components/sections/FAQ';
 import { FinalCTA } from '@/components/sections/FinalCTA';
 import { Footer } from '@/components/sections/Footer';
 import { getWebsiteCopy, isAiPublished, type WebsiteLocale } from '@/lib/i18n';
-import { CHROME_WEB_STORE_URL, SITE_URL, COMMERCE_ENABLED } from '@/lib/product-links';
+import { CHROME_WEB_STORE_URL, SITE_URL, SOURCE_URL } from '@/lib/product-links';
 
 export function LandingPage({ locale }: { locale: WebsiteLocale }) {
   const copy = getWebsiteCopy(locale);
@@ -31,17 +30,21 @@ export function LandingPage({ locale }: { locale: WebsiteLocale }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplication) }}
       />
       <EditorialLanding copy={copy} locale={locale} />
-      {COMMERCE_ENABLED ? (
-        <Pricing copy={copy} locale={locale} />
-      ) : (
-        <section id="source" className="mx-auto max-w-6xl px-6 py-10">
-          <p>
-            {locale === 'en'
-              ? 'GPL-3.0-only · Self-hosted deployments include all features. Use your own Notion integration and AI provider key.'
-              : 'GPL-3.0-only · 自托管包含全部功能，使用自己的 Notion 集成与 AI Provider Key。'}
-          </p>
-        </section>
-      )}
+      <section id="source" className="mx-auto max-w-6xl px-6 py-10">
+        <p>
+          {locale === 'en'
+            ? 'Free and open source under GPL-3.0-only. Runs in your browser with your own Notion token and AI provider key. '
+            : '免费开源，采用 GPL-3.0-only 许可。在浏览器中运行，使用你自己的 Notion 令牌和 AI 服务商 key。'}
+          <a
+            className="underline decoration-[#b7c3b2] underline-offset-4 hover:text-[#334f40]"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {locale === 'en' ? 'View source' : '查看源码'}
+          </a>
+        </p>
+      </section>
       <FAQ copy={copy} />
       <FinalCTA copy={copy} />
       <Footer copy={copy} locale={locale} />

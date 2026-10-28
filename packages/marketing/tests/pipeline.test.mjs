@@ -33,7 +33,6 @@ test('canvas templates preserve real image inputs and escape localized copy', ()
       productName: 'Bookmark Assistant',
       headline: '<Result>',
       body: 'A & B',
-      planLabels: { pro: 'Pro' },
     },
     scene: SCENES[0],
     productImage: 'data:image/png;base64,product',

@@ -3,40 +3,43 @@
   "productName": "Bookmark Assistant",
   "extensionName": "Bookmark Assistant — Chrome Bookmarks & Notion Sync",
   "extensionTitle": "Bookmark Assistant",
-  "shortDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and optionally add AI summaries and tags.",
-  "longDescription": "Manage the Chrome bookmarks you already have—without moving them into another bookmark service.\n\nBookmark Assistant adds a focused local view for your existing Chrome bookmarks. Search titles, URLs, descriptions, and tags; edit details; move bookmarks between folders; and remove what no longer matters. Chrome bookmarks remain your source of truth, and the local library works before you connect anything.\n\nMANAGE LOCALLY\n\nBrowse folders, find recently saved pages, filter untagged or uncategorized items, and review duplicate groups. Library counts and duplicate analysis are calculated inside the extension, so your full bookmark library is not uploaded to create the report.\n\nADD NOTION WHEN YOU WANT\n\nWhen you want an external copy or workflow, connect a workspace through Notion OAuth and duplicate the Bookmark Assistant template. Manual sync sends Chrome bookmarks and Reading List items to Notion on demand, updates changed items, and avoids duplicate entries when possible. With a destination connected, you can also save the current page directly to Notion.\n\nOPTIONAL AI ENRICHMENT\n\nBring your own key from a supported provider. For eligible newly saved public pages, Bookmark Assistant can create a concise description and useful topic tags. AI is optional and never becomes a dependency of local bookmark management or basic Notion sync.\n\nResults stay editable. Completed items are not silently processed again, so later changes remain yours. When AI runs, the readable page text, title, sanitized URL, and current Description and Tags are sent to the provider you choose. Full page text, raw prompts, and raw provider responses are not retained after processing.\n\nFREE AND PRO\n\nLocal bookmark management, optional AI for eligible pages saved after setup, and manual Notion sync are available without Pro. Pro adds scheduled background sync and batch AI for eligible newly synced pages.\n\nHOW TO START\n\n1. Install Bookmark Assistant and open the local library.\n2. Search, edit, tag, move, or clean up your Chrome bookmarks.\n3. Connect Notion only if you want an external destination.\n4. Add an AI provider key only if you want summaries and tags.\n5. Run a manual sync, or enable Pro automation when you need it.\n\nYOUR DATA, YOUR CHOICES\n\nBookmark Assistant uses Chrome permissions to manage the bookmarks and Reading List items you choose. Notion data is sent over HTTPS only to the workspace and database you authorize. AI processing is optional and uses the provider you select.\n\nSOURCE AND BRANDING\n\nThe extension, server, website and official artwork are licensed under GPL-3.0-only. The Bookmark Assistant name and logo are covered by a separate trademark policy. Self-hosted deployments include all current features; official hosted services retain Free and Pro plans.",
+  "shortDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and get optional AI folder suggestions.",
+  "longDescription": "Manage the Chrome bookmarks you already have—without moving them into another bookmark service.\n\nBookmark Assistant adds a focused local view for your existing Chrome bookmarks. Search titles, URLs, descriptions and tags; edit details; move bookmarks between folders; find duplicates; and delete what no longer matters. Chrome bookmarks remain your source of truth, and there is nothing to sign up for.\n\nMANAGE LOCALLY\n\nBrowse folders, find recently saved pages, filter untagged or uncategorized items, and review duplicate groups. Library counts and duplicate analysis are calculated inside the extension, so your bookmark library is not uploaded anywhere to create the report.\n\nADD NOTION WHEN YOU WANT\n\nNotion is optional. Paste a Notion personal access token or an internal integration token in Options, then pick an existing database or let Bookmark Assistant create one under a page you choose. The extension calls the Notion API directly, and the token stays in the extension's local storage on your device.\n\nSync Chrome bookmarks and Reading List items on demand, or turn on scheduled background sync with an interval of six hours or more. Syncing a link again updates its existing Notion page instead of adding a duplicate, and edits you make in Notion are not overwritten. You can also save the page you are reading—its title, URL and meta description—to Notion from the popup or the right-click menu.\n\nOPTIONAL AI ORGANIZE\n\nAdd your own key from OpenAI, Anthropic, Google Gemini, DeepSeek, Groq or MiniMax, and Bookmark Assistant suggests better folders for the bookmarks in the current library view. Preview the suggestions, change any target folder, apply only the moves you select, and undo the last run if you change your mind.\n\nOnly bookmark titles, folder paths and URLs without query strings are sent, directly to the provider you choose. Common local and private-network addresses are not sent. The key stays on your device, and Chrome asks for access to a provider only when you save a key for it. The library and Notion sync never depend on AI.\n\nHOW TO START\n\n1. Install Bookmark Assistant and open the local library.\n2. Search, edit, tag, move or clean up your Chrome bookmarks.\n3. Connect Notion with your own token only if you want an external copy.\n4. Add an AI provider key only if you want folder suggestions.\n\nFREE AND OPEN SOURCE\n\nBookmark Assistant is free and open source under GPL-3.0-only. It runs in your browser and has no service of its own: your data goes only to Notion and the AI provider you choose. The Bookmark Assistant name and logo are covered by a separate trademark policy.",
   "releasedClaims": [
     {
-      "id": "page-metadata",
-      "text": "Search and manage Chrome bookmarks locally, including descriptions and tags.",
-      "plan": "all"
+      "id": "local-library",
+      "text": "Search, edit, tag, move and delete Chrome bookmarks locally, and find duplicates."
     },
     {
       "id": "manual-sync",
-      "text": "Sync Chrome bookmarks and Reading List to Notion on demand.",
-      "plan": "all"
+      "text": "Sync Chrome bookmarks and Reading List to Notion on demand."
     },
-    { "id": "notion-oauth", "text": "Connect securely with managed Notion OAuth.", "plan": "all" },
+    {
+      "id": "notion-token",
+      "text": "Connect Notion with your own token; the extension calls the Notion API directly."
+    },
+    {
+      "id": "save-page",
+      "text": "Save the current page to Notion with its title, URL and meta description."
+    },
+    {
+      "id": "scheduled-sync",
+      "text": "Turn on optional background sync every six hours or more."
+    },
     {
       "id": "duplicate-handling",
-      "text": "Avoid duplicate Notion entries with stable link handling.",
-      "plan": "all"
+      "text": "Update the same Notion page when a link syncs again, without overwriting your Notion edits."
     },
     {
-      "id": "ai-summary-tags",
-      "text": "Use your own AI provider key to generate a concise summary and topic tags for newly saved pages.",
-      "plan": "all"
-    },
-    { "id": "auto-sync", "text": "Run scheduled background sync with Pro.", "plan": "pro" },
-    {
-      "id": "ai-batch",
-      "text": "Run queued AI processing for newly synced pages with Pro.",
-      "plan": "pro"
+      "id": "ai-organize",
+      "text": "Use your own AI provider key to get folder suggestions you can preview, apply and undo."
     }
   ],
   "featureGatedClaims": [],
-  "planLabels": { "free": "Free", "pro": "Pro" },
-  "ctas": { "primary": "Install", "secondary": "View Notion template" },
+  "ctas": {
+    "primary": "Install",
+    "secondary": "Create a Notion token"
+  },
   "store": {
     "marquee": {
       "headline": "Save the link. Keep the why.",
@@ -55,50 +58,50 @@
     {
       "id": "optional-destination",
       "headline": "Your library works before you connect anything",
-      "body": "Add Notion as an optional destination when you want an external copy or workflow.",
+      "body": "Add Notion with your own token when you want an external copy or workflow.",
       "status": "released"
     },
     {
       "id": "sync-and-ai-ready",
       "headline": "See what happened after every sync",
-      "body": "Review the Notion result, description checks, and any items ready for batch AI.",
+      "body": "Check the last sync, what completed or was skipped, and when the next scheduled sync runs.",
       "status": "released"
     },
     {
       "id": "ai-summary-tags",
-      "headline": "Remember why a page mattered",
-      "body": "Use your own AI provider to add concise context and useful tags to eligible newly saved pages.",
+      "headline": "Put loose bookmarks where they belong",
+      "body": "Use your own AI key to get folder suggestions. Preview them, apply what you choose, and undo the last run.",
       "status": "released"
     },
     {
       "id": "pro-auto-sync",
       "headline": "Let the routine work happen quietly",
-      "body": "Pro adds scheduled background sync and batch AI for eligible items.",
-      "status": "released",
-      "plan": "pro"
+      "body": "Turn on optional background sync to Notion every six hours or more.",
+      "status": "released"
     }
   ],
   "website": {
-    "publication": { "ai": "released" },
+    "publication": {
+      "ai": "released"
+    },
     "capabilities": {
-      "notion-oauth": "released",
+      "local-library": "released",
       "manual-sync": "released",
-      "page-metadata": "released",
+      "notion-token": "released",
+      "save-page": "released",
+      "scheduled-sync": "released",
       "duplicate-handling": "released",
-      "auto-sync": "released",
-      "ai-summary-tags": "released",
-      "ai-batch": "released"
+      "ai-organize": "released"
     },
     "metadata": {
       "baselineTitle": "Bookmark Assistant — Manage Chrome Bookmarks, Sync to Notion",
       "baselineDescription": "Manage Chrome bookmarks locally and sync bookmarks and Reading List to Notion when you want—without moving to another bookmark service.",
       "aiTitle": "Bookmark Assistant — Manage Chrome Bookmarks, Sync to Notion",
-      "aiDescription": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion when you want, and optionally add AI summaries and tags."
+      "aiDescription": "Free, open-source Chrome bookmark manager. Sync to Notion with your own token and organize folders with optional AI."
     },
     "navigation": {
       "features": "Library",
       "howItWorks": "Sync",
-      "pricing": "Pricing",
       "faq": "FAQ",
       "language": "中文"
     },
@@ -106,16 +109,16 @@
       "baselineEyebrow": "LOCAL FIRST · NOTION WHEN YOU WANT",
       "baselineTitle": "Manage the Chrome bookmarks you already have.",
       "baselineBody": "Search and organize locally. Sync bookmarks and Reading List to Notion when you want—without moving everything into another bookmark service.",
-      "aiEyebrow": "LOCAL FIRST · NOTION WHEN YOU WANT",
+      "aiEyebrow": "FREE · OPEN SOURCE · NOTION WHEN YOU WANT",
       "aiTitle": "Manage the Chrome bookmarks you already have.",
-      "aiBody": "Search and organize locally. Sync bookmarks and Reading List to Notion when you want—without moving everything into another bookmark service. AI summaries and tags stay optional.",
+      "aiBody": "Search and organize locally. Sync bookmarks and Reading List to Notion when you want—without moving everything into another bookmark service. AI folder suggestions stay optional.",
       "benefitsLabel": "Key benefits",
       "baselineBenefits": [
         "Local library report",
-        "Secure Notion connection",
-        "Manual sync is free"
+        "Notion with your own token",
+        "Free and open source"
       ],
-      "aiBenefits": ["Your own AI key", "AI won't overwrite your Notion edits"],
+      "aiBenefits": ["Your own AI key", "AI only moves what you approve"],
       "imageAlt": "Bookmark Assistant local Chrome bookmark manager showing search, folders, descriptions, and tags",
       "imageNote": "Your bookmarks stay in Chrome.",
       "productHunt": "Featured on Product Hunt · #8 Product of the Day",
@@ -128,48 +131,46 @@
       "items": [
         {
           "title": "Local bookmark management",
-          "body": "Search titles, URLs, descriptions, and tags; edit details, move bookmarks between folders, and remove what you no longer need.",
+          "body": "Search titles, URLs, descriptions, and tags; edit details, move bookmarks between folders, find duplicates, and remove what you no longer need.",
           "status": "released"
         },
         {
           "title": "Bookmarks + Reading List",
-          "body": "Keep both Chrome sources in place and sync them to Notion through one manual workflow.",
+          "body": "Keep both Chrome sources in place and sync them to Notion on demand or on a schedule.",
           "status": "released"
         },
         {
           "title": "Save the current page",
-          "body": "Capture the page you are reading without adding it to Chrome bookmarks first.",
+          "body": "Send the page you are reading to Notion with its title, URL and meta description, without bookmarking it first.",
           "status": "released"
         },
         {
-          "title": "Secure Notion connection",
-          "body": "Choose a Notion workspace through OAuth without sharing your Notion password.",
+          "title": "Notion with your own token",
+          "body": "Paste a personal access token or an internal integration token. The extension calls Notion directly, with nothing to sign up for.",
           "status": "released"
         },
         {
           "title": "Clean Notion entries",
-          "body": "Keep useful page details and avoid duplicate entries when the same link is saved again.",
+          "body": "Syncing a link again updates its existing page, and your edits in Notion are not overwritten.",
           "status": "released"
         },
         {
-          "title": "Optional AI summaries + tags",
-          "body": "Add your own provider key before saving to generate a short summary and useful tags.",
+          "title": "Optional AI organize",
+          "body": "Add your own provider key to get folder suggestions for the bookmarks in view. Nothing moves until you apply it.",
           "status": "released"
         }
       ]
     },
     "ai": {
-      "eyebrow": "Optional intelligence",
-      "title": "Optionally add summaries and tags",
-      "body": "Enable AI only when you want it. For eligible newly saved public pages, Bookmark Assistant sends the readable page content needed to create the result to your selected provider.",
+      "eyebrow": "Optional AI",
+      "title": "Get folder suggestions, then decide",
+      "body": "Enable AI only when you want it. Bookmark Assistant sends bookmark titles, folder paths and URLs without query strings directly to the provider you choose, and suggests better folders for the bookmarks in the current view.",
       "points": [
-        "OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, and MiniMax presets",
-        "Your key is encrypted and never shown in full after you save it",
-        "A short summary and 3 to 5 tags are written to Notion once, so later edits stay yours"
+        "OpenAI, Anthropic, Google Gemini, DeepSeek, Groq, and MiniMax with your own key",
+        "The key stays on your device, and Chrome asks for access to a provider only when you save its key",
+        "Preview every move, change target folders, apply what you select, and undo the last run"
       ],
-      "screenshotAlt": "Bookmark Assistant enriching a saved page with an AI summary and four useful tags using the user's provider key",
-      "freeLabel": "Free · AI for newly saved pages",
-      "proLabel": "Pro · Batch AI for new sync items"
+      "screenshotAlt": "Bookmark Assistant suggesting folders for bookmarks with the user's own AI provider key"
     },
     "how": {
       "eyebrow": "Your path",
@@ -178,55 +179,25 @@
       "steps": [
         {
           "title": "Install the extension",
-          "body": "Add Bookmark Assistant to Chrome and open the local dashboard.",
+          "body": "Add Bookmark Assistant to Chrome and open the local library.",
           "status": "released"
         },
         {
           "title": "Manage your library",
-          "body": "Search, edit, tag, move, and clean up Chrome bookmarks without uploading the full library for local analysis.",
+          "body": "Search, edit, tag, move, and clean up Chrome bookmarks without uploading the library for local analysis.",
           "status": "released"
         },
         {
           "title": "Connect Notion",
-          "body": "Authorize your workspace and duplicate the Bookmark Assistant template.",
+          "body": "Create a Notion token, paste it in Options, then pick a database or let the extension create one under a page.",
           "status": "released"
         },
         {
-          "title": "Set up AI before saving",
-          "body": "Free generates AI content for the current page you save. Pro can also batch-process new pages created by a sync. Enable the option you need before saving or syncing.",
+          "title": "Organize with AI if you like",
+          "body": "Add your own provider key, review the suggested folders, and apply only the moves you want.",
           "status": "released"
         }
       ]
-    },
-    "pricing": {
-      "eyebrow": "Plans & pricing",
-      "title": "Start free. Upgrade inside the extension.",
-      "body": "Compare the plans here. Connect Notion and open Billing & Plan in the extension to see the current Pro price and upgrade.",
-      "monthly": "Monthly",
-      "yearly": "Yearly",
-      "bestValue": "Best value",
-      "freeName": "Free",
-      "freeSummary": "Manual sync and page saving",
-      "freeFeatures": [
-        { "title": "Local Bookmark Library Report", "body": "", "status": "released" },
-        { "title": "Manual bookmark and Reading List sync", "body": "", "status": "released" },
-        { "title": "Save the current page", "body": "", "status": "released" },
-        { "title": "AI for pages saved after setup", "body": "", "status": "released" },
-        { "title": "Duplicate handling", "body": "", "status": "released" }
-      ],
-      "proName": "Pro",
-      "proSummary": "Scheduled sync and batch AI",
-      "proFeatures": [
-        { "title": "Everything in Free", "body": "", "status": "released" },
-        { "title": "Scheduled background sync", "body": "", "status": "released" },
-        { "title": "6-hour minimum interval", "body": "", "status": "released" },
-        { "title": "Batch AI for newly synced pages", "body": "", "status": "released" }
-      ],
-      "perYear": "per year",
-      "perMonth": "per month",
-      "priceUnavailable": "Current price is available inside the extension.",
-      "viewPrice": "Install to view price",
-      "upgradeNote": "Connect Notion first, then upgrade from Billing & Plan."
     },
     "faq": {
       "eyebrow": "The details",
@@ -238,33 +209,33 @@
           "status": "released"
         },
         {
+          "title": "Is Bookmark Assistant free?",
+          "body": "Yes. It is free and open source under GPL-3.0-only, with nothing to sign up for. If you connect Notion or an AI provider, your use of those services follows their own terms.",
+          "status": "released"
+        },
+        {
+          "title": "How do I connect Notion?",
+          "body": "Create a personal access token or an internal integration token in Notion and paste it in Options. Then pick an existing database the token can access, or let Bookmark Assistant create one under a page. The token stays on your device and is sent only to Notion.",
+          "status": "released"
+        },
+        {
           "title": "Can I save a page without bookmarking it first?",
-          "body": "Yes. Save the page open in your current tab directly to your connected Notion database.",
+          "body": "Yes. Save the page open in your current tab to your connected Notion database from the popup or the right-click menu. Its title, URL and meta description are saved.",
           "status": "released"
         },
         {
-          "title": "Which pages can use AI, and what is sent?",
-          "body": "AI runs only for newly saved public web pages after you enable it. Excluded, local, and private pages are skipped. For each request, Bookmark Assistant sends readable page text, the title, a sanitized URL, and the current Description and Tags to your selected provider. It does not keep full page text, raw prompts, or raw responses after processing.",
+          "title": "What does AI do, and what is sent?",
+          "body": "AI suggests better folders for the bookmarks in the current library view. Only bookmark titles, folder paths and URLs without query strings are sent, directly to the provider you choose with your own key. Common local and private-network addresses are not sent.",
           "status": "released"
         },
         {
-          "title": "Will AI overwrite my Notion edits?",
-          "body": "No. Finished items are not processed again automatically. If you change the Description in Notion after saving, Bookmark Assistant leaves it alone.",
+          "title": "Will a sync overwrite my Notion edits?",
+          "body": "No. Syncing a link again updates its existing page, but changes you make in Notion take priority over values written by a sync.",
           "status": "released"
         },
         {
-          "title": "What happens if AI fails?",
-          "body": "Your Notion save remains complete. AI is a follow-up task and never becomes a dependency of the basic sync.",
-          "status": "released"
-        },
-        {
-          "title": "How does Pro auto-sync work?",
-          "body": "Pro users can enable scheduled background sync with a six-hour minimum interval and turn it off at any time.",
-          "status": "released"
-        },
-        {
-          "title": "What happens if I cancel Pro?",
-          "body": "Your existing Notion data remains, and the Free manual workflow continues to work. Scheduled sync and Pro batch processing pause.",
+          "title": "How does scheduled sync work?",
+          "body": "Turn it on in Options and choose an interval of six hours or more. It syncs to your connected Notion database in the background, and you can turn it off at any time.",
           "status": "released"
         }
       ]
@@ -274,18 +245,15 @@
       "body": "Start with your local Chrome library. Connect Notion and add optional AI only when they fit your workflow."
     },
     "footer": {
-      "summary": "Local Chrome bookmark management, optional Notion sync, and AI enrichment when you choose it.",
+      "summary": "Free, open-source Chrome bookmark management with optional Notion sync and AI folder suggestions.",
       "product": "Product",
       "resources": "Resources",
       "legal": "Legal",
-      "notionTemplate": "Notion template",
+      "notionGuide": "Notion token guide",
       "chromeStore": "Chrome Web Store",
       "support": "Contact support",
       "privacy": "Privacy policy",
-      "terms": "Terms of service",
-      "refund": "Refund policy",
-      "poweredBy": "Payments powered by",
-      "rights": "All rights reserved."
+      "terms": "Terms of service"
     }
   }
 }

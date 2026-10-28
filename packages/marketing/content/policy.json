@@ -19,6 +19,16 @@
     "private repository",
     "workspace[_ -]?id",
     "database[_ -]?id",
-    "data source[_ -]?id"
+    "data source[_ -]?id",
+    "(?<![\\w-])pro(?![\\w-])",
+    "\\bpricing\\b",
+    "\\bpaddle\\b",
+    "\\brefund",
+    "\\bsubscri(be|ption)",
+    "\\boauth\\b",
+    "sign[ -]?in\\b",
+    "\\baccounts?\\b",
+    "notion template",
+    "套餐|订阅|退款|账户|账号|登录|Notion 模板"
   ]
 }

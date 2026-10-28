@@ -39,8 +39,7 @@ test('website capability map covers canonical claims and keeps AI publication st
       Object.keys(copy.website.capabilities).sort(),
       copy.releasedClaims.map(({ id }) => id).sort()
     );
-    assert.equal(copy.website.capabilities['ai-summary-tags'], copy.website.publication.ai);
-    assert.equal(copy.website.capabilities['ai-batch'], copy.website.publication.ai);
+    assert.equal(copy.website.capabilities['ai-organize'], copy.website.publication.ai);
   }
 });
 
@@ -53,8 +52,6 @@ test('localized website structures stay in lockstep', () => {
     capabilities: Object.keys(copy.website.capabilities),
     features: copy.website.features.items.map(({ status }) => status),
     steps: copy.website.how.steps.map(({ status }) => status),
-    free: copy.website.pricing.freeFeatures.map(({ status }) => status),
-    pro: copy.website.pricing.proFeatures.map(({ status }) => status),
     faq: copy.website.faq.items.map(({ status }) => status),
   });
   assert.deepEqual(signature(copies[1]), signature(copies[0]));

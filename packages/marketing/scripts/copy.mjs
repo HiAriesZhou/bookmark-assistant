@@ -16,9 +16,7 @@ function stableJson(value) {
 }
 
 function expectedStoreCopy(copy) {
-  const claims = copy.releasedClaims
-    .map((claim) => `- ${claim.text}${claim.plan === 'pro' ? ' (Pro)' : ''}`)
-    .join('\n');
+  const claims = copy.releasedClaims.map((claim) => `- ${claim.text}`).join('\n');
   const screenshots = copy.screenshots
     .map((shot, index) => {
       const gate = shot.status === 'feature-gated' ? ` [BLOCKED: ${shot.gate}]` : '';
@@ -36,7 +34,6 @@ function websiteModule(copies) {
       {
         productName: copy.productName,
         ctas: copy.ctas,
-        planLabels: copy.planLabels,
         ...copy.website,
       },
     ])

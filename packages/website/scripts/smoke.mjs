@@ -105,7 +105,7 @@ try {
       privacy: false,
       positioningPhrases: [
         'without moving everything into another bookmark service',
-        'AI summaries and tags stay optional.',
+        'AI folder suggestions stay optional.',
       ],
     },
     {
@@ -114,7 +114,7 @@ try {
       h1: '管理 Chrome 书签。 不必迁移。',
       canonical: canonicalSiteUrl + '/zh-CN',
       privacy: false,
-      positioningPhrases: ['无需搬进另一套书签服务', 'AI 摘要与标签保持可选'],
+      positioningPhrases: ['无需搬进另一套书签服务', 'AI 文件夹建议保持可选'],
     },
     {
       path: '/privacy',
@@ -133,7 +133,7 @@ try {
     {
       path: '/success',
       lang: 'en',
-      h1: `Return to ${config.brand.name}`,
+      h1: `${config.brand.name} is now free`,
       canonical: canonicalSiteUrl + '/success',
       privacy: false,
       success: true,
@@ -150,24 +150,8 @@ try {
         colorScheme: 'light',
         reducedMotion: 'reduce',
       });
-      await page.route('**/api/pricing', async (route) => {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            success: true,
-            pricing: {
-              monthly: 1.5,
-              yearly: 15,
-              currencyCode: 'USD',
-              source: 'paddle',
-            },
-          }),
-        });
-      });
       await page.route('**/*', async (route) => {
-        if (route.request().url().includes('/api/pricing')) await route.fallback();
-        else if (route.request().url().startsWith('https://api.producthunt.com/widgets/')) {
+        if (route.request().url().startsWith('https://api.producthunt.com/widgets/')) {
           await route.fulfill({
             status: 200,
             contentType: 'image/svg+xml',
@@ -232,9 +216,9 @@ try {
           ),
           hasMetadataPanel: Boolean(document.querySelector('.editorial-metadata')),
           syncTabCount: document.querySelectorAll('.editorial-sync-toolbar [role="tab"]').length,
-          hasLivePriceBadge:
-            document.body.innerText.includes('Live Paddle price') ||
-            document.body.innerText.includes('Paddle 实时价格'),
+          commerceText: /pricing|paddle|refund|subscription|\bpro\b|价格|订阅|退款/i.test(
+            document.body.innerText
+          ),
           hasLimitedUse: document.body.innerText.includes('Limited Use'),
           hasReturnTo: document.body.innerText.includes('return_to'),
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -264,6 +248,7 @@ try {
         assert.ok(state.bodyText.includes(phrase), `${routeInfo.path} is missing “${phrase}”`);
       }
 
+      assert.equal(state.commerceText, false, `${routeInfo.path} mentions commerce`);
       if (routeInfo.success) {
         assert.deepEqual(state.alternates, []);
         assert.equal(state.hasJsonLd, false);
@@ -283,48 +268,20 @@ try {
           assert.equal(state.jsonLd.installUrl, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
         assert.equal(state.hasMetadataPanel, true);
         assert.equal(state.syncTabCount, 2);
-        assert.equal(state.hasLivePriceBadge, false);
         if (config.officialBuild)
           assert.match(state.primaryHref || '', /khffaaemphidjmhokafmiilkcjpgiije/);
         else {
           assert.equal(state.primaryHref, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
-          assert.equal(await page.locator('#pricing').count(), 0);
         }
+        assert.equal(await page.locator('#pricing').count(), 0);
         assert.ok(contrast(state.primaryForeground, state.primaryBackground) >= 4.5);
       }
       await page.close();
     }
   }
 
-  if (config.officialBuild) {
-    const fallbackPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    await fallbackPage.route('**/api/pricing', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          pricing: {
-            monthly: 1.5,
-            yearly: 11.9,
-            currencyCode: 'USD',
-            source: 'configured-fallback',
-          },
-        }),
-      });
-    });
-    await fallbackPage.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-    await fallbackPage.waitForSelector('#pricing');
-    await assert.doesNotReject(async () => {
-      await fallbackPage.getByText('Current price is available inside the extension.').waitFor();
-    });
-    assert.equal(await fallbackPage.locator('#pricing button[aria-pressed]').count(), 0);
-    assert.equal((await fallbackPage.locator('#pricing').innerText()).includes('$11.90'), false);
-    await fallbackPage.close();
-  }
-
   process.stdout.write(
-    'Website locale, privacy, pricing, metadata, accessibility, image, and responsive smoke checks passed.\n'
+    'Website locale, privacy, metadata, accessibility, image, and responsive smoke checks passed.\n'
   );
 } finally {
   if (browser) await browser.close();

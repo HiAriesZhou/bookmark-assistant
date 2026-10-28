@@ -7,7 +7,7 @@
     "description": "The name of the extension"
   },
   "appDesc": {
-    "message": "本地管理 Chrome 书签，按需将书签与阅读清单同步到 Notion，并可选添加 AI 摘要与标签。",
+    "message": "在本地管理 Chrome 书签，按需把书签和阅读清单同步到 Notion，还能用可选的 AI 建议文件夹。",
     "description": "The description of the extension"
   },
   "extensionTitle": {

@@ -23,11 +23,7 @@ const baseStyles = `
   }
 `;
 
-export function screenshotCanvas({ locale, copy, scene, productImage, logoImage, index = 0 }) {
-  const planBadge =
-    scene.id === 'pro-auto-sync'
-      ? `<span class="plan">${escapeHtml(copy.planLabels.pro)}</span>`
-      : '';
+export function screenshotCanvas({ locale, copy, productImage, logoImage, index = 0 }) {
   return `<!doctype html>
   <html lang="${escapeHtml(locale)}">
     <head><meta charset="utf-8"><style>
@@ -44,7 +40,6 @@ export function screenshotCanvas({ locale, copy, scene, productImage, logoImage,
       h1 { margin: 0; max-width: 1040px; font-family: ${locale === 'zh-CN' ? '"Songti SC", STSong, serif' : '"Iowan Old Style", "Palatino Linotype", Palatino, serif'}; font-size: ${locale === 'zh-CN' ? '47px' : '48px'}; line-height: 1.01; letter-spacing: ${locale === 'zh-CN' ? '-.045em' : '-.04em'}; font-weight: 600; text-wrap: balance; }
       p { margin: 9px 0 0; max-width: 940px; color: #6f756f; font-size: 17px; line-height: 1.4; letter-spacing: -.012em; }
       .copy::after { content: ""; display: block; width: 76px; height: 3px; margin-top: 13px; border-radius: 999px; background: #879481; transform: rotate(-1.2deg); opacity: .7; }
-      .plan { display: inline-flex; margin-left: 10px; padding: 4px 9px; border: 1px solid #cfd4cb; border-radius: 999px; background: rgba(255,255,255,.62); color: #4f5d4b; font-size: 12px; vertical-align: middle; }
       .folio { position: absolute; right: 52px; top: 38px; color: #8a8f89; font-size: 13px; font-weight: 600; letter-spacing: .13em; }
       .frame { position: absolute; left: 48px; top: 230px; width: 1184px; height: 640px; overflow: hidden; background: #fff; border: 1px solid rgba(92,96,89,.18); border-radius: 20px 20px 0 0; box-shadow: 0 24px 68px rgba(42,43,39,.14); }
       .browser { height: 31px; display: flex; align-items: center; padding: 0 13px; background: #eeede8; border-bottom: 1px solid #deddd7; }
@@ -54,7 +49,7 @@ export function screenshotCanvas({ locale, copy, scene, productImage, logoImage,
       .product { display: block; width: 100%; height: auto; min-height: 609px; object-fit: cover; object-position: top center; }
     </style></head>
     <body>
-      <div class="brand"><img src="${logoImage}" alt=""><span>${escapeHtml(copy.productName)}</span>${planBadge}</div>
+      <div class="brand"><img src="${logoImage}" alt=""><span>${escapeHtml(copy.productName)}</span></div>
       <section class="copy"><h1>${escapeHtml(copy.headline)}</h1><p>${escapeHtml(copy.body)}</p></section>
       <div class="folio">${String(index + 1).padStart(2, '0')} / 05</div>
       <div class="frame"><div class="browser"><span class="dots"><i></i><i></i><i></i></span><span class="browser-title">Bookmark Assistant</span></div><img class="product" src="${productImage}" alt=""></div>
@@ -82,7 +77,7 @@ export function globalOverviewCanvas({
     .browser span { position:absolute; left:50%; transform:translateX(-50%); font-size:10px; color:#878a82; }
     .product { display:block; width:100%; height:auto; }
   </style></head><body>
-    <header><div class="brand"><img src="${logoImage}" alt="">${escapeHtml(productName)}</div><div class="capabilities"><span>Local library</span><span>AI summaries & tags</span></div></header>
+    <header><div class="brand"><img src="${logoImage}" alt="">${escapeHtml(productName)}</div><div class="capabilities"><span>Local library</span><span>AI folder suggestions</span></div></header>
     <div class="frame"><div class="browser"><i></i><i></i><i></i><span>${escapeHtml(productName)}</span></div><img class="product" src="${productImage}" alt="Bookmark library with folders, search, descriptions and tags"></div>
     <div class="grain"></div>
   </body></html>`;
