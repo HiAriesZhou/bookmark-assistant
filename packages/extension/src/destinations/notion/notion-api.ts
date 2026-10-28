@@ -16,7 +16,8 @@ export const NOTION_API_VERSION = '2025-09-03';
 const REQUEST_SPACING_MS = 334;
 const REQUEST_TIMEOUT_MS = 30_000;
 const SCHEMA_CACHE_MS = 5 * 60_000;
-const MAX_EXISTING_PAGES = 50;
+// A safety stop for a cursor that never ends: 100,000 rows.
+const MAX_EXISTING_PAGES = 1_000;
 
 type NotionClient = Pick<Client, 'request' | 'search' | 'pages' | 'users' | 'dataSources'>;
 
@@ -305,42 +306,38 @@ export class NotionApi implements NotionLinkWriter {
   }
 
   /**
-   * Reads up to 5,000 existing rows to plan creates and updates. A failed page keeps the
-   * rows read so far, so a sync can still continue with partial duplicate checking.
+   * Reads every existing row to plan creates and updates. A failed read fails the sync:
+   * planning against a partial index would create duplicates of the rows it missed.
    */
   async existingLinks(dataSourceId: string, token: string): Promise<ExistingLinks> {
     const result: ExistingLinks = { urls: [], syncIds: [], records: [] };
     let cursor: string | undefined;
-    try {
-      for (let page = 0; page < MAX_EXISTING_PAGES; page++) {
-        const response: any = await this.withRetry(() =>
-          this.client(token).dataSources.query({
-            data_source_id: dataSourceId,
-            page_size: 100,
-            start_cursor: cursor,
-          } as any)
-        );
-        for (const row of response?.results || []) {
-          const { url, syncId, type, readState } = extractNotionPageLinkKeys(row);
-          if (url) result.urls.push(url);
-          if (syncId) result.syncIds.push(syncId);
-          if (url || syncId) {
-            result.records.push({
-              pageId: typeof row.id === 'string' ? row.id : undefined,
-              url,
-              syncId,
-              type,
-              readState,
-            });
-          }
+    for (let page = 0; page < MAX_EXISTING_PAGES; page++) {
+      const response: any = await this.withRetry(() =>
+        this.client(token).dataSources.query({
+          data_source_id: dataSourceId,
+          page_size: 100,
+          start_cursor: cursor,
+        } as any)
+      );
+      for (const row of response?.results || []) {
+        const { url, syncId, type, readState } = extractNotionPageLinkKeys(row);
+        if (url) result.urls.push(url);
+        if (syncId) result.syncIds.push(syncId);
+        if (url || syncId) {
+          result.records.push({
+            pageId: typeof row.id === 'string' ? row.id : undefined,
+            url,
+            syncId,
+            type,
+            readState,
+          });
         }
-        cursor = response?.next_cursor || undefined;
-        if (!cursor) break;
       }
-    } catch (error) {
-      console.warn('[Notion] Reading existing rows stopped early:', error);
+      cursor = response?.next_cursor || undefined;
+      if (!cursor) return result;
     }
-    return result;
+    throw new Error('The Notion database has too many rows to check for duplicates');
   }
 }
 

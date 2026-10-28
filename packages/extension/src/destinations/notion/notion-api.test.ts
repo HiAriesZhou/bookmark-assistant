@@ -71,15 +71,25 @@ describe('NotionApi', () => {
     expect(Object.keys(first)).toEqual(expect.arrayContaining(['Name', 'URL']));
   });
 
-  it('pages through existing rows and keeps what it read when a page fails', async () => {
+  it('pages through every existing row, past the old 5,000-row cap', async () => {
+    const { client, api } = fakeClient();
+    for (let page = 0; page < 60; page++) {
+      client.dataSources.query.mockResolvedValueOnce({
+        results: [row(`https://a.example/${page}`, `s${page}`)],
+        next_cursor: page < 59 ? `c${page + 1}` : null,
+      });
+    }
+    const links = await api.existingLinks('ds', TOKEN);
+    expect(links.urls).toHaveLength(60);
+    expect(links.records[0]).toMatchObject({ pageId: 'page-s0', syncId: 's0' });
+  });
+
+  it('fails instead of planning writes against a partial row index', async () => {
     const { client, api } = fakeClient();
     client.dataSources.query
       .mockResolvedValueOnce({ results: [row('https://a.example', 'a')], next_cursor: 'c2' })
       .mockRejectedValue(Object.assign(new Error('bad request'), { status: 400 }));
-    const links = await api.existingLinks('ds', TOKEN);
-    expect(links.urls).toEqual(['https://a.example']);
-    expect(links.syncIds).toEqual(['a']);
-    expect(links.records[0]).toMatchObject({ pageId: 'page-a', syncId: 'a' });
+    await expect(api.existingLinks('ds', TOKEN)).rejects.toThrow('bad request');
   });
 
   it('lists databases and standalone pages but not database rows', async () => {
