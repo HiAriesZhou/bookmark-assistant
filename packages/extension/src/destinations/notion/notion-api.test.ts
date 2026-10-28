@@ -1,0 +1,90 @@
+import { describe, expect, it, vi } from 'vitest';
+import { NotionApi, type CreateNotionClient } from './notion-api';
+
+const TOKEN = 'ntn_test';
+const rateLimited = () => Object.assign(new Error('rate limited'), { status: 429 });
+
+function fakeClient(overrides: Record<string, any> = {}) {
+  const client = {
+    request: vi.fn(),
+    search: vi.fn(),
+    users: { me: vi.fn() },
+    pages: { create: vi.fn(), update: vi.fn() },
+    dataSources: { retrieve: vi.fn(), query: vi.fn() },
+    ...overrides,
+  };
+  const createClient = vi.fn(() => client) as unknown as CreateNotionClient;
+  return { client, api: new NotionApi(createClient, async () => undefined) };
+}
+
+const row = (url: string, syncId: string) => ({
+  id: `page-${syncId}`,
+  properties: {
+    URL: { type: 'url', url },
+    'Sync ID': { type: 'rich_text', rich_text: [{ plain_text: syncId }] },
+  },
+});
+
+describe('NotionApi', () => {
+  it('returns the primary data source and title of an accessible database', async () => {
+    const { client, api } = fakeClient();
+    client.request.mockResolvedValue({
+      object: 'database',
+      title: [{ plain_text: 'Bookmarks' }],
+      data_sources: [{ id: 'ds-1' }],
+    });
+    await expect(api.verifyDatabaseAccess('db-1', TOKEN)).resolves.toEqual({
+      databaseId: 'db-1',
+      dataSourceId: 'ds-1',
+      title: 'Bookmarks',
+    });
+  });
+
+  it('rejects a page that is not a database', async () => {
+    const { client, api } = fakeClient();
+    client.request.mockResolvedValue({ object: 'page' });
+    await expect(api.verifyDatabaseAccess('page-1', TOKEN)).rejects.toThrow('not a database');
+  });
+
+  it('retries rate-limited reads but never retries page creation', async () => {
+    const { client, api } = fakeClient();
+    client.pages.update.mockRejectedValueOnce(rateLimited()).mockResolvedValue({ id: 'p' });
+    await api.updatePage('p', {}, TOKEN);
+    expect(client.pages.update).toHaveBeenCalledTimes(2);
+
+    client.pages.create.mockRejectedValue(rateLimited());
+    await expect(
+      api.createPage({ type: 'database_id', database_id: 'db' }, {}, TOKEN)
+    ).rejects.toThrow('rate limited');
+    expect(client.pages.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the data source schema once for several pages', async () => {
+    const { client, api } = fakeClient();
+    client.dataSources.retrieve.mockResolvedValue({
+      properties: { Name: { type: 'title' }, URL: { type: 'url' } },
+    });
+    const item = { title: 'A', url: 'https://a.example' } as any;
+    const first = await api.buildPropertiesFromDataSource('ds', TOKEN, item);
+    await api.buildPropertiesFromDataSource('ds', TOKEN, item);
+    expect(client.dataSources.retrieve).toHaveBeenCalledTimes(1);
+    expect(Object.keys(first)).toEqual(expect.arrayContaining(['Name', 'URL']));
+  });
+
+  it('pages through existing rows and keeps what it read when a page fails', async () => {
+    const { client, api } = fakeClient();
+    client.dataSources.query
+      .mockResolvedValueOnce({ results: [row('https://a.example', 'a')], next_cursor: 'c2' })
+      .mockRejectedValue(Object.assign(new Error('bad request'), { status: 400 }));
+    const links = await api.existingLinks('ds', TOKEN);
+    expect(links.urls).toEqual(['https://a.example']);
+    expect(links.syncIds).toEqual(['a']);
+    expect(links.records[0]).toMatchObject({ pageId: 'page-a', syncId: 'a' });
+  });
+
+  it("reports an integration's workspace name", async () => {
+    const { client, api } = fakeClient();
+    client.users.me.mockResolvedValue({ name: 'BA', bot: { workspace_name: 'Aries' } });
+    await expect(api.getSelf(TOKEN)).resolves.toEqual({ name: 'BA', workspaceName: 'Aries' });
+  });
+});
