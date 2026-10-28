@@ -11,9 +11,6 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const OFFICIAL_SERVICE = Object.freeze({
   apiUrl: 'https://bookmark-assistant-server.vercel.app',
   websiteUrl: 'https://bookmarkassistant.com',
-  notionClientId: '257d872b-594c-805a-9f58-0037c0162612',
-  // Public OAuth client id. The client secret stays on the server.
-  googleClientId: '134898534331-ac9uhj7skjg3f8033019b5l3ue0v8bnv.apps.googleusercontent.com',
   faqUrl: 'https://bookmarkassistant.com/#faq',
   privacyUrl: 'https://bookmarkassistant.com/privacy',
   termsUrl:
@@ -64,11 +61,10 @@ function parseApiOrigin(apiUrl) {
 }
 
 /**
- * Resolves the single product build. Production builds connect to the official
- * service unless VITE_OAUTH_SERVER_URL selects another server; development builds
- * default to a local server. Official links and the official Notion client ID apply
- * only to the official service and cannot be overridden there. The Google client
- * ID is public, same as the Notion client ID.
+ * Resolves the single product build. The extension talks to no service of its own;
+ * the API origin only identifies the official website build until the website is
+ * static. Official links apply only to the official build and cannot be overridden
+ * there; other builds set their own.
  */
 export function resolveBuildConfig(env = process.env, { development = false } = {}) {
   const brand = JSON.parse(readFileSync(resolve(ROOT, 'packages/shared/brand.json'), 'utf8'));
@@ -89,19 +85,12 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
     officialService,
     publicAssetsPath: '/product',
     publicEnv: {
-      VITE_OFFICIAL_SERVICE: String(officialService),
       VITE_APP_NAME: brand.name,
-      VITE_OAUTH_SERVER_URL: apiUrl,
-      VITE_NOTION_CLIENT_ID: link('notionClientId', 'VITE_NOTION_CLIENT_ID'),
-      VITE_GOOGLE_CLIENT_ID: link('googleClientId', 'VITE_GOOGLE_CLIENT_ID'),
-      VITE_WEBSITE_URL: websiteUrl,
       VITE_FAQ_URL: link('faqUrl', 'VITE_FAQ_URL'),
       VITE_PRIVACY_URL: link('privacyUrl', 'VITE_PRIVACY_URL'),
       VITE_TERMS_URL: link('termsUrl', 'VITE_TERMS_URL'),
-      VITE_SUPPORT_URL: link('supportUrl', 'VITE_SUPPORT_URL'),
       // Other builds may publish their own GPL source; the upstream repository is the default.
       VITE_SOURCE_URL: link('sourceUrl', 'VITE_SOURCE_URL', OFFICIAL_SERVICE.sourceUrl),
-      VITE_DEBUG_MODE: env.VITE_DEBUG_MODE || 'false',
     },
   };
 }

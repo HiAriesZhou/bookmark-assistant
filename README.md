@@ -84,9 +84,8 @@ pnpm build:prod
 pnpm package
 ```
 
-To use your own server, set `VITE_OAUTH_SERVER_URL` and your own
-`VITE_NOTION_CLIENT_ID` at build time; official links and the official Notion client
-ID then no longer apply. Never pass server-only credentials as Vite variables.
+The extension needs no credentials at build time: users connect Notion with their own
+token in Options. Never pass credentials as Vite variables.
 
 ## Verification
 
