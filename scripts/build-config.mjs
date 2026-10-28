@@ -5,11 +5,10 @@ import { fileURLToPath } from 'node:url';
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * Public endpoints of the official hosted service. These values ship in every store
- * package; none of them is a credential. The Notion client ID is public by design.
+ * Public links of the official build. These values ship in every store package;
+ * none of them is a credential.
  */
-export const OFFICIAL_SERVICE = Object.freeze({
-  apiUrl: 'https://bookmark-assistant-server.vercel.app',
+export const OFFICIAL_LINKS = Object.freeze({
   websiteUrl: 'https://bookmarkassistant.com',
   faqUrl: 'https://bookmarkassistant.com/#faq',
   privacyUrl: 'https://bookmarkassistant.com/privacy',
@@ -19,10 +18,7 @@ export const OFFICIAL_SERVICE = Object.freeze({
   sourceUrl: 'https://github.com/HiAriesZhou/bookmark-assistant',
 });
 
-const LOCAL_SERVICE = Object.freeze({
-  apiUrl: 'http://localhost:3333',
-  websiteUrl: 'http://localhost:3001',
-});
+const LOCAL_WEBSITE_URL = 'http://localhost:3001';
 
 export function brandFiles(config) {
   return [
@@ -39,50 +35,36 @@ export function brandFiles(config) {
   });
 }
 
-function parseApiOrigin(apiUrl) {
-  const parsed = new URL(apiUrl);
-  if (
-    !['http:', 'https:'].includes(parsed.protocol) ||
-    parsed.username ||
-    parsed.password ||
-    parsed.search ||
-    parsed.hash ||
-    parsed.pathname !== '/'
-  ) {
-    throw new Error('VITE_OAUTH_SERVER_URL must be a plain HTTP(S) origin without credentials.');
+function parseWebsiteUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('VITE_WEBSITE_URL must be an absolute HTTP(S) URL.');
   }
-  if (
-    parsed.protocol !== 'https:' &&
-    !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
-  ) {
-    throw new Error('Non-local API origins require HTTPS.');
-  }
-  return parsed.origin;
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password)
+    throw new Error('VITE_WEBSITE_URL must be an HTTP(S) URL without credentials.');
+  return parsed.href.replace(/\/$/, '');
 }
 
 /**
- * Resolves the single product build. The extension talks to no service of its own;
- * the API origin only identifies the official website build until the website is
- * static. Official links apply only to the official build and cannot be overridden
- * there; other builds set their own.
+ * Resolves the single product build. The extension talks to no service of its own.
+ * A build is official unless it is a development build or VITE_WEBSITE_URL names a
+ * site other than the official one. Official links cannot be overridden in the
+ * official build; other builds set their own.
  */
 export function resolveBuildConfig(env = process.env, { development = false } = {}) {
   const brand = JSON.parse(readFileSync(resolve(ROOT, 'packages/shared/brand.json'), 'utf8'));
-  const apiUrl = parseApiOrigin(
-    env.VITE_OAUTH_SERVER_URL?.trim() ||
-      (development ? LOCAL_SERVICE.apiUrl : OFFICIAL_SERVICE.apiUrl)
-  );
-  const officialService = apiUrl === OFFICIAL_SERVICE.apiUrl;
-  // The official service pins its own public identity; overrides apply only to other servers.
+  const requestedSite = env.VITE_WEBSITE_URL?.trim();
+  const siteUrl = requestedSite ? parseWebsiteUrl(requestedSite) : '';
+  const officialBuild = !development && (!siteUrl || siteUrl === OFFICIAL_LINKS.websiteUrl);
   const link = (key, envKey, fallback = '') =>
-    officialService ? OFFICIAL_SERVICE[key] : env[envKey]?.trim() || fallback;
-  const websiteUrl = link('websiteUrl', 'VITE_WEBSITE_URL', LOCAL_SERVICE.websiteUrl);
+    officialBuild ? OFFICIAL_LINKS[key] : env[envKey]?.trim() || fallback;
   return {
     brand,
     brandRoot: resolve(ROOT, 'packages/shared', brand.assets.root),
-    apiUrl,
-    websiteUrl,
-    officialService,
+    websiteUrl: officialBuild ? OFFICIAL_LINKS.websiteUrl : siteUrl || LOCAL_WEBSITE_URL,
+    officialBuild,
     publicAssetsPath: '/product',
     publicEnv: {
       VITE_APP_NAME: brand.name,
@@ -90,7 +72,7 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
       VITE_PRIVACY_URL: link('privacyUrl', 'VITE_PRIVACY_URL'),
       VITE_TERMS_URL: link('termsUrl', 'VITE_TERMS_URL'),
       // Other builds may publish their own GPL source; the upstream repository is the default.
-      VITE_SOURCE_URL: link('sourceUrl', 'VITE_SOURCE_URL', OFFICIAL_SERVICE.sourceUrl),
+      VITE_SOURCE_URL: link('sourceUrl', 'VITE_SOURCE_URL', OFFICIAL_LINKS.sourceUrl),
     },
   };
 }

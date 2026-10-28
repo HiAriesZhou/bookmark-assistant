@@ -204,9 +204,9 @@ function copyPublishDirectory(sourceDir, targetDir) {
 async function createPublishZip() {
   const { manifest } = validatePublishDirectory(distPath);
   const version = manifest.version;
-  const zipName = buildConfig.officialService
+  const zipName = buildConfig.officialBuild
     ? `bookmark-assistant-v${version}.zip`
-    : `bookmark-assistant-self-hosted-v${version}.zip`;
+    : `bookmark-assistant-unofficial-v${version}.zip`;
   const zipPath = path.join(projectRoot, zipName);
 
   logStep('Archive', `Creating ${zipName}...`);

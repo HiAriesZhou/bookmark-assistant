@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
               JSON.stringify(
                 {
                   version: PRODUCT_VERSION,
-                  officialService: config.officialService,
+                  officialBuild: config.officialBuild,
                   sourceTreeSha256: sourceFingerprint().sourceTreeSha256,
                   publicConfig: config.publicEnv,
                 },

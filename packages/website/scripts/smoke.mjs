@@ -4,11 +4,8 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 import { resolveBuildConfig } from '../../../scripts/build-config.mjs';
-const config = resolveBuildConfig({
-  ...process.env,
-  VITE_OAUTH_SERVER_URL: process.env.NEXT_PUBLIC_API_URL || process.env.VITE_OAUTH_SERVER_URL,
-});
-const canonicalSiteUrl = config.officialService
+const config = resolveBuildConfig(process.env);
+const canonicalSiteUrl = config.officialBuild
   ? config.websiteUrl
   : process.env.NEXT_PUBLIC_SITE_URL || config.websiteUrl;
 const assetPrefix = config.publicAssetsPath;
@@ -280,14 +277,14 @@ try {
         assert.equal(state.jsonLd.applicationSubCategory, 'Bookmark manager');
         assert.equal(state.jsonLd.browserRequirements, 'Requires Google Chrome');
         assert.equal(state.jsonLd.isAccessibleForFree, true);
-        if (config.officialService)
+        if (config.officialBuild)
           assert.match(state.jsonLd.installUrl, /khffaaemphidjmhokafmiilkcjpgiije/);
         else
           assert.equal(state.jsonLd.installUrl, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
         assert.equal(state.hasMetadataPanel, true);
         assert.equal(state.syncTabCount, 2);
         assert.equal(state.hasLivePriceBadge, false);
-        if (config.officialService)
+        if (config.officialBuild)
           assert.match(state.primaryHref || '', /khffaaemphidjmhokafmiilkcjpgiije/);
         else {
           assert.equal(state.primaryHref, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
@@ -299,7 +296,7 @@ try {
     }
   }
 
-  if (config.officialService) {
+  if (config.officialBuild) {
     const fallbackPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await fallbackPage.route('**/api/pricing', async (route) => {
       await route.fulfill({
