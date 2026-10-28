@@ -54,38 +54,6 @@
     "message": "正在准备书签和阅读清单",
     "description": "Detail shown while base sync is running"
   },
-  "sync_progress_label": {
-    "message": "同步进度",
-    "description": "Accessible label for the staged sync progress indicator"
-  },
-  "sync_progress_stage_sync": {
-    "message": "同步",
-    "description": "Base Notion sync stage label"
-  },
-  "sync_progress_stage_descriptions": {
-    "message": "补充描述",
-    "description": "Description enrichment stage label"
-  },
-  "sync_progress_state_complete": {
-    "message": "已完成",
-    "description": "Accessible completed stage state"
-  },
-  "sync_progress_state_active": {
-    "message": "进行中",
-    "description": "Accessible active stage state"
-  },
-  "sync_progress_state_ready": {
-    "message": "已准备",
-    "description": "Accessible ready stage state"
-  },
-  "sync_progress_state_retrying": {
-    "message": "等待重试",
-    "description": "Accessible retrying stage state"
-  },
-  "sync_progress_state_waiting": {
-    "message": "等待中",
-    "description": "Accessible waiting stage state"
-  },
   "error": {
     "message": "错误",
     "description": "Error message prefix"
@@ -182,16 +150,6 @@
   "hours_unit": {
     "message": "小时"
   },
-  "view_plans": {
-    "message": "查看方案"
-  },
-  "included": {
-    "message": "已包含"
-  },
-  "about_version": {
-    "message": "版本 $1",
-    "description": "Version label with placeholder"
-  },
   "action_cancel": {
     "message": "取消",
     "description": "Cancel button"
@@ -224,10 +182,6 @@
     "message": "已断开连接",
     "description": "Disconnected title"
   },
-  "documentation": {
-    "message": "文档",
-    "description": "Link to documentation"
-  },
   "error_save_settings_failed": {
     "message": "无法保存同步设置",
     "description": "Error: failed to save settings"
@@ -235,10 +189,6 @@
   "faq_guide": {
     "message": "常见问题与指南",
     "description": "Footer FAQ section title"
-  },
-  "license": {
-    "message": "许可证",
-    "description": "License label"
   },
   "loading": {
     "message": "加载中…",
@@ -502,72 +452,6 @@
   },
   "destination_sync_action": {
     "message": "同步"
-  },
-  "ai_service_label": {
-    "message": "AI 服务"
-  },
-  "ai_service_ready": {
-    "message": "已就绪"
-  },
-  "ai_service_not_configured": {
-    "message": "未配置"
-  },
-  "ai_service_auto_detect": {
-    "message": "根据 Key 自动识别"
-  },
-  "ai_api_key_label": {
-    "message": "API Key"
-  },
-  "ai_key_verified": {
-    "message": "已验证 · ••••$1"
-  },
-  "ai_key_draft": {
-    "message": "请保存并验证此 Key。"
-  },
-  "ai_key_replace": {
-    "message": "请替换并验证已保存的 Key。"
-  },
-  "ai_key_privacy_hint": {
-    "message": "运行 AI 时，页面内容会发送给识别出的服务商。"
-  },
-  "ai_key_placeholder": {
-    "message": "粘贴 API Key"
-  },
-  "ai_key_placeholder_replace": {
-    "message": "粘贴新 Key 以替换"
-  },
-  "ai_key_remove": {
-    "message": "移除已保存的 Key"
-  },
-  "ai_key_save": {
-    "message": "保存并验证 API Key"
-  },
-  "ai_key_verifying": {
-    "message": "正在验证 API Key"
-  },
-  "ai_key_not_detected": {
-    "message": "没有可用的服务商接受此 Key。请检查 Key，或在下方填写 Base URL。"
-  },
-  "ai_base_url_label": {
-    "message": "Base URL"
-  },
-  "ai_base_url_hint": {
-    "message": "可选。填写服务商的 API 地址或兼容接口后重新保存。"
-  },
-  "ai_base_url_invalid": {
-    "message": "请输入有效的 Base URL，不要包含账号密码或查询参数。"
-  },
-  "ai_toast_key_verified": {
-    "message": "AI Key 已验证。"
-  },
-  "ai_toast_key_removed": {
-    "message": "AI API Key 已移除。"
-  },
-  "ai_error_key_save": {
-    "message": "无法保存 AI Key。"
-  },
-  "ai_error_key_remove": {
-    "message": "无法移除 AI API Key。"
   },
   "sync_needs_destination": {
     "message": "定时同步需要先连接一个目标。"
