@@ -1,37 +1,21 @@
 import { useEffect, useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { Switch } from '../../components/ui/switch';
-import { useAppStore } from '../store';
+import { MIN_SYNC_INTERVAL_HOURS, useAppStore } from '../store';
 import { useToast } from '../hook/useToast';
-import { DestinationRequiredNotice, ProBadge, SettingsGroup, SettingsRow } from './Workspace';
+import { DestinationRequiredNotice, SettingsGroup, SettingsRow } from './Workspace';
 
-export function SyncSettingsSection({
-  onUpgrade,
-  onOpenDestinations,
-}: {
-  onUpgrade: () => void;
-  onOpenDestinations: () => void;
-}) {
+/** Scheduled sync to the connected Notion database. */
+export function SyncSettingsSection({ onOpenDestinations }: { onOpenDestinations: () => void }) {
   const { t } = createTranslator();
   const { show } = useToast();
-  const {
-    isPro,
-    isConnected,
-    capabilities,
-    deploymentMode,
-    autoSync,
-    intervalHours,
-    setAutoSync,
-    saveSyncSettings,
-    getEffectiveLimits,
-  } = useAppStore();
-  const planAllowsAutoSync = capabilities?.autoSync ?? isPro;
-  // Scheduled sync writes to Notion, so the plan alone is not enough.
-  const autoSyncAllowed = planAllowsAutoSync && isConnected;
+  const { isConnected, autoSync, intervalHours, setAutoSync, saveSyncSettings } = useAppStore();
+  // Scheduled sync writes to Notion, so it needs a connected database.
+  const autoSyncAllowed = isConnected;
   const [value, setValue] = useState<number>(intervalHours);
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState('');
-  const { minIntervalHours } = getEffectiveLimits();
+  const minIntervalHours = MIN_SYNC_INTERVAL_HOURS;
 
   useEffect(() => setValue(intervalHours), [intervalHours]);
 
@@ -62,11 +46,6 @@ export function SyncSettingsSection({
     <SettingsGroup id="sync" title={t('nav_sync_settings')}>
       <SettingsRow
         label={t('auto_sync_label')}
-        badge={
-          planAllowsAutoSync || deploymentMode === 'self-hosted' ? undefined : (
-            <ProBadge onClick={onUpgrade} />
-          )
-        }
         controlAlign="end"
         control={
           <Switch
@@ -78,7 +57,7 @@ export function SyncSettingsSection({
         }
       />
 
-      {planAllowsAutoSync && !isConnected ? (
+      {!isConnected ? (
         <DestinationRequiredNotice
           message={t('sync_needs_destination')}
           onOpenDestinations={onOpenDestinations}

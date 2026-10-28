@@ -32,6 +32,8 @@ type Writer = Pick<
 export interface SyncLinksOptions {
   wait?: (ms: number) => Promise<unknown>;
   createSyncId?: () => string;
+  /** Throws once the connection that started the sync is gone, before each write batch. */
+  assertCurrent?: () => Promise<void>;
 }
 
 const sanitizeError = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -57,6 +59,7 @@ export async function syncLinksToNotion(
 ): Promise<BookmarkSyncResponse> {
   const wait = options.wait ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
   const createSyncId = options.createSyncId ?? (() => crypto.randomUUID());
+  const assertCurrent = options.assertCurrent ?? (async () => undefined);
   const { token } = connection;
   const { databaseId, dataSourceId } = await api.verifyDatabaseAccess(connection.databaseId, token);
   const items = links.map((link) => validateBookmarkInput(link, { createSyncId }));
@@ -77,11 +80,13 @@ export async function syncLinksToNotion(
 
   const results: BookmarkSyncResult[] = [];
   for (const batch of chunk(plan.toCreate, WRITE_CONCURRENCY)) {
+    await assertCurrent();
     let batchResults = await Promise.all(batch.map((item) => write(item)));
     // One more attempt for transient failures, matched back to their item.
     const retryable = selectRetryableSyncFailures(batchResults);
     if (retryable.length > 0) {
       await wait(RETRY_DELAY_MS);
+      await assertCurrent();
       const retried = await Promise.all(
         retryable.map(async (failed) => {
           const item = batch.find((candidate) =>
@@ -97,6 +102,7 @@ export async function syncLinksToNotion(
     results.push(...batchResults);
   }
   for (const batch of chunk<PlannedLinkUpdate>(plan.toUpdate ?? [], WRITE_CONCURRENCY)) {
+    await assertCurrent();
     results.push(...(await Promise.all(batch.map(({ pageId, item }) => write(item, pageId)))));
   }
 

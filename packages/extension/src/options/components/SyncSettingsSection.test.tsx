@@ -25,18 +25,16 @@ describe('SyncSettingsSection', () => {
     vi.unstubAllGlobals();
   });
 
-  async function render(state: { isPro: boolean; isConnected: boolean }) {
+  async function render(state: { isConnected: boolean }) {
     const onOpenDestinations = vi.fn();
     useAppStore.setState({
       ...originalState,
       ...state,
-      deploymentMode: 'hosted',
-      capabilities: { autoSync: state.isPro, batchAi: state.isPro },
     });
     await act(async () =>
       root.render(
         <ToastProvider>
-          <SyncSettingsSection onUpgrade={vi.fn()} onOpenDestinations={onOpenDestinations} />
+          <SyncSettingsSection onOpenDestinations={onOpenDestinations} />
         </ToastProvider>
       )
     );
@@ -46,8 +44,8 @@ describe('SyncSettingsSection', () => {
   const autoSyncSwitch = () =>
     container.querySelector<HTMLButtonElement>('[aria-label="auto_sync_label"]');
 
-  it('disables scheduled sync and links to Destinations when Pro has no destination', async () => {
-    const onOpenDestinations = await render({ isPro: true, isConnected: false });
+  it('disables scheduled sync and links to Destinations without a destination', async () => {
+    const onOpenDestinations = await render({ isConnected: false });
     expect(autoSyncSwitch()?.disabled).toBe(true);
     expect(container.querySelector('[role="note"]')?.textContent).toContain(
       'sync_needs_destination'
@@ -60,15 +58,14 @@ describe('SyncSettingsSection', () => {
   });
 
   it('shows no destination hint once a destination is connected', async () => {
-    await render({ isPro: true, isConnected: true });
+    await render({ isConnected: true });
     expect(autoSyncSwitch()?.disabled).toBe(false);
     expect(container.querySelector('[role="note"]')).toBeNull();
   });
 
-  it('keeps the Pro badge instead of the destination hint for Free', async () => {
-    await render({ isPro: false, isConnected: false });
-    expect(autoSyncSwitch()?.disabled).toBe(true);
-    expect(container.querySelector('[role="note"]')).toBeNull();
-    expect(container.textContent).toContain('pro');
+  it('offers scheduled sync to everyone with a connected destination', async () => {
+    await render({ isConnected: true });
+    expect(autoSyncSwitch()?.disabled).toBe(false);
+    expect(container.textContent).not.toContain('pro');
   });
 });

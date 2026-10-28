@@ -7,16 +7,17 @@ import type {
 import { analyzeBookmarkLibrary } from '../dashboard/library-health';
 import { getReadingListItems } from '../utils/reading-list';
 import { getAutoSyncStatus } from './auto-sync';
-import { serverAPI } from './server-api';
+import { notionApi } from '../destinations/notion/notion-api';
 import {
-  hasNotionDestination,
-  NOTION_CONNECTED_KEY,
-  readAccountContext,
-  assertAccountContextCurrent,
-  withCurrentAccount,
-  isStaleAccountStateError,
-  type AccountContext,
-} from '../utils/account-state';
+  NOTION_DATABASE_KEY,
+  NOTION_TOKEN_KEY,
+  readDestinationContext,
+  readNotionConnectionFrom,
+  assertDestinationContextCurrent,
+  withCurrentDestination,
+  isStaleDestinationStateError,
+  type DestinationContext,
+} from '../utils/destination-state';
 
 export const DASHBOARD_EVENTS_KEY = 'dashboard_recent_activity';
 export const DASHBOARD_SYNC_SUMMARY_KEY = 'dashboard_last_sync';
@@ -98,23 +99,23 @@ export async function recordDashboardSave(source: 'current_page' | 'context_menu
   }
 }
 
-// Activity belongs to the account that started the operation. Drop it when
-// logout, deletion or a new connection completed while the operation ran.
-export async function recordAccountActivity(
-  context: AccountContext,
+// Activity belongs to the connection that started the operation. Drop it when the
+// user disconnected or switched databases while the operation ran.
+export async function recordDestinationActivity(
+  context: DestinationContext,
   record: () => Promise<void>
 ): Promise<void> {
   try {
-    await withCurrentAccount(context, record);
+    await withCurrentDestination(context, record);
   } catch (error) {
-    if (!isStaleAccountStateError(error)) throw error;
+    if (!isStaleDestinationStateError(error)) throw error;
   }
 }
 
 export function classifyDashboardError(error: unknown): DashboardEvent['errorCategory'] {
   const value = error instanceof Error ? error.message : String(error);
   const normalized = value.toLowerCase();
-  if (/401|unauthor|session|auth/.test(normalized)) return 'authentication';
+  if (/401|unauthor|token|auth/.test(normalized)) return 'authentication';
   if (/403|notion|database|permission|access/.test(normalized)) return 'notion_access';
   if (/429|rate|cooldown|limit/.test(normalized)) return 'rate_limit';
   if (/network|fetch|timeout|timed out|offline/.test(normalized)) return 'network';
@@ -129,79 +130,67 @@ export function inferSyncResult(
   return classifyDashboardError(error) === 'rate_limit' ? 'limited' : 'failed';
 }
 
+/**
+ * Connection status from the stored token and database. A refresh asks Notion whether the
+ * token can still open the database; the result is cached to keep the dashboard cheap.
+ */
 async function readConnection(
   refresh: boolean,
-  context: AccountContext
+  context: DestinationContext
 ): Promise<DashboardSnapshot['connection']> {
   const stored = await chrome.storage.local.get([
-    'session_token',
-    NOTION_CONNECTED_KEY,
+    NOTION_TOKEN_KEY,
+    NOTION_DATABASE_KEY,
     DASHBOARD_CONNECTION_KEY,
   ]);
-  if (!hasNotionDestination(stored)) return { status: 'disconnected', action: 'connect' };
+  const connection = readNotionConnectionFrom(stored);
+  if (!connection) return { status: 'disconnected', action: 'connect' };
 
+  const names = {
+    workspaceName: connection.database.workspaceName,
+    databaseName: connection.database.title,
+  };
   const cached = stored[DASHBOARD_CONNECTION_KEY] as CachedConnection | undefined;
   const cacheWindow =
     cached?.action === 'retry' ? CONNECTION_FAILURE_BACKOFF_MS : CONNECTION_CACHE_MS;
   const fresh = cached && Date.now() - Date.parse(cached.checkedAt) < cacheWindow;
-  if (!refresh && fresh) {
-    return cached.status === 'connected'
-      ? cached
-      : { ...cached, action: cached.action || 'reconnect' };
+  if (!refresh) {
+    if (fresh && cached.status !== 'connected') return { ...cached, ...names };
+    // Without a fresh failure, trust the stored connection until the user refreshes.
+    return { status: 'connected', ...names, checkedAt: cached?.checkedAt };
   }
 
+  const checkedAt = new Date().toISOString();
   try {
-    const { user } = await serverAPI.getUserProfile({}, context);
-    const checkedAt = new Date().toISOString();
-    const status = user.hasNotionAccess && user.hasNotionDatabase ? 'connected' : 'degraded';
-    const connection: CachedConnection = {
-      status,
-      workspaceName: user.workspaceName || undefined,
-      databaseName: user.databaseName || undefined,
-      checkedAt,
-      action: status === 'connected' ? undefined : 'reconnect',
-    };
-    await withCurrentAccount(context, async () => {
-      await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: connection });
+    await notionApi.verifyDatabaseAccess(connection.database.id, connection.token);
+    const connected: CachedConnection = { status: 'connected', ...names, checkedAt };
+    await withCurrentDestination(context, async () => {
+      await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: connected });
+      await recordDashboardEvent({ kind: 'connection_checked', result: 'success' });
+    });
+    return connected;
+  } catch (error) {
+    if (isStaleDestinationStateError(error)) throw error;
+    await assertDestinationContextCurrent(context);
+    const status = (error as { status?: unknown } | null)?.status;
+    // A rejected token or a database the token cannot open needs a new connection.
+    const action = status === 401 || status === 403 || status === 404 ? 'reconnect' : 'retry';
+    const degraded: CachedConnection = { status: 'degraded', ...names, checkedAt, action };
+    await withCurrentDestination(context, async () => {
+      await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: degraded });
       await recordDashboardEvent({
         kind: 'connection_checked',
-        result: status === 'connected' ? 'success' : 'failed',
-        action: status === 'connected' ? undefined : 'reconnect',
+        result: 'failed',
+        errorCategory: classifyDashboardError(error),
+        action,
       });
     });
-    return status === 'connected' ? connection : { ...connection, action: 'reconnect' };
-  } catch (error) {
-    if (isStaleAccountStateError(error)) throw error;
-    await assertAccountContextCurrent(context);
-    const checkedAt = new Date().toISOString();
-    const errorCategory = classifyDashboardError(error);
-    const action = errorCategory === 'authentication' ? 'connect' : 'retry';
-    await withCurrentAccount(context, () =>
-      recordDashboardEvent({
-        kind: 'connection_checked',
-        result: 'failed',
-        errorCategory,
-        action,
-      })
-    );
-    if (errorCategory === 'authentication') {
-      return { status: 'disconnected', checkedAt, action: 'connect' };
-    }
-    const degraded: CachedConnection = {
-      ...cached,
-      status: 'degraded',
-      checkedAt,
-      action: 'retry',
-    };
-    await withCurrentAccount(context, () =>
-      chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: degraded })
-    );
     return degraded;
   }
 }
 
 export async function getDashboardSnapshot(refreshConnection = false): Promise<DashboardSnapshot> {
-  const context = await readAccountContext();
+  const context = await readDestinationContext();
   const connection = await readConnection(refreshConnection, context);
   const bookmarkTree = await chrome.bookmarks.getTree().catch(() => []);
   const [stored, readingList, autoSync] = await Promise.all([
@@ -209,7 +198,6 @@ export async function getDashboardSnapshot(refreshConnection = false): Promise<D
       'sync_in_progress',
       'last_sync',
       'last_sync_summary',
-      'sync_enrichment_state',
       DASHBOARD_SYNC_SUMMARY_KEY,
       DASHBOARD_EVENTS_KEY,
       DASHBOARD_SAVED_TODAY_KEY,
@@ -255,11 +243,10 @@ export async function getDashboardSnapshot(refreshConnection = false): Promise<D
         : undefined,
       autoSyncEnabled: autoSync.enabled,
       failedCount: summary?.failed || 0,
-      enrichment: stored.sync_enrichment_state,
     },
     recentActivity: events,
   };
-  await withCurrentAccount(context, () =>
+  await withCurrentDestination(context, () =>
     chrome.storage.local.set({ dashboard_snapshot: { ...snapshot, recentActivity: [] } })
   );
   return snapshot;

@@ -5,29 +5,16 @@ import { createTestRoot, cleanupTestRoot, type TestRoot } from '../../testing/re
 import { useAppStore } from '../store';
 import { SettingsWorkspace } from './SettingsWorkspace';
 
-vi.mock('./AccountSection', () => ({
-  AccountSection: () => <section>Account section</section>,
-  AccountSignIn: () => <section>Login page</section>,
-}));
-vi.mock('./BillingSection', () => ({ BillingSection: () => <section>Billing section</section> }));
-vi.mock('./AiSettingsSection', () => ({ AiSettingsSection: () => <section>AI section</section> }));
 vi.mock('./SyncSettingsSection', () => ({
-  SyncSettingsSection: () => <section>Sync section</section>,
-}));
-vi.mock('./ServiceDataSection', () => ({
-  ServiceDataSection: () => <section>Service data section</section>,
-}));
-vi.mock('./DestinationsSummarySection', () => ({
-  DestinationsSummarySection: ({ onOpenDestinations }: { onOpenDestinations: () => void }) => (
+  SyncSettingsSection: ({ onOpenDestinations }: { onOpenDestinations: () => void }) => (
     <button type="button" onClick={onOpenDestinations}>
-      Destinations summary
+      Sync section
     </button>
   ),
 }));
 
 describe('SettingsWorkspace', () => {
   const originalState = useAppStore.getState();
-  const refreshEntitlements = vi.fn(async () => undefined);
   const refreshDashboard = vi.fn(async () => undefined);
   const onNavigate = vi.fn();
   let container: HTMLDivElement;
@@ -38,18 +25,9 @@ describe('SettingsWorkspace', () => {
     vi.stubGlobal('chrome', {
       i18n: { getMessage: (key: string) => key, getUILanguage: () => 'en' },
     });
-    refreshEntitlements.mockClear();
     refreshDashboard.mockClear();
     onNavigate.mockClear();
-    useAppStore.setState({
-      ...originalState,
-      deploymentMode: 'hosted',
-      commerceEnabled: true,
-      isSignedIn: false,
-      userId: '',
-      refreshEntitlements,
-      refreshDashboard,
-    });
+    useAppStore.setState({ ...originalState, refreshDashboard });
     ({ container, root } = createTestRoot());
   });
 
@@ -60,73 +38,37 @@ describe('SettingsWorkspace', () => {
   });
 
   const render = () => act(async () => root.render(<SettingsWorkspace onNavigate={onNavigate} />));
-  const setAccount = (state: { isSignedIn: boolean; userId: string }) =>
-    act(async () => useAppStore.setState(state));
 
-  it('renders only the login page while signed out', async () => {
+  it('shows sync settings without a title, section nav, account or plan', async () => {
     await render();
-    expect(container.textContent).toContain('Login page');
-    for (const hidden of [
-      'Account section',
-      'Billing section',
-      'AI section',
-      'Sync section',
-      'Destinations summary',
-      'Service data section',
-      'settings_sections_label',
-    ]) {
-      expect(container.textContent).not.toContain(hidden);
-    }
+    expect(container.textContent).toContain('Sync section');
+    expect(container.querySelector('h1')).toBeNull();
     expect(container.querySelector('nav')).toBeNull();
-    expect(refreshEntitlements).not.toHaveBeenCalled();
+    for (const removed of ['account_title', 'subscription', 'account_sign_out', 'Pro']) {
+      expect(container.querySelector('#settings')?.textContent).not.toContain(removed);
+    }
+    expect(refreshDashboard).toHaveBeenCalledTimes(1);
   });
 
-  it('orders signed-in sections from account to the danger zone', async () => {
-    useAppStore.setState({ isSignedIn: true, userId: 'user-a' });
+  it('opens the destinations page from the sync section', async () => {
     await render();
-    const text = container.textContent ?? '';
-    const order = [
-      'Account section',
-      'Billing section',
-      'AI section',
-      'Sync section',
-      'Destinations summary',
-      'Service data section',
-    ].map((label) => text.indexOf(label));
-    expect(order.every((index) => index >= 0)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(text).not.toContain('Login page');
-    expect(
-      Array.from(container.querySelectorAll('nav button')).map((button) => button.textContent)
-    ).toEqual(['account_title', 'AI', 'nav_sync_settings', 'nav_destinations']);
-
-    const summary = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent === 'Destinations summary'
+    const sync = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Sync section'
     );
-    await act(async () => summary?.click());
+    await act(async () => sync?.click());
     expect(onNavigate).toHaveBeenCalledWith('destinations');
   });
 
-  it('switches in place after sign-in and requests entitlements for every new account', async () => {
+  it('keeps the source star link and legal links in the footer', async () => {
     await render();
-    expect(container.textContent).toContain('Login page');
-
-    await setAccount({ isSignedIn: true, userId: 'user-a' });
-    expect(container.textContent).toContain('AI section');
-    expect(refreshEntitlements).toHaveBeenCalledTimes(1);
-
-    await render();
-    expect(refreshEntitlements).toHaveBeenCalledTimes(1);
-
-    await setAccount({ isSignedIn: false, userId: '' });
-    expect(container.textContent).toContain('Login page');
-    await setAccount({ isSignedIn: true, userId: 'user-b' });
-    expect(refreshEntitlements).toHaveBeenCalledTimes(2);
-
-    // Signing back in as the same account still refreshes, since sign-out cleared the plan.
-    await setAccount({ isSignedIn: false, userId: '' });
-    await setAccount({ isSignedIn: true, userId: 'user-b' });
-    expect(refreshEntitlements).toHaveBeenCalledTimes(3);
-    expect(refreshDashboard.mock.calls.length).toBeGreaterThanOrEqual(3);
+    const footer = container.querySelector('footer');
+    const star = Array.from(footer?.querySelectorAll('a') ?? []).find(
+      (link) => link.textContent === 'footer_star_request'
+    );
+    expect(star?.getAttribute('href')).toMatch(/^https:\/\//);
+    expect(star?.getAttribute('rel')).toBe('noreferrer');
+    expect(star?.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+    expect(footer?.textContent).toContain('GPL-3.0-only');
+    expect(container.querySelector('#settings')?.textContent).not.toContain('GPL-3.0-only');
   });
 });

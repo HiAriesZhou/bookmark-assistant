@@ -7,7 +7,7 @@ import {
   inferSyncResult,
   keepRecentEvents,
 } from './dashboard';
-import { serverAPI } from './server-api';
+import { notionApi } from '../destinations/notion/notion-api';
 
 describe('dashboard state helpers', () => {
   it('keeps a bounded, newest-first activity list', () => {
@@ -83,8 +83,7 @@ describe('dashboard state helpers', () => {
     });
   });
 
-  it('reuses a degraded connection briefly when the server is unavailable', async () => {
-    const storage: Record<string, unknown> = { session_token: 'session-one' };
+  function stubConnectedChrome(storage: Record<string, unknown>) {
     vi.stubGlobal('chrome', {
       bookmarks: { getTree: vi.fn().mockResolvedValue([]) },
       readingList: { query: vi.fn().mockResolvedValue([]) },
@@ -97,15 +96,51 @@ describe('dashboard state helpers', () => {
         },
       },
     });
-    const profile = vi
-      .spyOn(serverAPI, 'getUserProfile')
+  }
+  const connected = () => ({
+    notion_token: 'ntn_test',
+    notion_database: { id: 'db-1', title: 'Bookmarks', workspaceName: 'Aries' },
+  });
+
+  it('trusts the stored connection without asking Notion until a refresh', async () => {
+    stubConnectedChrome(connected());
+    const verify = vi.spyOn(notionApi, 'verifyDatabaseAccess');
+
+    const snapshot = await getDashboardSnapshot();
+
+    expect(verify).not.toHaveBeenCalled();
+    expect(snapshot.connection).toMatchObject({
+      status: 'connected',
+      workspaceName: 'Aries',
+      databaseName: 'Bookmarks',
+    });
+    verify.mockRestore();
+  });
+
+  it('keeps a network failure briefly and asks for a retry', async () => {
+    stubConnectedChrome(connected());
+    const verify = vi
+      .spyOn(notionApi, 'verifyDatabaseAccess')
       .mockRejectedValue(new TypeError('Failed to fetch'));
 
-    const first = await getDashboardSnapshot();
+    const first = await getDashboardSnapshot(true);
     const second = await getDashboardSnapshot();
 
-    expect(profile).toHaveBeenCalledTimes(1);
+    expect(verify).toHaveBeenCalledTimes(1);
     expect(first.connection).toMatchObject({ status: 'degraded', action: 'retry' });
     expect(second.connection).toMatchObject({ status: 'degraded', action: 'retry' });
+    verify.mockRestore();
+  });
+
+  it('asks to reconnect when Notion rejects the token', async () => {
+    stubConnectedChrome(connected());
+    const verify = vi
+      .spyOn(notionApi, 'verifyDatabaseAccess')
+      .mockRejectedValue(Object.assign(new Error('API token is invalid.'), { status: 401 }));
+
+    const snapshot = await getDashboardSnapshot(true);
+
+    expect(snapshot.connection).toMatchObject({ status: 'degraded', action: 'reconnect' });
+    verify.mockRestore();
   });
 });

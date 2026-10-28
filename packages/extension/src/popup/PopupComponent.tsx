@@ -1,26 +1,15 @@
-import { isStaleAccountStateError } from '../utils/account-state';
+import { isStaleDestinationStateError } from '../utils/destination-state';
 import { BookmarkPlus, ChevronRight, Cloud, Library, RefreshCw, Settings } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import logoUrl from '@product-logo';
 import { deriveConnectionStatus } from '../options/connection-view-model';
-import { useToast, type ToastVariant } from '../options/hook/useToast';
+import { useToast } from '../options/hook/useToast';
 import { useAppStore } from '../options/store';
 import { relativeTime } from '../utils/common';
 import { createTranslator } from '../utils/i18n';
-import { saveCurrentPageWithAi, type CurrentPageSaveMessage } from './save-current-page';
+import { saveCurrentPage } from './save-current-page';
 
 type OptionsRoute = 'library' | 'settings';
-
-const SAVE_TOAST_VARIANTS: Record<CurrentPageSaveMessage, ToastVariant> = {
-  saveSuccess: 'success',
-  popup_ai_succeeded: 'success',
-  popup_ai_skipped: 'info',
-  popup_ai_skipped_page: 'info',
-  popup_ai_processing: 'info',
-  popup_ai_not_started: 'info',
-  popup_ai_failed: 'warning',
-  popup_ai_check_key: 'warning',
-};
 
 export default function Popup() {
   const { t, locale } = createTranslator();
@@ -34,7 +23,7 @@ export default function Popup() {
     syncNow,
   } = useAppStore();
   const requestedDashboard = useRef(false);
-  const [pageSave, setPageSave] = useState<'idle' | 'saving' | 'generating'>('idle');
+  const [pageSave, setPageSave] = useState<'idle' | 'saving'>('idle');
   const isBooting = hydrationState === 'booting';
   const connectionStatus = deriveConnectionStatus(
     hasActiveConnection,
@@ -60,7 +49,7 @@ export default function Popup() {
           : t('dashboard_event_sync_completed'),
       });
     } catch (error) {
-      if (isStaleAccountStateError(error)) return;
+      if (isStaleDestinationStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),
@@ -73,14 +62,11 @@ export default function Popup() {
     if (!hasDestination || pageSave !== 'idle') return;
     setPageSave('saving');
     try {
-      const outcome = await saveCurrentPageWithAi(() => setPageSave('generating'));
+      const outcome = await saveCurrentPage();
       if (outcome.status === 'failed') {
         show({ variant: 'error', title: t('saveFailed'), description: outcome.error });
       } else {
-        show({
-          variant: SAVE_TOAST_VARIANTS[outcome.message],
-          title: t(outcome.message),
-        });
+        show({ variant: 'success', title: t('saveSuccess') });
       }
     } catch (error) {
       show({
@@ -225,11 +211,6 @@ export default function Popup() {
                   />
                   {t('saveCurrentPage')}
                 </button>
-                {pageSave === 'generating' ? (
-                  <p role="status" className="px-1 text-xs text-ui-subtle">
-                    {t('popup_ai_generating')}
-                  </p>
-                ) : null}
               </div>
             ) : null}
           </>

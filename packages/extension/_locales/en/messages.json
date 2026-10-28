@@ -142,10 +142,6 @@
     "message": "Pro",
     "description": "Pro plan label"
   },
-  "upgrade": {
-    "message": "Upgrade",
-    "description": "Button to upgrade to Pro"
-  },
   "autoSyncEnabled": {
     "message": "Auto-sync enabled",
     "description": "Status when auto-sync is on"
@@ -158,21 +154,9 @@
     "message": "Cancel",
     "description": "Cancel button"
   },
-  "action_refresh": {
-    "message": "Refresh",
-    "description": "Refresh button"
-  },
-  "action_upgrade_pro": {
-    "message": "Upgrade to Pro",
-    "description": "Upgrade to Pro button"
-  },
   "error_save_settings_failed": {
     "message": "Failed to save sync settings",
     "description": "Error: failed to save settings"
-  },
-  "error_checkout_failed": {
-    "message": "Failed to open checkout",
-    "description": "Error: checkout failed"
   },
   "connection_success_desc": {
     "message": "Your Notion workspace has been successfully connected.",
@@ -181,14 +165,6 @@
   "connection_failed_title": {
     "message": "Connection Failed",
     "description": "Connection failed title"
-  },
-  "connection_failed_desc": {
-    "message": "Failed to connect to Notion. Please try again.",
-    "description": "Connection failed description"
-  },
-  "connection_error_desc": {
-    "message": "An error occurred while connecting to Notion.",
-    "description": "Connection error description"
   },
   "disconnected_title": {
     "message": "Disconnected",
@@ -218,73 +194,9 @@
     "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
     "description": "Confirm disconnect message"
   },
-  "payment_success_title": {
-    "message": "Payment Successful!",
-    "description": "Payment success title"
-  },
-  "payment_activating_desc": {
-    "message": "Activating your Pro plan...",
-    "description": "Payment activating description"
-  },
-  "pro_activated_title": {
-    "message": "Pro Activated",
-    "description": "Pro activated title"
-  },
-  "pro_activated_desc": {
-    "message": "Pro features ready",
-    "description": "Pro activated description"
-  },
-  "upgrade_requires_connection": {
-    "message": "Please connect to Notion first before upgrading.",
-    "description": "Upgrade requires connection"
-  },
-  "subscription_management_title": {
-    "message": "Plan",
-    "description": "Subscription management title"
-  },
-  "next_billing_date_label": {
-    "message": "Next Billing Date",
-    "description": "Next billing date label"
-  },
-  "no_email_linked": {
-    "message": "No email linked",
-    "description": "No email linked"
-  },
-  "billing_monthly": {
-    "message": "Monthly",
-    "description": "Monthly billing"
-  },
-  "billing_yearly": {
-    "message": "Yearly",
-    "description": "Yearly billing"
-  },
-  "best_value_badge": {
-    "message": "Best Value",
-    "description": "Best value badge"
-  },
-  "per_month": {
-    "message": "/ month",
-    "description": "Per month suffix"
-  },
-  "per_year": {
-    "message": "/ year",
-    "description": "Per year suffix"
-  },
-  "pro_plan_desc": {
-    "message": "Automatic sync and batch AI for an organized library",
-    "description": "Pro plan description"
-  },
-  "free_plan_desc": {
-    "message": "Local management with manual sync",
-    "description": "Free plan description"
-  },
   "loading": {
     "message": "Loading...",
     "description": "Loading indicator"
-  },
-  "refreshing": {
-    "message": "Refreshing...",
-    "description": "Refreshing indicator"
   },
   "working": {
     "message": "Working...",
@@ -349,38 +261,6 @@
   "popup_syncing": {
     "message": "Syncing...",
     "description": "Popup syncing status"
-  },
-  "popup_ai_generating": {
-    "message": "Page saved. Generating AI summary and tags...",
-    "description": "Popup status after the base save succeeds and AI is running"
-  },
-  "popup_ai_succeeded": {
-    "message": "Page saved. AI summary and tags added.",
-    "description": "Popup status when current-page AI succeeds"
-  },
-  "popup_ai_skipped": {
-    "message": "Page saved. AI skipped because the page has too little readable text.",
-    "description": "Popup status when current-page AI has insufficient content"
-  },
-  "popup_ai_not_started": {
-    "message": "Page saved. AI did not start.",
-    "description": "Popup status when current-page AI did not start"
-  },
-  "popup_ai_skipped_page": {
-    "message": "Page saved. AI skipped this page.",
-    "description": "Popup status when current-page AI skipped the page"
-  },
-  "popup_ai_processing": {
-    "message": "Page saved. AI is still working; results will appear in Notion.",
-    "description": "Popup status when current-page AI is still running"
-  },
-  "popup_ai_failed": {
-    "message": "Page saved. AI could not finish; see AI History in Settings.",
-    "description": "Popup status when current-page AI started but did not finish"
-  },
-  "popup_ai_check_key": {
-    "message": "Page saved. AI did not run; verify your AI key in Settings.",
-    "description": "Popup status when the saved AI key is not verified"
   },
   "saveCurrentPage": {
     "message": "Save Current Page",
@@ -480,62 +360,11 @@
   "hours_unit": {
     "message": "hours"
   },
-  "subscription_free_current": {
-    "message": "Free Plan · Current"
-  },
-  "subscription_trial_active": {
-    "message": "Pro Trial · Active"
-  },
-  "subscription_pro_active": {
-    "message": "Pro Plan · Active"
-  },
-  "purchase_type_label": {
-    "message": "Purchase type"
-  },
-  "license_label": {
-    "message": "License"
-  },
-  "license_developer": {
-    "message": "Developer"
-  },
-  "license_gift": {
-    "message": "Gift"
-  },
-  "expiration_label": {
-    "message": "Expiration"
-  },
-  "manage_subscription": {
-    "message": "Manage subscription"
-  },
-  "portal_open_failed": {
-    "message": "Could not open subscription management"
-  },
-  "portal_popup_blocked": {
-    "message": "Allow pop-ups, then try again."
-  },
   "view_plans": {
     "message": "View plans"
   },
-  "feature_bookmarks_sync": {
-    "message": "Bookmarks and Reading List sync"
-  },
-  "feature_local_library": {
-    "message": "Local bookmark management"
-  },
-  "feature_manual_sync": {
-    "message": "Sync manually whenever you need"
-  },
-  "feature_pro_interval": {
-    "message": "Automatic sync from every $1 hours"
-  },
-  "feature_batch_ai": {
-    "message": "Batch AI for newly synced pages"
-  },
   "included": {
     "message": "Included"
-  },
-  "plan_comparison_title": {
-    "message": "Plan comparison"
   },
   "destination_not_configured": {
     "message": "Not configured"
@@ -720,9 +549,6 @@
   "destination_sync_action": {
     "message": "Sync"
   },
-  "ai_model_managed_default": {
-    "message": "Managed default"
-  },
   "ai_service_label": {
     "message": "AI service"
   },
@@ -777,107 +603,11 @@
   "ai_base_url_invalid": {
     "message": "Enter a valid Base URL without credentials or query parameters."
   },
-  "ai_batch_label": {
-    "message": "Batch generation"
-  },
-  "ai_batch_progress": {
-    "message": "$1 processed · $2 remaining"
-  },
-  "ai_batch_checking": {
-    "message": "Checking pending items"
-  },
-  "ai_batch_check_failed": {
-    "message": "Unable to check tasks"
-  },
-  "ai_batch_save_first": {
-    "message": "Save and verify your changes first"
-  },
-  "ai_batch_needs_key": {
-    "message": "Verify an API key to generate"
-  },
-  "ai_batch_ready_retry": {
-    "message": "$1 ready · $2 to retry"
-  },
-  "ai_batch_ready_one": {
-    "message": "1 item ready"
-  },
-  "ai_batch_ready_other": {
-    "message": "$1 items ready"
-  },
-  "ai_batch_retry_one": {
-    "message": "1 item to retry"
-  },
-  "ai_batch_retry_other": {
-    "message": "$1 items to retry"
-  },
-  "ai_batch_scheduled_one": {
-    "message": "1 item retry later"
-  },
-  "ai_batch_scheduled_other": {
-    "message": "$1 items retry later"
-  },
-  "ai_batch_processing_one": {
-    "message": "1 item processing"
-  },
-  "ai_batch_processing_other": {
-    "message": "$1 items processing"
-  },
-  "ai_batch_blocked_one": {
-    "message": "1 item needs attention"
-  },
-  "ai_batch_blocked_other": {
-    "message": "$1 items need attention"
-  },
-  "ai_batch_none": {
-    "message": "No pending items"
-  },
-  "ai_batch_retry_check": {
-    "message": "Retry task check"
-  },
-  "ai_batch_retry": {
-    "message": "Retry"
-  },
-  "ai_batch_generate": {
-    "message": "Generate"
-  },
-  "ai_history": {
-    "message": "History"
-  },
-  "ai_history_empty": {
-    "message": "No processing history"
-  },
   "ai_toast_key_verified": {
     "message": "AI key verified."
   },
   "ai_toast_key_removed": {
     "message": "AI API key removed."
-  },
-  "ai_toast_generated_one": {
-    "message": "Generated AI content for 1 item."
-  },
-  "ai_toast_generated_other": {
-    "message": "Generated AI content for $1 items."
-  },
-  "ai_toast_remaining": {
-    "message": "$1 remaining"
-  },
-  "ai_toast_batch_queued": {
-    "message": "Batch queued."
-  },
-  "ai_toast_no_pending": {
-    "message": "No pending AI items."
-  },
-  "ai_outcome_skipped": {
-    "message": "Some items were skipped. Open history for details."
-  },
-  "ai_outcome_needs_action": {
-    "message": "AI needs attention before it can continue."
-  },
-  "ai_outcome_failed": {
-    "message": "AI provider request failed. Please try again later."
-  },
-  "ai_outcome_none": {
-    "message": "No AI content was generated."
   },
   "ai_error_key_save": {
     "message": "AI key could not be saved."
@@ -885,190 +615,43 @@
   "ai_error_key_remove": {
     "message": "AI API key could not be removed."
   },
-  "ai_error_batch_save": {
-    "message": "Batch setting could not be saved."
-  },
-  "ai_error_batch_run": {
-    "message": "Batch AI could not be run."
-  },
-  "ai_error_history": {
-    "message": "Processing history could not be loaded."
-  },
-  "ai_reason_source_unavailable": {
-    "message": "Source unavailable"
-  },
-  "ai_reason_fetch_disallowed": {
-    "message": "Site blocks processing"
-  },
-  "ai_reason_unsupported_type": {
-    "message": "Unsupported page type"
-  },
-  "ai_reason_insufficient_content": {
-    "message": "Not enough readable content"
-  },
-  "ai_reason_user_modified": {
-    "message": "Description was edited"
-  },
-  "ai_reason_reconnect_notion": {
-    "message": "Reconnect Notion"
-  },
-  "ai_reason_notion_schema": {
-    "message": "Restore Description and Tags properties"
-  },
-  "ai_reason_add_key": {
-    "message": "Add an AI key"
-  },
-  "ai_reason_replace_key": {
-    "message": "Replace the AI key"
-  },
-  "ai_reason_quota": {
-    "message": "AI provider quota reached"
-  },
-  "ai_reason_model_access": {
-    "message": "Model access is unavailable"
-  },
-  "ai_reason_provider_failed": {
-    "message": "AI provider request failed"
-  },
-  "ai_reason_invalid_output": {
-    "message": "AI response could not be used"
-  },
-  "ai_reason_notion_write": {
-    "message": "Could not update Notion"
-  },
-  "ai_reason_provider_paused": {
-    "message": "AI provider is temporarily paused"
-  },
-  "deployment_self_hosted": {
-    "message": "Self-hosted · All features available"
-  },
-  "subscription_local_mode": {
-    "message": "Local mode"
-  },
-  "subscription_local_mode_desc": {
-    "message": "Managing Chrome bookmarks needs no account or plan. Connect Notion to sync and to use Pro."
-  },
-  "service_data_title": {
-    "message": "Service data"
-  },
-  "service_data_delete_label": {
-    "message": "Delete service account"
-  },
-  "service_data_delete_desc": {
-    "message": "Permanently removes the server-side account with its Notion connection, AI key and AI records."
-  },
-  "service_data_delete_desc_with_email": {
-    "message": "Linked to $EMAIL$. Deleting permanently removes the server-side account with its Notion connection, AI key and AI records.",
-    "placeholders": {
-      "email": {
-        "content": "$1",
-        "example": "person@example.com"
-      }
-    }
-  },
-  "service_data_delete_action": {
-    "message": "Delete account"
-  },
-  "service_data_delete_confirm_title": {
-    "message": "Delete your service account?"
-  },
-  "service_data_delete_confirm_message": {
-    "message": "This permanently deletes your Bookmark Assistant service account, plan record, Notion connection, AI key and AI records. Chrome bookmarks and pages already in Notion are kept. Cancel an active Paddle subscription in the customer portal first."
-  },
-  "service_data_deleted_title": {
-    "message": "Service account deleted"
-  },
-  "account_title": {
-    "message": "Account"
-  },
-  "account_email_label": {
-    "message": "Email"
-  },
-  "account_send_code": {
-    "message": "Send code"
-  },
-  "account_code_label": {
-    "message": "Code"
-  },
-  "account_sign_in": {
-    "message": "Sign in"
-  },
-  "account_signing_in": {
-    "message": "Signing in"
-  },
-  "account_sign_in_google": {
-    "message": "Sign in with Google"
-  },
-  "account_sign_in_intro": {
-    "message": "Sign in to use your plan and service features on any device."
-  },
-  "account_or_divider": {
-    "message": "or"
-  },
-  "account_link_google": {
-    "message": "Link Google"
-  },
-  "account_sign_out": {
-    "message": "Sign out"
-  },
-  "account_signed_in_label": {
-    "message": "Signed in"
-  },
-  "account_signed_out_notion_only": {
-    "message": "This server signs in through Notion. Connect Notion from the destination page."
-  },
-  "account_prior_notion_hint": {
-    "message": "If you have used Bookmark Assistant through Notion before, sign in with that Notion account's email."
-  },
-  "account_login": {
-    "message": "Log in"
-  },
-  "account_local_no_account": {
-    "message": "Local bookmarks need no account"
-  },
-  "account_notion_fallback": {
-    "message": "Notion account"
-  },
-  "account_plan_free": {
-    "message": "Free"
-  },
-  "account_plan_pro": {
-    "message": "Pro"
-  },
-  "account_plan_self_hosted": {
-    "message": "Self-hosted"
-  },
-  "account_login_title": {
-    "message": "Log in to $1"
-  },
-  "account_continue_without_login": {
-    "message": "You can keep managing local bookmarks without signing in."
-  },
-  "account_login_ai_value": {
-    "message": "Sign in to upgrade to Pro and organize bookmarks with AI."
-  },
-  "settings_sections_label": {
-    "message": "Settings sections"
-  },
-  "settings_destinations_manage": {
-    "message": "Manage"
-  },
-  "ai_upgrade_title": {
-    "message": "Organize bookmarks with AI on Pro"
-  },
-  "ai_upgrade_desc": {
-    "message": "Pro adds AI summaries and tags with your own provider key, including batch processing for newly synced pages."
-  },
-  "ai_upgrade_action": {
-    "message": "Upgrade to Pro"
-  },
-  "ai_needs_destination": {
-    "message": "AI results need a destination to write to. Connect one first."
-  },
   "sync_needs_destination": {
     "message": "Scheduled sync needs a destination. Connect one first."
   },
   "destination_required_action": {
     "message": "Go to Destinations"
+  },
+  "notion_token_label": {
+    "message": "Notion token"
+  },
+  "notion_token_help": {
+    "message": "Create a personal access token in Notion, or use an internal integration token. It stays on this device and is sent only to Notion."
+  },
+  "notion_token_guide_link": {
+    "message": "How to create a token"
+  },
+  "notion_token_continue": {
+    "message": "Continue"
+  },
+  "notion_target_title": {
+    "message": "Where should bookmarks go?"
+  },
+  "notion_target_existing": {
+    "message": "Use an existing database"
+  },
+  "notion_target_new": {
+    "message": "Create a database in a page"
+  },
+  "notion_target_none": {
+    "message": "This token can't see any pages yet. For an integration token, open a page in Notion and add the integration under ••• › Connections."
+  },
+  "notion_connect_action": {
+    "message": "Connect"
+  },
+  "notion_untitled": {
+    "message": "Untitled"
+  },
+  "footer_star_request": {
+    "message": "If Bookmark Assistant helps you, a star would mean a lot."
   }
 }

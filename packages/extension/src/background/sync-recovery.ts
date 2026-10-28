@@ -66,29 +66,22 @@ export async function runAfterSyncInitialization<T>(
   return task();
 }
 
-type SyncGateAccount = {
-  revision: string | null;
-  userId: string | null;
-  token: string | null;
-};
+type SyncGateConnection = { revision: string | null };
 
 /**
- * A service worker has no durable mutex. Keep sync entry points behind one
- * in-memory promise per server account after startup recovery has released
- * stale persisted state. Concurrent manual/alarm/catch-up calls for the same
- * account revision join the same work rather than creating duplicate Notion
- * writes. A new revision of that account (for example after reconnecting
- * Notion) waits for the earlier sync, because its server request cannot be
- * cancelled and may still be writing to the same database. Other accounts
- * start independently.
+ * A service worker has no durable mutex. Keep sync entry points behind one in-memory
+ * promise after startup recovery has released stale persisted state. Concurrent
+ * manual/alarm/catch-up calls for the same connection revision join the same work
+ * rather than creating duplicate Notion writes. A new revision (after connecting another
+ * database or token) waits for the earlier sync, whose Notion requests cannot be
+ * cancelled and may still be writing.
  */
 export function createSyncExecutionGate<T>(initialization: Promise<unknown>) {
-  const active = new Map<string, { revision: string | null; run: Promise<T> }>();
+  let active: { revision: string | null; run: Promise<T> } | undefined;
 
-  return (task: () => Promise<T>, account?: SyncGateAccount): Promise<T> => {
-    const accountKey = account?.userId ?? account?.token ?? '';
-    const revision = account?.revision ?? null;
-    const existing = active.get(accountKey);
+  return (task: () => Promise<T>, connection?: SyncGateConnection): Promise<T> => {
+    const revision = connection?.revision ?? null;
+    const existing = active;
     if (existing && existing.revision === revision) return existing.run;
 
     const previous = existing?.run.then(
@@ -99,9 +92,9 @@ export function createSyncExecutionGate<T>(initialization: Promise<unknown>) {
       runAfterSyncInitialization(initialization, task)
     );
     const guarded = started.finally(() => {
-      if (active.get(accountKey)?.run === guarded) active.delete(accountKey);
+      if (active?.run === guarded) active = undefined;
     });
-    active.set(accountKey, { revision, run: guarded });
+    active = { revision, run: guarded };
     return guarded;
   };
 }

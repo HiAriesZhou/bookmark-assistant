@@ -1,10 +1,10 @@
-import { readNotionDestination } from '../utils/account-state';
+import { readNotionConnection } from '../utils/destination-state';
 export const SAVE_TO_NOTION_CONTEXT_MENU_ID = 'saveToNotion';
 
 let contextMenuUpdate: Promise<void> = Promise.resolve();
 
 async function applyDestinationContextMenuState(): Promise<void> {
-  const notionConnected = await readNotionDestination();
+  const notionConnected = !!(await readNotionConnection());
 
   await new Promise<void>((resolve) => {
     chrome.contextMenus.remove(SAVE_TO_NOTION_CONTEXT_MENU_ID, () => {

@@ -1,11 +1,15 @@
-import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test';
+import {
+  chromium,
+  expect,
+  test,
+  type BrowserContext,
+  type Page,
+  type Route,
+} from '@playwright/test';
 import path from 'node:path';
 
-const OFFICIAL_API_ORIGIN = 'https://bookmark-assistant-server.vercel.app';
 const extensionBuildDirectory = process.env.BOOKMARK_ASSISTANT_EXTENSION_BUILD || 'dist';
 const expectedProductName = 'Bookmark Assistant';
-const expectedApiOrigin = process.env.BOOKMARK_ASSISTANT_EXPECTED_API_ORIGIN || OFFICIAL_API_ORIGIN;
-const officialService = expectedApiOrigin === OFFICIAL_API_ORIGIN;
 const extensionPath = path.resolve(
   __dirname,
   `../../../packages/extension/${extensionBuildDirectory}`
@@ -69,7 +73,116 @@ async function getLocalizedMessages<K extends string>(
   );
 }
 
-test.describe('Bookmark Assistant Pro extension', () => {
+// A synthetic token; the Notion API is answered by the fixture below and never reached.
+const FIXTURE_TOKEN = 'ntn_e2e_fixture_token';
+const NOTION_API_PATTERN = 'https://api.notion.com/v1/**';
+const CORS_HEADERS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-headers': '*',
+  'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
+};
+const FIXTURE_PROPERTIES = {
+  Name: { id: 'title', type: 'title', title: {} },
+  URL: { id: 'url', type: 'url', url: {} },
+  Tags: { id: 'tags', type: 'multi_select', multi_select: { options: [] } },
+  Description: { id: 'desc', type: 'rich_text', rich_text: {} },
+  Folder: { id: 'folder', type: 'rich_text', rich_text: {} },
+  'Date Added': { id: 'date', type: 'date', date: {} },
+  'Sync ID': { id: 'sync', type: 'rich_text', rich_text: {} },
+};
+
+/**
+ * Answers the Notion endpoints the extension uses with one database and an empty data
+ * source. With `holdPageCreates`, that many page creates wait until released.
+ */
+async function routeNotionFixture(
+  context: BrowserContext,
+  { holdPageCreates = 0 }: { holdPageCreates?: number } = {}
+) {
+  const created: string[] = [];
+  const authorizations = new Set<string>();
+  let release!: () => void;
+  let held!: () => void;
+  const released = new Promise<void>((resolve) => (release = resolve));
+  const pageCreatesHeld = new Promise<void>((resolve) => (held = resolve));
+  if (holdPageCreates === 0) release();
+
+  const json = (route: Route, body: unknown) =>
+    route.fulfill({
+      status: 200,
+      headers: CORS_HEADERS,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    });
+
+  await context.route(NOTION_API_PATTERN, async (route) => {
+    const request = route.request();
+    if (request.method() === 'OPTIONS') {
+      return route.fulfill({ status: 204, headers: CORS_HEADERS });
+    }
+    const auth = await request.headerValue('authorization');
+    if (auth) authorizations.add(auth);
+    const path = new URL(request.url()).pathname.replace('/v1/', '');
+    const body = request.postDataJSON?.() ?? null;
+    if (path === 'users/me') {
+      return json(route, { object: 'user', type: 'bot', bot: { workspace_name: 'Fixture' } });
+    }
+    if (path === 'search') {
+      const results =
+        body?.filter?.value === 'data_source'
+          ? [
+              {
+                object: 'data_source',
+                id: 'ds-fixture',
+                title: [{ plain_text: 'Fixture Reading' }],
+                parent: { type: 'database_id', database_id: 'db-fixture' },
+              },
+            ]
+          : [];
+      return json(route, { object: 'list', results, has_more: false, next_cursor: null });
+    }
+    if (path === 'databases/db-fixture') {
+      return json(route, {
+        object: 'database',
+        id: 'db-fixture',
+        title: [{ plain_text: 'Fixture Reading' }],
+        data_sources: [{ id: 'ds-fixture', name: 'Fixture Reading' }],
+      });
+    }
+    if (path === 'data_sources/ds-fixture') {
+      return json(route, {
+        object: 'data_source',
+        id: 'ds-fixture',
+        properties: FIXTURE_PROPERTIES,
+      });
+    }
+    if (path === 'data_sources/ds-fixture/query') {
+      return json(route, { object: 'list', results: [], has_more: false, next_cursor: null });
+    }
+    if (path === 'pages' && request.method() === 'POST') {
+      created.push(body?.properties?.URL?.url);
+      if (created.length === holdPageCreates) held();
+      await released;
+      return json(route, { object: 'page', id: `page-${created.length}`, properties: {} });
+    }
+    return route.fulfill({
+      status: 404,
+      headers: CORS_HEADERS,
+      contentType: 'application/json',
+      body: JSON.stringify({ object: 'error', status: 404, code: 'object_not_found' }),
+    });
+  });
+
+  return {
+    pageCreatesHeld,
+    releasePageCreates: () => release(),
+    createdUrls: () => [...created],
+    authorizations: () => [...authorizations],
+    dispose: () => context.unroute(NOTION_API_PATTERN),
+  };
+}
+
+test.describe('Bookmark Assistant extension', () => {
   let context: BrowserContext;
   let extensionId: string;
 
@@ -142,7 +255,7 @@ test.describe('Bookmark Assistant Pro extension', () => {
     const page = await openExtensionPage(context, extensionId, 'options.html');
     const labels = await getLocalizedMessages(page, [
       'nav_destinations',
-      'account_login',
+      'nav_settings',
       'primary_navigation',
       'library_all',
     ] as const);
@@ -162,14 +275,11 @@ test.describe('Bookmark Assistant Pro extension', () => {
     ).toBe(true);
     await page.getByRole('button', { name: labels.nav_destinations, exact: true }).click();
     await expect(page.getByRole('heading', { name: labels.nav_destinations })).toBeVisible();
-    // The account entry replaces the settings gear; signed out, it opens the login page.
     await page
       .getByRole('navigation', { name: labels.primary_navigation })
-      .getByRole('button', { name: new RegExp(labels.account_login) })
+      .getByRole('button', { name: labels.nav_settings })
       .click();
-    await expect(
-      page.getByRole('heading', { level: 1, name: new RegExp(labels.account_login) })
-    ).toBeVisible();
+    await expect(page.locator('footer').getByText('GPL-3.0-only')).toBeVisible();
     await allBookmarksButton.click();
     await expect(page.getByRole('heading', { name: labels.library_all })).toBeVisible();
     await page.goto(`chrome-extension://${extensionId}/options.html#/organize`);
@@ -456,261 +566,126 @@ test.describe('Bookmark Assistant Pro extension', () => {
     }
   });
 
-  test('uses the configured API origin', async () => {
-    test.skip(
-      !expectedApiOrigin,
-      'API origin assertion is enabled for release and local E2E builds.'
-    );
-
-    const page = await openExtensionPage(context, extensionId, 'popup.html');
-    if (!officialService) {
-      const requests: string[] = [];
-      page.on('request', (request) => requests.push(request.url()));
-      await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-      await expect(page.getByText('GPL-3.0-only')).toBeVisible();
-      const labels = await getLocalizedMessages(page, ['upgrade', 'view_plans'] as const);
-      await expect(
-        page.getByRole('button', { name: new RegExp(`^(${labels.upgrade}|${labels.view_plans})$`) })
-      ).toHaveCount(0);
-      expect(requests.filter((url) => url.includes('/api/pricing'))).toEqual([]);
-      const profileRequest = context.waitForEvent('request', {
-        predicate: (request) => request.url().endsWith('/api/user/profile'),
-      });
-      await context.route('**/api/user/profile', (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            success: true,
-            profile: {
-              userId: 'fixture',
-              isPro: true,
-              plan: 'pro',
-              deploymentMode: 'self-hosted',
-              commerceEnabled: false,
-              capabilities: { autoSync: true, batchAi: true },
-              subscriptionSource: null,
-              expiresAt: null,
-            },
-          }),
-        })
-      );
-      const profileResult = await page.evaluate(async () => {
-        await chrome.storage.local.set({ session_token: 'fixture-session' });
-        return chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true });
-      });
-      expect(profileResult.success).toBe(true);
-      const profileCache = await page.evaluate(() =>
-        chrome.storage.local.get(['is_pro', 'deployment_profile'])
-      );
-      expect(profileCache.is_pro).toBe(true);
-      expect(profileCache.deployment_profile).toMatchObject({
-        deploymentMode: 'self-hosted',
-        commerceEnabled: false,
-        capabilities: { autoSync: true, batchAi: true },
-      });
-      expect(new URL((await profileRequest).url()).origin).toBe(expectedApiOrigin);
-      await context.unroute('**/api/user/profile');
-      // Later tests share this context. Log out through the background so its cached
-      // profile and session are cleared too, then close the connected page.
-      await page.evaluate(() => chrome.runtime.sendMessage({ type: 'LOGOUT' }));
-      await page.close();
-      return;
-    }
-    await page.evaluate(() => chrome.storage.local.remove('cached_pricing'));
-    // Billing is account-scoped, so sign in as a hosted Free fixture first.
-    await context.route('**/api/user/profile', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          profile: {
-            userId: 'fixture',
-            isPro: false,
-            plan: 'free',
-            deploymentMode: 'hosted',
-            commerceEnabled: true,
-            capabilities: { autoSync: false, batchAi: false },
-            subscriptionSource: null,
-            expiresAt: null,
-          },
-        }),
-      })
-    );
-    await page.evaluate(() => chrome.storage.local.set({ session_token: 'fixture-session' }));
-    const pricingRequest = context.waitForEvent('request', {
-      predicate: (request) => request.url().endsWith('/api/pricing'),
-    });
-    await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-    const labels = await getLocalizedMessages(page, ['upgrade', 'view_plans'] as const);
-    // Settings has a single plan action; its label is localized and depends on the plan.
-    await page
-      .getByRole('button', { name: new RegExp(`^(${labels.upgrade}|${labels.view_plans})$`) })
-      .click();
-
-    expect(new URL((await pricingRequest).url()).origin).toBe(expectedApiOrigin);
-    await context.unroute('**/api/user/profile');
-    await page.evaluate(() => chrome.runtime.sendMessage({ type: 'LOGOUT' }));
-  });
-
-  test('account deletion discards pending profile and sync replies in the actual extension', async () => {
+  test('connects Notion with a token and syncs bookmarks to api.notion.com', async () => {
+    const notion = await routeNotionFixture(context);
     const page = await openExtensionPage(context, extensionId, 'options.html');
-    const gate = () => {
-      let release!: () => void;
-      let notify!: () => void;
-      return {
-        ready: new Promise<void>((resolve) => {
-          notify = resolve;
-        }),
-        wait: new Promise<void>((resolve) => {
-          release = resolve;
-        }),
-        release: () => release(),
-        notify: () => notify(),
-      };
-    };
-    const profileGate = gate(),
-      syncGate = gate();
-    const revision = 'synthetic-account-deletion-race';
-    await context.route('**/api/user/profile', async (route) => {
-      profileGate.notify();
-      await profileGate.wait;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          profile: {
-            userId: 'synthetic-account',
-            email: 'account@example.invalid',
-            isPro: true,
-            plan: 'pro',
-            hasNotionAccess: true,
-            hasNotionDatabase: true,
-            deploymentMode: 'self-hosted',
-            commerceEnabled: false,
-            capabilities: { autoSync: true, batchAi: true },
-            subscriptionSource: null,
-            expiresAt: null,
-          },
-        }),
-      });
-    });
-    await context.route('**/api/bookmarks/sync', async (route) => {
-      syncGate.notify();
-      await syncGate.wait;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ summary: { total: 1, success: 1, failed: 0 }, results: [] }),
-      });
-    });
-    await context.route('**/api/user/account', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' })
-    );
     let bookmarkId: string | undefined;
     try {
-      bookmarkId = await page.evaluate(async (revision) => {
+      bookmarkId = await page.evaluate(async () => {
         await chrome.storage.local.clear();
-        await chrome.storage.local.set({
-          session_token: 'synthetic-session',
-          user_id: 'synthetic-account',
-          user_email: 'account@example.invalid',
-          account_state_revision: revision,
-          notion_connected: true,
-        });
         return (
           await chrome.bookmarks.create({
-            title: 'Synthetic account race item',
-            url: 'https://example.invalid/account-race',
+            title: 'Synthetic Notion sync item',
+            url: 'https://example.invalid/notion-sync',
           })
         ).id;
-      }, revision);
-      await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-      await expect(page.locator('#service-data')).toBeVisible();
-      const profileReply = page.evaluate(() =>
-        chrome.runtime.sendMessage({ type: 'GET_USER_PROFILE', forceRefresh: true })
-      );
-      const syncReply = page.evaluate(
-        (accountRevision) =>
-          chrome.runtime.sendMessage({ type: 'SYNC_ALL_BOOKMARKS', accountRevision }),
-        revision
-      );
-      await Promise.all([profileGate.ready, syncGate.ready]);
-      const labels = await getLocalizedMessages(page, ['service_data_delete_action'] as const);
+      });
+      await page.goto(`chrome-extension://${extensionId}/options.html#/destinations`);
+      const labels = await getLocalizedMessages(page, [
+        'notion_token_continue',
+        'notion_connect_action',
+      ] as const);
+      await page.locator('[data-notion-token-input]').fill(FIXTURE_TOKEN);
+      await page.getByRole('button', { name: labels.notion_token_continue }).click();
+      await expect(page.getByRole('radio', { name: 'Fixture Reading' })).toBeChecked();
       await page
-        .locator('#service-data')
-        .getByRole('button', { name: labels.service_data_delete_action })
+        .locator('form')
+        .getByRole('button', { name: labels.notion_connect_action })
         .click();
-      await page
-        .getByRole('alertdialog')
-        .getByRole('button', { name: labels.service_data_delete_action })
-        .click();
-      await expect(page.locator('#service-data')).toHaveCount(0);
-      const keys = [
-        'session_token',
-        'is_pro',
-        'auto_sync_enabled',
-        'last_sync_error',
-        'dashboard_last_sync',
-        'dashboard_recent_activity',
-        'last_sync_fingerprint',
-        'sync_enrichment_job',
-      ];
-      const cleared = await page.evaluate((keys) => chrome.storage.local.get(keys), keys);
-      expect(cleared.session_token).toBeUndefined();
-      const obsoleteSchedule = await page.evaluate(
-        (accountRevision) =>
-          chrome.runtime.sendMessage({
-            type: 'SCHEDULE_AUTO_SYNC',
-            enabled: true,
-            intervalHours: 6,
-            accountRevision,
-          }),
-        revision
+      await expect(page.locator('[data-notion-token-input]')).toHaveCount(0);
+
+      const stored = await page.evaluate(() =>
+        chrome.storage.local.get(['notion_token', 'notion_database', 'destination_revision'])
       );
-      expect(obsoleteSchedule.success).toBe(false);
-      profileGate.release();
-      syncGate.release();
-      expect((await profileReply).success).toBe(false);
-      expect((await syncReply).success).toBe(false);
-      await expect(page.locator('#service-data')).toHaveCount(0);
-      expect(await page.evaluate((keys) => chrome.storage.local.get(keys), keys)).toEqual(cleared);
+      expect(stored.notion_token).toBe(FIXTURE_TOKEN);
+      expect(stored.notion_database).toMatchObject({ id: 'db-fixture' });
+      // The token never leaves local storage.
+      expect(JSON.stringify(await page.evaluate(() => chrome.storage.sync.get()))).not.toContain(
+        FIXTURE_TOKEN
+      );
+
+      const reply = await page.evaluate(
+        (destinationRevision) =>
+          chrome.runtime.sendMessage({ type: 'SYNC_ALL_BOOKMARKS', destinationRevision }),
+        stored.destination_revision
+      );
+      expect(reply.success).toBe(true);
+      expect(notion.createdUrls()).toEqual(['https://example.invalid/notion-sync']);
+      expect(notion.authorizations()).toEqual([`Bearer ${FIXTURE_TOKEN}`]);
     } finally {
-      profileGate.release();
-      syncGate.release();
-      await context.unroute('**/api/user/profile');
-      await context.unroute('**/api/bookmarks/sync');
-      await context.unroute('**/api/user/account');
+      await notion.dispose();
       if (bookmarkId) await page.evaluate((id) => chrome.bookmarks.remove(id), bookmarkId);
       await page.close();
     }
   });
 
-  test('does not request protected AI data before connection', async () => {
-    const page = await openExtensionPage(context, extensionId, 'popup.html');
-    await page.evaluate(() => chrome.storage.local.clear());
-    const protectedRequests: string[] = [];
-    const protectedPaths = ['/api/ai/settings', '/api/ai/credential', '/api/ai/recent-processing'];
-    const recordProtectedRequest = (request: { url(): string }) => {
-      const requestUrl = request.url();
-      if (protectedPaths.some((path) => requestUrl.includes(path))) {
-        protectedRequests.push(requestUrl);
-      }
-    };
-    context.on('request', recordProtectedRequest);
+  test('disconnecting during a sync stops further Notion writes and drops the result', async () => {
+    const notion = await routeNotionFixture(context, { holdPageCreates: 3 });
+    const page = await openExtensionPage(context, extensionId, 'options.html');
+    const revision = 'synthetic-disconnect-race';
+    let bookmarkIds: string[] = [];
+    try {
+      bookmarkIds = await page.evaluate(
+        async ({ revision, token }) => {
+          await chrome.storage.local.clear();
+          await chrome.storage.local.set({
+            notion_token: token,
+            notion_database: { id: 'db-fixture', title: 'Fixture Reading' },
+            destination_revision: revision,
+          });
+          const created = [];
+          for (const index of [1, 2, 3, 4]) {
+            created.push(
+              await chrome.bookmarks.create({
+                title: `Synthetic disconnect item ${index}`,
+                url: `https://example.invalid/disconnect-${index}`,
+              })
+            );
+          }
+          return created.map((bookmark) => bookmark.id);
+        },
+        { revision, token: FIXTURE_TOKEN }
+      );
+      const syncReply = page.evaluate(
+        (destinationRevision) =>
+          chrome.runtime.sendMessage({ type: 'SYNC_ALL_BOOKMARKS', destinationRevision }),
+        revision
+      );
+      // The first write batch is in flight; disconnect before Notion answers it.
+      await notion.pageCreatesHeld;
+      const disconnected = await page.evaluate(
+        (destinationRevision) =>
+          chrome.runtime.sendMessage({ type: 'DISCONNECT_NOTION', destinationRevision }),
+        revision
+      );
+      expect(disconnected.success).toBe(true);
+      notion.releasePageCreates();
 
-    await page.goto(`chrome-extension://${extensionId}/options.html#/settings`);
-    const labels = await getLocalizedMessages(page, ['account_login'] as const);
-    // Signed out, the settings route is only the login page.
-    await expect(
-      page.getByRole('heading', { level: 1, name: new RegExp(labels.account_login) })
-    ).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'AI', exact: true })).toHaveCount(0);
-    await page.waitForTimeout(100);
-    context.off('request', recordProtectedRequest);
-
-    expect(protectedRequests).toEqual([]);
+      expect((await syncReply).success).toBe(false);
+      expect(notion.createdUrls()).toHaveLength(3);
+      const stored = await page.evaluate(() =>
+        chrome.storage.local.get([
+          'notion_token',
+          'notion_database',
+          'last_sync',
+          'last_sync_fingerprint',
+          'sync_in_progress',
+        ])
+      );
+      expect(stored.notion_token).toBeUndefined();
+      expect(stored.notion_database).toBeUndefined();
+      expect(stored.last_sync).toBeUndefined();
+      expect(stored.last_sync_fingerprint).toBeUndefined();
+      expect(stored.sync_in_progress).toBeUndefined();
+    } finally {
+      notion.releasePageCreates();
+      await notion.dispose();
+      await page.evaluate(
+        (ids) => Promise.all(ids.map((id) => chrome.bookmarks.remove(id))),
+        bookmarkIds
+      );
+      await page.close();
+    }
   });
 
   test('background rejects save current page when disconnected', async () => {

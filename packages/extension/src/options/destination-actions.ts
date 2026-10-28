@@ -1,27 +1,23 @@
 import { Messages, sendMessage } from '../utils/message';
 import {
-  readAccountContext,
-  isAccountContextCurrent,
-  assertAccountContextCurrent,
-  StaleAccountStateError,
-} from '../utils/account-state';
+  readDestinationContext,
+  isDestinationContextCurrent,
+  StaleDestinationStateError,
+} from '../utils/destination-state';
 import { useAppStore } from './store';
 
-/** Removes the Notion destination. The account stays signed in with its plan. */
+/** Forgets the Notion token and database on this device. Pages already in Notion stay. */
 export async function disconnectNotionDestination(
   refreshDashboard: (force: boolean) => Promise<void>
 ) {
-  const context = await readAccountContext();
+  const context = await readDestinationContext();
   const result = await sendMessage({
     type: Messages.DISCONNECT_NOTION,
-    accountRevision: context.revision,
+    destinationRevision: context.revision,
   });
-  if (!result.success && !(await isAccountContextCurrent(context)))
-    throw new StaleAccountStateError();
+  if (!result.success && !(await isDestinationContextCurrent(context)))
+    throw new StaleDestinationStateError();
   if (!result.success) throw new Error(result.error || 'Failed to disconnect Notion');
-  const current = await readAccountContext();
-  if (result.accountRevision && current.revision !== result.accountRevision)
-    throw new StaleAccountStateError();
   useAppStore.setState({
     isConnected: false,
     lastSync: '',
@@ -31,5 +27,4 @@ export async function disconnectNotionDestination(
     dashboard: undefined,
   });
   await refreshDashboard(false);
-  await assertAccountContextCurrent(current);
 }

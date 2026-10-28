@@ -18,13 +18,19 @@ describe('disconnectNotionDestination', () => {
     useAppStore.setState({
       ...originalState,
       isConnected: true,
-      isSignedIn: true,
-      isPro: true,
-      plan: 'pro',
+      autoSync: true,
       dashboard: connectedDashboard,
     });
     vi.stubGlobal('chrome', {
-      storage: { local: { get: vi.fn(async () => ({ session_token: 'account-session' })) } },
+      storage: {
+        local: {
+          get: vi.fn(async () => ({
+            notion_token: 'ntn_test',
+            notion_database: { id: 'db-1' },
+            destination_revision: 'rev-1',
+          })),
+        },
+      },
       runtime: { sendMessage: vi.fn().mockResolvedValue({ success: true }) },
     });
   });
@@ -34,7 +40,7 @@ describe('disconnectNotionDestination', () => {
     vi.unstubAllGlobals();
   });
 
-  it('unlinks Notion but keeps the account and its plan', async () => {
+  it('forgets the Notion connection and stops scheduled sync locally', async () => {
     const disconnectedDashboard = {
       ...connectedDashboard,
       connection: { status: 'disconnected', action: 'connect' },
@@ -47,13 +53,11 @@ describe('disconnectNotionDestination', () => {
 
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: 'DISCONNECT_NOTION',
-      accountRevision: null,
+      destinationRevision: 'rev-1',
     });
     expect(refreshDashboard).toHaveBeenCalledWith(false);
     expect(useAppStore.getState().isConnected).toBe(false);
-    expect(useAppStore.getState().isSignedIn).toBe(true);
-    expect(useAppStore.getState().isPro).toBe(true);
-    expect(useAppStore.getState().plan).toBe('pro');
+    expect(useAppStore.getState().autoSync).toBe(false);
     expect(useAppStore.getState().dashboard).toEqual(disconnectedDashboard);
   });
 
