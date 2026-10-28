@@ -487,7 +487,7 @@
     "message": "连接"
   },
   "notion_reconnect_notice": {
-    "message": "Bookmark Assistant 不再使用登录服务。在下方添加 Notion token，即可继续同步到原来的数据库。"
+    "message": "Bookmark Assistant 不再使用登录服务。在下方添加 Notion 令牌，即可继续同步到原来的数据库。"
   },
   "notion_untitled": {
     "message": "未命名"
@@ -614,5 +614,8 @@
   },
   "organize_error_key_delete": {
     "message": "未能移除 key，请重试。"
+  },
+  "ai_provider_label": {
+    "message": "服务商"
   }
 }

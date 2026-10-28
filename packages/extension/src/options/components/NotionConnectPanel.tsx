@@ -81,6 +81,7 @@ export function NotionConnectPanel({
       <input
         type="radio"
         name="notion-target"
+        className="h-3.5 w-3.5 shrink-0 accent-library-forest"
         checked={choice?.kind === kind && choice.id === id}
         onChange={() => setChoice({ kind, id })}
         disabled={busy}
