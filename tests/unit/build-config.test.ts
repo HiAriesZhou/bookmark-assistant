@@ -13,7 +13,21 @@ describe('build configuration', () => {
       VITE_NOTION_CLIENT_ID: OFFICIAL_SERVICE.notionClientId,
       VITE_GOOGLE_CLIENT_ID: OFFICIAL_SERVICE.googleClientId,
       VITE_PRIVACY_URL: OFFICIAL_SERVICE.privacyUrl,
+      VITE_SOURCE_URL: OFFICIAL_SERVICE.sourceUrl,
     });
+  });
+  it('lets other builds publish their own source and defaults to the upstream repository', () => {
+    const own = resolveBuildConfig({
+      VITE_OAUTH_SERVER_URL: 'https://self-hosted.example',
+      VITE_SOURCE_URL: 'https://git.example/fork',
+    });
+    expect(own.publicEnv.VITE_SOURCE_URL).toBe('https://git.example/fork');
+    expect(resolveBuildConfig({}, { development: true }).publicEnv.VITE_SOURCE_URL).toBe(
+      OFFICIAL_SERVICE.sourceUrl
+    );
+    expect(
+      resolveBuildConfig({ VITE_SOURCE_URL: 'https://git.example/fork' }).publicEnv.VITE_SOURCE_URL
+    ).toBe(OFFICIAL_SERVICE.sourceUrl);
   });
   it('pins official links and the official Notion client ID for the official service', () => {
     const config = resolveBuildConfig({

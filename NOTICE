@@ -21,7 +21,7 @@ The @vercel/gatsby-plugin-vercel-builder package omits its license metadata;
 the corresponding Vercel CLI 48.4.1 source is Apache-2.0:
 https://github.com/vercel/vercel/blob/vercel%4048.4.1/LICENSE
 
-Chrome, Google, Notion and Product Hunt names and marks belong to their respective
+Chrome, GitHub, Google, Notion and Product Hunt names and marks belong to their respective
 owners. They are used for integration identification, not as project-owned assets,
 and are not licensed under GPL-3.0-only by this project. Product screenshots and
 promotional images show sample data only.

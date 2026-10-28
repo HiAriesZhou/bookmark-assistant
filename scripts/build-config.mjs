@@ -19,6 +19,7 @@ export const OFFICIAL_SERVICE = Object.freeze({
   termsUrl:
     'https://www.notion.so/bookmark-assistant/Terms-of-Service-2a24fd51dd3e80258c2df46cab36d400',
   supportUrl: 'mailto:aries0331.dev@gmail.com',
+  sourceUrl: 'https://github.com/HiAriesZhou/bookmark-assistant',
 });
 
 const LOCAL_SERVICE = Object.freeze({
@@ -98,6 +99,8 @@ export function resolveBuildConfig(env = process.env, { development = false } = 
       VITE_PRIVACY_URL: link('privacyUrl', 'VITE_PRIVACY_URL'),
       VITE_TERMS_URL: link('termsUrl', 'VITE_TERMS_URL'),
       VITE_SUPPORT_URL: link('supportUrl', 'VITE_SUPPORT_URL'),
+      // Other builds may publish their own GPL source; the upstream repository is the default.
+      VITE_SOURCE_URL: link('sourceUrl', 'VITE_SOURCE_URL', OFFICIAL_SERVICE.sourceUrl),
       VITE_DEBUG_MODE: env.VITE_DEBUG_MODE || 'false',
     },
   };

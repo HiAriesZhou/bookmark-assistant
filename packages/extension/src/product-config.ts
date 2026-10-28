@@ -7,4 +7,6 @@ export const productConfig = {
   privacyUrl: import.meta.env.VITE_PRIVACY_URL || '',
   termsUrl: import.meta.env.VITE_TERMS_URL || '',
   supportUrl: import.meta.env.VITE_SUPPORT_URL || '',
+  // GPL source for this build; forks point it at their own repository.
+  sourceUrl: import.meta.env.VITE_SOURCE_URL || 'https://github.com/HiAriesZhou/bookmark-assistant',
 };
