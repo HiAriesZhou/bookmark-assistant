@@ -153,10 +153,17 @@ export class NotionApi implements NotionLinkWriter {
       ),
     ]);
     const databases = new Map<string, NotionTarget>();
-    for (const source of dataSources?.results || []) {
-      const databaseId = source?.parent?.database_id;
+    for (const result of dataSources?.results || []) {
+      // Search may return a partial data source without its parent; read it once more.
+      const source =
+        result?.parent || typeof result?.id !== 'string'
+          ? result
+          : await this.withRetry(() =>
+              this.client(token).dataSources.retrieve({ data_source_id: result.id })
+            ).catch(() => null);
+      const databaseId = (source as any)?.parent?.database_id;
       if (typeof databaseId === 'string' && !databases.has(databaseId)) {
-        databases.set(databaseId, { id: databaseId, title: plainTitle(source.title) });
+        databases.set(databaseId, { id: databaseId, title: plainTitle((source as any).title) });
       }
     }
     return {

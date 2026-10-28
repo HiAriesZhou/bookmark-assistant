@@ -108,6 +108,25 @@ describe('NotionApi', () => {
     });
   });
 
+  it('looks up the database of a data source that search returned without a parent', async () => {
+    const { client, api } = fakeClient();
+    client.search.mockImplementation(async ({ filter }: any) =>
+      filter.value === 'data_source'
+        ? { results: [{ object: 'data_source', id: 'ds-2', properties: {} }] }
+        : { results: [] }
+    );
+    client.dataSources.retrieve.mockResolvedValue({
+      id: 'ds-2',
+      title: [{ plain_text: 'Reading' }],
+      parent: { type: 'database_id', database_id: 'db-2' },
+    });
+    await expect(api.listTargets(TOKEN)).resolves.toEqual({
+      databases: [{ id: 'db-2', title: 'Reading' }],
+      pages: [],
+    });
+    expect(client.dataSources.retrieve).toHaveBeenCalledWith({ data_source_id: 'ds-2' });
+  });
+
   it('creates a database whose fields match the property matchers', async () => {
     const { client, api } = fakeClient();
     client.request.mockResolvedValue({ id: 'db-new' });
