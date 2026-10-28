@@ -1,6 +1,10 @@
-# Self-hosting
+# Self-hosting the legacy server
 
-The local bookmark library works without a server. Notion sync and AI enrichment use the server; AI currently requires a connected Notion destination. Self-hosting includes scheduled sync and batch AI. API provider and hosting charges remain yours.
+The current extension does not need a server. It calls Notion with the user's own token and AI providers with the user's own key, directly from the browser, so there is nothing to host.
+
+This guide applies only to the legacy server in `packages/server`. That server is frozen and is kept only for extension versions released before the client-only version. The current extension source no longer reads `VITE_OAUTH_SERVER_URL` or a Notion client ID, so the build steps below work only with the source of one of those older releases.
+
+The rest of this page describes the legacy setup. In it, the local bookmark library works without a server, and Notion sync and AI enrichment use the server; AI requires a connected Notion destination. Self-hosting includes scheduled sync and batch AI. API provider and hosting charges remain yours.
 
 Requirements: Node 24, pnpm 9.12, and Docker Compose with PostgreSQL 17. The website and Paddle are optional.
 
