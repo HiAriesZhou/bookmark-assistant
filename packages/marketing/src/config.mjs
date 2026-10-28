@@ -41,11 +41,11 @@ export const SCENES = [
     route: 'destinations',
   },
   {
+    // AI organize starts from the library toolbar.
     id: 'ai-summary-tags',
     scenario: 'sync-success',
     surface: 'options',
-    route: 'settings',
-    scrollTarget: '#ai',
+    route: 'library',
   },
   {
     id: 'pro-auto-sync',
