@@ -36,20 +36,20 @@ export const SCENES = [
   },
   {
     id: 'sync-and-ai-ready',
-    scenario: 'ai-ready',
+    scenario: 'sync-success',
     surface: 'options',
     route: 'destinations',
   },
   {
     id: 'ai-summary-tags',
-    scenario: 'ai-ready',
+    scenario: 'sync-success',
     surface: 'options',
     route: 'settings',
     scrollTarget: '#ai',
   },
   {
     id: 'pro-auto-sync',
-    scenario: 'pro-auto-sync',
+    scenario: 'auto-sync',
     surface: 'options',
     route: 'settings',
     scrollTarget: '#sync',

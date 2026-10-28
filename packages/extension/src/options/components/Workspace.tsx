@@ -143,23 +143,6 @@ export function SettingsRow({
   );
 }
 
-export function ProBadge({ onClick }: { onClick?: () => void }) {
-  const { t } = createTranslator();
-  const className =
-    'inline-flex h-5 items-center rounded-full border border-ui-line px-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-ui-subtle';
-  if (!onClick) return <span className={className}>{t('pro')}</span>;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={t('view_plans')}
-      className={`${className} hover:border-ui-line-strong hover:text-ui-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-focus`}
-    >
-      {t('pro')}
-    </button>
-  );
-}
-
 /** Explains why destination-backed controls are unavailable and links to Destinations. */
 export function DestinationRequiredNotice({
   message,

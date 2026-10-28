@@ -18,10 +18,8 @@ describe('deterministic demo scenarios', () => {
   });
 
   it('validates scenario, locale, and time query parameters', () => {
-    expect(
-      parseDemoConfig('?scenario=pro-auto-sync&locale=zh-CN&time=2026-08-01T00:00:00Z')
-    ).toEqual({
-      scenarioId: 'pro-auto-sync',
+    expect(parseDemoConfig('?scenario=auto-sync&locale=zh-CN&time=2026-08-01T00:00:00Z')).toEqual({
+      scenarioId: 'auto-sync',
       locale: 'zh-CN',
       frozenTime: '2026-08-01T00:00:00.000Z',
     });
