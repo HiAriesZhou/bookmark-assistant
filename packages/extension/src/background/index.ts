@@ -29,6 +29,15 @@ import {
 import { notionApi } from '../destinations/notion/notion-api';
 import { syncLinksToNotion } from '../destinations/notion/sync';
 import { readTabDescription } from './page-description';
+import {
+  OrganizeError,
+  deleteOrganizeKey,
+  isOrganizeSenderAllowed,
+  readOrganizeKeySummary,
+  runOrganizeBatch,
+  saveOrganizeKey,
+  type OrganizeErrorCode,
+} from './library-organize';
 import { addMessageListener, Messages, type MessageResponse } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
 import { cleanupStorage } from '../utils/storage-cleanup';
@@ -516,6 +525,19 @@ addMessageListener({
       return { success: false, error: errorMessage(err) } as const;
     }
   },
+  [Messages.ORGANIZE_KEY_GET]: (_req, sender) =>
+    handleOrganizeMessage(sender, async () => ({ key: await readOrganizeKeySummary() })),
+  [Messages.ORGANIZE_KEY_SAVE]: (req, sender) =>
+    handleOrganizeMessage(sender, async () => ({
+      key: await saveOrganizeKey(req.provider, req.apiKey),
+    })),
+  [Messages.ORGANIZE_KEY_DELETE]: (_req, sender) =>
+    handleOrganizeMessage(sender, async () => {
+      await deleteOrganizeKey();
+      return {};
+    }),
+  [Messages.ORGANIZE_PREVIEW_BATCH]: (req, sender) =>
+    handleOrganizeMessage(sender, () => runOrganizeBatch(req.batch, req.uiLanguage)),
   [Messages.SCHEDULE_AUTO_SYNC]: async (req) => {
     try {
       const context = await messageDestinationContext(req);
@@ -527,6 +549,25 @@ addMessageListener({
     }
   },
 });
+
+async function handleOrganizeMessage<T extends object>(
+  sender: chrome.runtime.MessageSender,
+  run: () => Promise<T>
+): Promise<
+  ({ success: true } & T) | { success: false; errorCode: OrganizeErrorCode; retryAfterMs?: number }
+> {
+  if (!isOrganizeSenderAllowed(sender)) return { success: false, errorCode: 'invalid_request' };
+  try {
+    return { success: true, ...(await run()) };
+  } catch (error) {
+    if (error instanceof OrganizeError) {
+      return { success: false, errorCode: error.code, retryAfterMs: error.retryAfterMs };
+    }
+    // Provider responses and keys are never logged; only the failure kind is kept.
+    console.error('❌ Library organization failed:', error instanceof Error ? error.name : error);
+    return { success: false, errorCode: 'provider_request_failed' };
+  }
+}
 
 // Open the options page when the user clicks the extension icon
 try {

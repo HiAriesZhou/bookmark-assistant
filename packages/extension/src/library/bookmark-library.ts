@@ -11,13 +11,17 @@ export interface LocalBookmark {
   isTopLevel: boolean;
   metadata: LocalBookmarkMetadataV1;
   duplicateCount: number;
+  /** Enterprise-managed nodes cannot be edited or moved. */
+  unmodifiable?: boolean;
 }
 
 export interface LocalBookmarkFolder {
   id: string;
+  parentId?: string;
   title: string;
   path: string;
   depth: number;
+  unmodifiable?: boolean;
 }
 
 export interface LocalBookmarkIndex {
@@ -67,6 +71,7 @@ export function buildLocalBookmarkIndex(
         isTopLevel: Boolean(node.parentId && rootContainerIds.has(node.parentId)),
         metadata: metadataByBookmarkId[node.id] ?? EMPTY_METADATA,
         duplicateCount: 1,
+        unmodifiable: node.unmodifiable === 'managed',
       });
       return;
     }
@@ -75,9 +80,11 @@ export function buildLocalBookmarkIndex(
     if (!isRoot) {
       folders.push({
         id: node.id,
+        parentId: node.parentId,
         title: node.title,
         path: nextPath.join(' / '),
         depth: Math.max(0, nextPath.length - 1),
+        unmodifiable: node.unmodifiable === 'managed',
       });
     }
     for (const child of node.children ?? []) visit(child, nextPath, false);

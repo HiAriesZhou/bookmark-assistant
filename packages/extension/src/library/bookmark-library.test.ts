@@ -43,6 +43,46 @@ describe('local bookmark index', () => {
       '5',
     ]);
   });
+  it('marks managed bookmarks and folders and records folder parents', () => {
+    const tree = [
+      {
+        id: '0',
+        title: '',
+        children: [
+          {
+            id: '1',
+            parentId: '0',
+            title: 'Bookmarks Bar',
+            children: [{ id: '3', parentId: '1', title: 'Own', url: 'https://own.example' }],
+          },
+          {
+            id: '9',
+            parentId: '0',
+            title: 'Managed',
+            unmodifiable: 'managed',
+            children: [
+              {
+                id: '10',
+                parentId: '9',
+                title: 'Policy',
+                url: 'https://policy.example',
+                unmodifiable: 'managed',
+              },
+            ],
+          },
+        ],
+      },
+    ] as chrome.bookmarks.BookmarkTreeNode[];
+    const index = buildLocalBookmarkIndex(tree, {});
+
+    expect(index.folders).toEqual([
+      expect.objectContaining({ id: '1', parentId: '0', unmodifiable: false }),
+      expect.objectContaining({ id: '9', parentId: '0', unmodifiable: true }),
+    ]);
+    expect(index.bookmarks.find((bookmark) => bookmark.id === '3')?.unmodifiable).toBe(false);
+    expect(index.bookmarks.find((bookmark) => bookmark.id === '10')?.unmodifiable).toBe(true);
+  });
+
   it('preserves duplicate bookmark nodes and their separate local metadata', () => {
     const tree = [
       {
