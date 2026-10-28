@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildBookmarkPropertiesFromNotionSchema,
-  diffLinkItems,
-  mergeRetryResults,
-  selectRetryableSyncFailures,
-} from './core';
+import { buildBookmarkPropertiesFromNotionSchema, diffLinkItems } from './core';
 
 const notionSchema = {
   Name: { type: 'title' },
@@ -95,7 +90,7 @@ describe('Notion sync contract fixtures', () => {
     });
   });
 
-  it('keeps create, update, skip, and retry planning semantics stable', () => {
+  it('keeps create, update and skip planning semantics stable', () => {
     const create = diffLinkItems(
       [{ title: 'New item', url: 'https://example.com/new', syncId: 'new-item' }],
       []
@@ -138,26 +133,6 @@ describe('Notion sync contract fixtures', () => {
         },
       ]
     );
-    const initialFailure = {
-      success: false as const,
-      bookmark: 'Retry item',
-      error: 'fetch failed',
-      syncId: 'retry-item',
-      retryCount: 0,
-    };
-    const retry = mergeRetryResults(
-      [initialFailure],
-      [
-        {
-          success: true as const,
-          bookmark: 'Retry item',
-          action: 'created' as const,
-          syncId: 'retry-item',
-          retryCount: 1,
-        },
-      ]
-    );
-
     expect(create).toMatchObject({ toCreate: [{ syncId: 'new-item' }], skippedExisting: 0 });
     expect(update).toMatchObject({
       toCreate: [],
@@ -165,15 +140,5 @@ describe('Notion sync contract fixtures', () => {
       skippedExisting: 1,
     });
     expect(skip).toMatchObject({ toCreate: [], toUpdate: [], skippedExisting: 1 });
-    expect(selectRetryableSyncFailures([initialFailure])).toEqual([initialFailure]);
-    expect(retry).toEqual([
-      {
-        success: true,
-        bookmark: 'Retry item',
-        action: 'created',
-        syncId: 'retry-item',
-        retryCount: 1,
-      },
-    ]);
   });
 });

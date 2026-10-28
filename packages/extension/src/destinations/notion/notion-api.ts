@@ -2,6 +2,7 @@ import { Client } from '@notionhq/client';
 import {
   buildBookmarkPropertiesFromNotionSchema,
   extractNotionPageLinkKeys,
+  getNotionErrorStatus,
   getNotionRetryDelayMs,
   getPrimaryNotionDataSourceId,
   isReadOnlyNotionPropertyType,
@@ -101,7 +102,11 @@ export class NotionApi implements NotionLinkWriter {
     if (waitMs > 0) await this.wait(waitMs);
   }
 
-  private async withRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+    retryable: (error: unknown) => boolean = isRetryableNotionError
+  ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       try {
         await this.waitForRequestSlot();
@@ -118,7 +123,7 @@ export class NotionApi implements NotionLinkWriter {
           clearTimeout(timer);
         }
       } catch (error) {
-        if (attempt >= maxRetries || !isRetryableNotionError(error)) throw error;
+        if (attempt >= maxRetries || !retryable(error)) throw error;
         await this.wait(getNotionRetryDelayMs(error, attempt));
       }
     }
@@ -255,7 +260,10 @@ export class NotionApi implements NotionLinkWriter {
     }) as Record<string, unknown>;
   }
 
-  /** Creating a page is not idempotent, so it is never retried here; the writer reconciles. */
+  /**
+   * Creating a page is not idempotent: only a 429, which Notion sends before saving
+   * anything, is retried here. The writer reconciles other failures by sync ID.
+   */
   async createPage(
     parent: { type: 'database_id'; database_id: string },
     properties: Record<string, unknown>,
@@ -263,13 +271,17 @@ export class NotionApi implements NotionLinkWriter {
     children?: undefined,
     iconUrl?: string
   ): Promise<unknown> {
-    await this.waitForRequestSlot();
-    return this.client(token).pages.create({
-      parent,
-      properties,
-      children,
-      ...(iconUrl ? { icon: { type: 'external', external: { url: iconUrl } } } : {}),
-    } as any);
+    return this.withRetry(
+      () =>
+        this.client(token).pages.create({
+          parent,
+          properties,
+          children,
+          ...(iconUrl ? { icon: { type: 'external', external: { url: iconUrl } } } : {}),
+        } as any),
+      3,
+      (error) => getNotionErrorStatus(error) === 429
+    );
   }
 
   async updatePage(

@@ -21,7 +21,6 @@ export type {
   NotionSchemaProperty,
 } from './notion-properties';
 export type { NotionDatabaseLike, NotionDataSourceLike } from './notion-database';
-export type { BookmarkSyncResultWithRetryState } from './sync-results';
 
 export {
   diffLinkItems,
@@ -36,8 +35,11 @@ export {
   isReadOnlyNotionPropertyType,
 } from './notion-properties';
 export { getPrimaryNotionDataSourceId, hasNotionDataSourceId } from './notion-database';
-export { getNotionRetryDelayMs, isRetryableNotionError } from './notion-retry';
-export { mergeRetryResults, selectRetryableSyncFailures } from './sync-results';
+export {
+  getNotionErrorStatus,
+  getNotionRetryDelayMs,
+  isRetryableNotionError,
+} from './notion-retry';
 export {
   buildGoogleS2FaviconUrl,
   isFetchableHttpUrl,

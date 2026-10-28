@@ -46,16 +46,26 @@ describe('NotionApi', () => {
     await expect(api.verifyDatabaseAccess('page-1', TOKEN)).rejects.toThrow('not a database');
   });
 
-  it('retries rate-limited reads but never retries page creation', async () => {
+  it('retries rate-limited requests, including creates that Notion rejected', async () => {
     const { client, api } = fakeClient();
     client.pages.update.mockRejectedValueOnce(rateLimited()).mockResolvedValue({ id: 'p' });
     await api.updatePage('p', {}, TOKEN);
     expect(client.pages.update).toHaveBeenCalledTimes(2);
 
-    client.pages.create.mockRejectedValue(rateLimited());
+    // A 429 means the page was not created, so sending it again cannot duplicate it.
+    client.pages.create.mockRejectedValueOnce(rateLimited()).mockResolvedValue({ id: 'new' });
     await expect(
       api.createPage({ type: 'database_id', database_id: 'db' }, {}, TOKEN)
-    ).rejects.toThrow('rate limited');
+    ).resolves.toEqual({ id: 'new' });
+    expect(client.pages.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not resend a create after a server error that may have saved it', async () => {
+    const { client, api } = fakeClient();
+    client.pages.create.mockRejectedValue(Object.assign(new Error('bad gateway'), { status: 502 }));
+    await expect(
+      api.createPage({ type: 'database_id', database_id: 'db' }, {}, TOKEN)
+    ).rejects.toThrow('bad gateway');
     expect(client.pages.create).toHaveBeenCalledTimes(1);
   });
 
