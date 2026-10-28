@@ -19,6 +19,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const SCHEMA_CACHE_MS = 5 * 60_000;
 // A safety stop for a cursor that never ends: 100,000 rows.
 const MAX_EXISTING_PAGES = 1_000;
+// The target picker lists at most 500 databases and 500 pages.
+const MAX_TARGET_PAGES = 5;
 
 type NotionClient = Pick<Client, 'request' | 'search' | 'pages' | 'users' | 'dataSources'>;
 
@@ -144,22 +146,12 @@ export class NotionApi implements NotionLinkWriter {
    * Database rows are not offered as parents.
    */
   async listTargets(token: string): Promise<{ databases: NotionTarget[]; pages: NotionTarget[] }> {
-    const [dataSources, pages]: any[] = await Promise.all([
-      this.withRetry(() =>
-        this.client(token).search({
-          filter: { property: 'object', value: 'data_source' },
-          page_size: 100,
-        } as any)
-      ),
-      this.withRetry(() =>
-        this.client(token).search({
-          filter: { property: 'object', value: 'page' },
-          page_size: 100,
-        } as any)
-      ),
+    const [dataSources, pages] = await Promise.all([
+      this.searchAll(token, 'data_source'),
+      this.searchAll(token, 'page'),
     ]);
     const databases = new Map<string, NotionTarget>();
-    for (const result of dataSources?.results || []) {
+    for (const result of dataSources) {
       // Search may return a partial data source without its parent; read it once more.
       const source =
         result?.parent || typeof result?.id !== 'string'
@@ -174,7 +166,7 @@ export class NotionApi implements NotionLinkWriter {
     }
     return {
       databases: [...databases.values()],
-      pages: (pages?.results || [])
+      pages: pages
         .filter(
           (page: any) =>
             typeof page?.id === 'string' &&
@@ -182,6 +174,25 @@ export class NotionApi implements NotionLinkWriter {
         )
         .map((page: any) => ({ id: page.id, title: pageTitle(page) })),
     };
+  }
+
+  /** Search results of one kind, up to MAX_TARGET_PAGES pages of 100. */
+  private async searchAll(token: string, kind: 'data_source' | 'page'): Promise<any[]> {
+    const results: any[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_TARGET_PAGES; page++) {
+      const response: any = await this.withRetry(() =>
+        this.client(token).search({
+          filter: { property: 'object', value: kind },
+          page_size: 100,
+          start_cursor: cursor,
+        } as any)
+      );
+      results.push(...(response?.results || []));
+      cursor = response?.next_cursor || undefined;
+      if (!cursor) break;
+    }
+    return results;
   }
 
   /** Creates a bookmark database under a page the token can edit. */

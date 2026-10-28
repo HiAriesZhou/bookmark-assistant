@@ -128,6 +128,26 @@ describe('NotionApi', () => {
     });
   });
 
+  it('pages through search results when choosing a target', async () => {
+    const { client, api } = fakeClient();
+    client.search.mockImplementation(async ({ filter, start_cursor }: any) => {
+      if (filter.value === 'page') return { results: [] };
+      const second = start_cursor === 'next';
+      return {
+        results: [
+          {
+            id: second ? 'ds-2' : 'ds-1',
+            title: [{ plain_text: second ? 'Two' : 'One' }],
+            parent: { database_id: second ? 'db-2' : 'db-1' },
+          },
+        ],
+        next_cursor: second ? null : 'next',
+      };
+    });
+    const { databases } = await api.listTargets(TOKEN);
+    expect(databases.map((database) => database.id)).toEqual(['db-1', 'db-2']);
+  });
+
   it('looks up the database of a data source that search returned without a parent', async () => {
     const { client, api } = fakeClient();
     client.search.mockImplementation(async ({ filter }: any) =>
