@@ -32,7 +32,7 @@ listing:
   supportUrl: https://www.bookmarkassistant.com/#faq
   matureContent: false
 privacy:
-  singlePurpose: Bookmark Assistant helps users manage saved web pages through a local Chrome bookmark library, with optional synchronization to the user's own Notion workspace.
+  singlePurpose: Bookmark Assistant helps users manage saved web pages through a local Chrome bookmark library, with optional synchronization to the user's own Notion workspace and optional folder suggestions from the user's own AI provider.
   permissionJustifications:
     activeTab: Used only after an explicit user action that saves the current page, such as Save current page in the popup or Save to Notion from the context menu while Notion is connected. It provides temporary access to the current tab’s title, URL and meta description. It is not used to monitor tabs or browsing activity in the background.
     alarms: Used to schedule the optional background sync the user turns on, without keeping the extension service worker continuously active. Alarms do not display notifications or track user activity.
@@ -42,7 +42,7 @@ privacy:
     readingList: Used to read the user’s Chrome Reading List for local counts and optional user-initiated synchronization to a connected Destination. Bookmark Assistant does not use this permission to add, edit, or delete Reading List entries.
     scripting: Used only when the user saves the current page. Bookmark Assistant runs a packaged function in that tab to read the page’s meta description, which is saved with the link. It does not read the page body, download or execute remote code.
     storage: Used to store extension preferences, the user’s Notion token and selected database, bookmark descriptions and tags managed by Bookmark Assistant, cached local reports and sync state on the user’s device. This data stays in the browser, is sent only to Notion when the user syncs, and is not used for advertising or cross-site tracking.
-  hostPermissionJustification: null
+  hostPermissionJustification: Optional host permissions for AI providers (OpenAI, Anthropic, Google Gemini, DeepSeek, Groq and MiniMax) are requested only when the user saves an API key for that provider to organize bookmarks, and are released when the key is removed or replaced. Requests carry only bookmark titles, folder paths and URLs without query strings.
   remoteCode:
     uses: false
     justification: null

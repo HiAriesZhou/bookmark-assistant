@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { DashboardSnapshot } from '../dashboard/types';
 import type { NotionDatabaseRef } from './destination-state';
+import type { OrganizeBatch, OrganizeProposal } from '../core';
+import type { OrganizeErrorCode, OrganizeKeySummary } from '../background/library-organize';
 
 export type NotionTargetSummary = { id: string; title: string };
 
@@ -52,6 +54,28 @@ export type MessageMap = {
     req: { refreshConnection?: boolean };
     res: { success: boolean; dashboard?: DashboardSnapshot; error?: string };
   };
+  ORGANIZE_KEY_GET: {
+    req: {};
+    res: { success: boolean; key?: OrganizeKeySummary | null; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_KEY_SAVE: {
+    req: { provider: string; apiKey: string };
+    res: { success: boolean; key?: OrganizeKeySummary; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_KEY_DELETE: {
+    req: {};
+    res: { success: boolean; errorCode?: OrganizeErrorCode };
+  };
+  ORGANIZE_PREVIEW_BATCH: {
+    req: { batch: OrganizeBatch; uiLanguage: string };
+    res: {
+      success: boolean;
+      proposals?: OrganizeProposal[];
+      discardedCount?: number;
+      errorCode?: OrganizeErrorCode;
+      retryAfterMs?: number;
+    };
+  };
 };
 
 export type MessageType = keyof MessageMap;
@@ -68,12 +92,18 @@ export const Messages: { [K in MessageType]: K } = {
   SCHEDULE_AUTO_SYNC: 'SCHEDULE_AUTO_SYNC',
   SAVE_CURRENT_PAGE: 'SAVE_CURRENT_PAGE',
   GET_DASHBOARD_STATE: 'GET_DASHBOARD_STATE',
+  ORGANIZE_KEY_GET: 'ORGANIZE_KEY_GET',
+  ORGANIZE_KEY_SAVE: 'ORGANIZE_KEY_SAVE',
+  ORGANIZE_KEY_DELETE: 'ORGANIZE_KEY_DELETE',
+  ORGANIZE_PREVIEW_BATCH: 'ORGANIZE_PREVIEW_BATCH',
 };
 
 // Connecting verifies the token, may create a database and checks access.
 export const NOTION_CONNECT_MESSAGE_TIMEOUT_MS = 60_000;
 // Saving one page writes a single Notion row and should acknowledge quickly.
 export const SAVE_CURRENT_PAGE_MESSAGE_TIMEOUT_MS = 120_000;
+// Key validation and one organize batch each make a single provider call (30 s limit).
+export const ORGANIZE_MESSAGE_TIMEOUT_MS = 60_000;
 
 export async function sendMessage<T extends MessageType>(
   message: MessageRequest<T>,

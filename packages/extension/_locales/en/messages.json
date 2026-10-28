@@ -618,5 +618,125 @@
   },
   "footer_star_request": {
     "message": "If Bookmark Assistant helps you, a star would mean a lot."
+  },
+  "organize_open": {
+    "message": "AI organize"
+  },
+  "organize_open_hint": {
+    "message": "Suggest better folders for the bookmarks in this view"
+  },
+  "organize_title": {
+    "message": "AI organize"
+  },
+  "organize_close": {
+    "message": "Close"
+  },
+  "organize_privacy_note": {
+    "message": "Bookmark titles, folder paths and web addresses without query strings are sent directly to the provider you choose, using your own API key. They do not pass through Bookmark Assistant servers. The key is stored only on this device and is not encrypted. Common local and private-network addresses, such as localhost, .local, .lan or private IP ranges, are not sent."
+  },
+  "organize_key_label": {
+    "message": "API key"
+  },
+  "organize_key_save": {
+    "message": "Save key"
+  },
+  "organize_key_saving": {
+    "message": "Checking key…"
+  },
+  "organize_key_summary": {
+    "message": "$1 key ending in $2"
+  },
+  "organize_key_change": {
+    "message": "Change"
+  },
+  "organize_key_clear": {
+    "message": "Remove key"
+  },
+  "organize_scope_count": {
+    "message": "$1 bookmarks in this view will be analyzed."
+  },
+  "organize_scope_truncated": {
+    "message": "This view has $1 bookmarks. One run covers loose bookmarks first, then the newest."
+  },
+  "organize_scope_excluded": {
+    "message": "$1 bookmarks stay on this device: managed, common local or private-network, or non-web addresses."
+  },
+  "organize_no_folders": {
+    "message": "There are no folders to move these bookmarks into."
+  },
+  "organize_start": {
+    "message": "Suggest folders"
+  },
+  "organize_progress": {
+    "message": "Analyzing batch $1 of $2…"
+  },
+  "organize_preview_empty": {
+    "message": "No moves suggested. These bookmarks already look well placed."
+  },
+  "organize_preview_summary": {
+    "message": "$1 moves suggested. Nothing changes until you apply them."
+  },
+  "organize_select_all": {
+    "message": "Select all"
+  },
+  "organize_select_none": {
+    "message": "Select none"
+  },
+  "organize_select_bookmark": {
+    "message": "Move $1"
+  },
+  "organize_target_folder": {
+    "message": "Target folder for $1"
+  },
+  "organize_retry_failed": {
+    "message": "Retry $1 unfinished batches"
+  },
+  "organize_apply": {
+    "message": "Apply $1 moves"
+  },
+  "organize_apply_result": {
+    "message": "Moved $1 bookmarks. Skipped $2 that changed or could not be moved."
+  },
+  "organize_undo": {
+    "message": "Undo last organize"
+  },
+  "organize_undo_result": {
+    "message": "Restored $1 bookmarks. Left $2 that were moved again or removed."
+  },
+  "organize_error_generic": {
+    "message": "The request could not be completed. Try again."
+  },
+  "organize_error_not_configured": {
+    "message": "Add an API key to use AI organize."
+  },
+  "organize_error_permission": {
+    "message": "Allow access to the provider so Chrome can send the request."
+  },
+  "organize_error_invalid_key": {
+    "message": "The provider rejected this API key."
+  },
+  "organize_error_quota": {
+    "message": "The provider reports no remaining quota or credit for this key."
+  },
+  "organize_error_model": {
+    "message": "This key cannot use the provider's default model."
+  },
+  "organize_error_rate_limited": {
+    "message": "The provider is rate limiting requests. Retry the failed batches in a moment."
+  },
+  "organize_error_unavailable": {
+    "message": "The provider is unavailable right now. Try again later."
+  },
+  "organize_error_response": {
+    "message": "Some answers from the provider were unusable. Retry the failed batches."
+  },
+  "organize_error_apply": {
+    "message": "Chrome could not finish applying the moves. Moves already made can be undone."
+  },
+  "organize_error_undo": {
+    "message": "Chrome could not finish the undo. Try again."
+  },
+  "organize_error_key_delete": {
+    "message": "The key could not be removed. Try again."
   }
 }

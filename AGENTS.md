@@ -34,8 +34,9 @@ changes.
   internal integration token, and the background calls `api.notion.com` directly.
   New destinations, such as Obsidian, are separate changes.
 - AI is optional and uses the user's own provider key, called directly from the
-  extension. AI providers reuse the shared provider contract and adapter boundary;
-  provider hosts are optional host permissions requested when needed.
+  extension. Provider adapters live in `packages/extension/src/ai` and use the shared
+  provider types; the frozen server keeps its own copy. Provider hosts are optional
+  host permissions requested when needed.
 - Notion tokens and AI keys stay in `chrome.storage.local`. Never put them in
   `chrome.storage.sync`, logs, diagnostics or error reports.
 - Legacy server (`packages/server`, Express/Prisma/PostgreSQL): frozen. It only serves
