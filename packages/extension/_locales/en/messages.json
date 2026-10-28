@@ -7,7 +7,7 @@
     "description": "The name of the extension"
   },
   "appDesc": {
-    "message": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and optionally add AI summaries and tags.",
+    "message": "Manage Chrome bookmarks locally, sync bookmarks and Reading List to Notion, and get optional AI folder suggestions.",
     "description": "The description of the extension"
   },
   "extensionTitle": {

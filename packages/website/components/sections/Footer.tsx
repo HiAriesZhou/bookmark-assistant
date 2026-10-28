@@ -3,21 +3,14 @@ import { Globe2 } from 'lucide-react';
 import {
   CHROME_WEB_STORE_URL,
   PRODUCT_NAME,
-  COMMERCE_ENABLED,
-  SOURCE_URL,
-  NOTION_TEMPLATE_URL,
-  REFUND_POLICY_URL,
+  NOTION_TOKEN_GUIDE_URL,
   SUPPORT_EMAIL,
   TERMS_OF_SERVICE_URL,
+  projectStoryUrl,
 } from '@/lib/product-links';
 import { localePath, type WebsiteCopy, type WebsiteLocale } from '@/lib/i18n';
 
 export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLocale }) {
-  const projectStoryUrl = !COMMERCE_ENABLED
-    ? SOURCE_URL
-    : locale === 'zh-CN'
-      ? 'https://www.arieszhou.com/zh/projects/bookmark-assistant'
-      : 'https://www.arieszhou.com/projects/bookmark-assistant';
   return (
     <footer className="border-t border-[#dce0d4] bg-[#f9f9f5] px-6 py-12">
       <div className="mx-auto max-w-7xl">
@@ -38,11 +31,8 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
                 </a>
               </li>
               <li>
-                <a
-                  className="hover:text-[#334f40]"
-                  href={COMMERCE_ENABLED ? '#pricing' : '#source'}
-                >
-                  {COMMERCE_ENABLED ? copy.navigation.pricing : 'GPL-3.0-only'}
+                <a className="hover:text-[#334f40]" href="#source">
+                  GPL-3.0-only
                 </a>
               </li>
               <li>
@@ -58,11 +48,11 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               <li>
                 <a
                   className="hover:text-[#334f40]"
-                  href={NOTION_TEMPLATE_URL || '#source'}
+                  href={NOTION_TOKEN_GUIDE_URL}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {copy.footer.notionTemplate}
+                  {copy.footer.notionGuide}
                 </a>
               </li>
               <li>
@@ -86,7 +76,7 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               <li>
                 <a
                   className="hover:text-[#334f40]"
-                  href={projectStoryUrl}
+                  href={projectStoryUrl(locale)}
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -113,34 +103,11 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
                   {copy.footer.terms}
                 </a>
               </li>
-              <li>
-                <a
-                  className="hover:text-[#334f40]"
-                  href={REFUND_POLICY_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {copy.footer.refund}
-                </a>
-              </li>
             </ul>
           </div>
         </div>
         <div className="editorial-footer-bottom border-t border-[#e8eaed] pt-8 text-sm text-[#667085]">
           <div>
-            {COMMERCE_ENABLED ? (
-              <div className="mb-2">
-                {copy.footer.poweredBy}{' '}
-                <a
-                  href="https://www.paddle.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline decoration-[#b7c3b2] underline-offset-4 hover:text-[#334f40]"
-                >
-                  Paddle
-                </a>
-              </div>
-            ) : null}
             <div>© 2026 {PRODUCT_NAME}. GPL-3.0-only.</div>
           </div>
           <div className="editorial-language" aria-label={locale === 'zh-CN' ? '语言' : 'Language'}>

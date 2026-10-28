@@ -254,7 +254,7 @@ try {
         browser,
         screenshotCanvas({
           locale,
-          copy: { ...copy, productName: content.productName, planLabels: content.planLabels },
+          copy: { ...copy, productName: content.productName },
           scene,
           productImage: asDataUrl(product),
           logoImage: logo,
