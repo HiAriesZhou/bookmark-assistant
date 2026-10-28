@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { NOTION_RECONNECT_NOTICE_KEY } from '../../utils/destination-state';
 import { createTranslator } from '../../utils/i18n';
 import {
   useNotionConnection,
@@ -26,6 +27,24 @@ export function NotionConnectPanel({
   const [token, setToken] = useState('');
   const [targets, setTargets] = useState<NotionTargets | null>(null);
   const [choice, setChoice] = useState<NotionTargetChoice | null>(null);
+  const [reconnect, setReconnect] = useState(false);
+
+  // Set by startup cleanup for users who connected Notion through the retired service.
+  useEffect(() => {
+    let active = true;
+    const readNotice = async () => {
+      try {
+        const stored = await chrome.storage.local.get(NOTION_RECONNECT_NOTICE_KEY);
+        if (active) setReconnect(stored[NOTION_RECONNECT_NOTICE_KEY] === true);
+      } catch {
+        // Without the notice the form still works.
+      }
+    };
+    void readNotice();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const reportError = (error: unknown) =>
     onError(error instanceof Error ? error.message : String(error));
@@ -79,6 +98,11 @@ export function NotionConnectPanel({
           void (targets ? finish() : checkToken());
         }}
       >
+        {reconnect ? (
+          <p role="note" className="text-sm leading-6 text-ui-body">
+            {t('notion_reconnect_notice')}
+          </p>
+        ) : null}
         <label htmlFor={tokenId} className="text-sm font-medium text-ui-ink">
           {t('notion_token_label')}
         </label>

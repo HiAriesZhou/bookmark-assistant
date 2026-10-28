@@ -642,6 +642,9 @@
   "notion_connect_action": {
     "message": "Connect"
   },
+  "notion_reconnect_notice": {
+    "message": "Bookmark Assistant no longer uses a sign-in service. Add a Notion token below to keep syncing to your database."
+  },
   "notion_untitled": {
     "message": "Untitled"
   },
