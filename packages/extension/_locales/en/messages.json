@@ -614,5 +614,8 @@
   },
   "organize_error_key_delete": {
     "message": "The key could not be removed. Try again."
+  },
+  "ai_provider_label": {
+    "message": "Provider"
   }
 }
