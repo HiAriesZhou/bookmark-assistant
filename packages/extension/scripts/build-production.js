@@ -24,7 +24,13 @@ try {
     {
       cwd,
       stdio: 'inherit',
-      env: { ...env, ...config.publicEnv, BOOKMARK_ASSISTANT_ENV_DIR: envDirectory },
+      // Vite resolves the build again; pass the site so it reaches the same verdict.
+      env: {
+        ...env,
+        ...config.publicEnv,
+        VITE_WEBSITE_URL: config.websiteUrl,
+        BOOKMARK_ASSISTANT_ENV_DIR: envDirectory,
+      },
     }
   );
 } finally {

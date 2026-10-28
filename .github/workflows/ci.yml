@@ -147,7 +147,7 @@ jobs:
         run: |
           pnpm build
           pnpm build:prod
-          node -e "const i=require('./packages/extension/dist/BUILD_INFO.json'); if(!i.officialService) throw new Error('Default production build must target the official service.')"
+          node -e "const i=require('./packages/extension/dist/BUILD_INFO.json'); if(!i.officialBuild) throw new Error('Default production build must be the official build.')"
 
   website-quality:
     runs-on: ubuntu-latest
