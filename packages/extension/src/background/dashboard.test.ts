@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PRODUCT_VERSION } from '../product-version.generated';
 import type { DashboardEvent } from '../dashboard/types';
+import { readDestinationContext } from '../utils/destination-state';
+import { connectionNeedsReconnect, recordConnectionFailure } from './connection-health';
 import {
   classifyDashboardError,
   getDashboardSnapshot,
@@ -142,5 +144,39 @@ describe('dashboard state helpers', () => {
 
     expect(snapshot.connection).toMatchObject({ status: 'degraded', action: 'reconnect' });
     verify.mockRestore();
+  });
+
+  it('keeps asking to reconnect after a sync is rejected, until a refresh succeeds', async () => {
+    const storage: Record<string, unknown> = connected();
+    stubConnectedChrome(storage);
+    const context = await readDestinationContext();
+
+    const rejected = Object.assign(new Error('Could not find database'), { status: 404 });
+    await expect(recordConnectionFailure(context, rejected)).resolves.toBe('reconnect');
+    await expect(connectionNeedsReconnect()).resolves.toBe(true);
+
+    // Hours later, without a refresh, the connection still needs the user.
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 6 * 60 * 60 * 1000);
+    const snapshot = await getDashboardSnapshot();
+    expect(snapshot.connection).toMatchObject({ status: 'degraded', action: 'reconnect' });
+    clock.mockRestore();
+
+    const verify = vi.spyOn(notionApi, 'verifyDatabaseAccess').mockResolvedValue({
+      databaseId: 'db-1',
+      dataSourceId: 'ds-1',
+    });
+    await getDashboardSnapshot(true);
+    await expect(connectionNeedsReconnect()).resolves.toBe(false);
+    verify.mockRestore();
+  });
+
+  it('treats network failures during a sync as retryable, not as a broken connection', async () => {
+    stubConnectedChrome(connected());
+    const context = await readDestinationContext();
+    await expect(recordConnectionFailure(context, new TypeError('Failed to fetch'))).resolves.toBe(
+      'retry'
+    );
+    await expect(connectionNeedsReconnect()).resolves.toBe(false);
   });
 });

@@ -29,6 +29,7 @@ import {
 import { notionApi } from '../destinations/notion/notion-api';
 import { syncLinksToNotion } from '../destinations/notion/sync';
 import { readTabDescription } from './page-description';
+import { recordConnectionFailure } from './connection-health';
 import {
   OrganizeError,
   deleteOrganizeKey,
@@ -301,6 +302,9 @@ async function performBookmarkSyncAfterInitialization(
     console.error('❌ Notion bookmark sync failed:', err);
 
     const rateLimited = (err as { status?: unknown } | null)?.status === 429;
+    const connectionAction = await recordConnectionFailure(context, err).catch(
+      () => 'retry' as const
+    );
     const completedAt = new Date().toISOString();
     const result = inferSyncResult(latestSummary, err);
     const failedSummary: StoredSyncSummary = latestSummary
@@ -322,7 +326,7 @@ async function performBookmarkSyncAfterInitialization(
         skipped: failedSummary.skipped,
       },
       errorCategory: classifyDashboardError(err),
-      action: result === 'limited' ? undefined : 'retry',
+      action: result === 'limited' ? undefined : connectionAction,
     });
     await new Promise((r) => setTimeout(r, 600));
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
@@ -382,13 +386,14 @@ async function saveCurrentPage(
     return { success: true };
   } catch (error) {
     console.error('[saveCurrentPage] Failed:', error);
+    const action = await recordConnectionFailure(context, error).catch(() => 'retry' as const);
     await recordDestinationActivity(context, () =>
       recordDashboardEvent({
         kind: 'error',
         source,
         result: 'failed',
         errorCategory: classifyDashboardError(error),
-        action: 'retry',
+        action,
       })
     );
     return { success: false, error: error instanceof Error ? error.message : String(error) };
@@ -423,13 +428,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     await recordDestinationActivity(context, () => recordDashboardSave('context_menu'));
   } catch (error) {
     console.error('[Context Menu] Save failed:', error);
+    const action = await recordConnectionFailure(context, error).catch(() => 'retry' as const);
     await recordDestinationActivity(context, () =>
       recordDashboardEvent({
         kind: 'error',
         source: 'context_menu',
         result: 'failed',
         errorCategory: classifyDashboardError(error),
-        action: 'retry',
+        action,
       })
     );
   }
