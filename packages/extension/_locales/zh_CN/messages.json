@@ -634,6 +634,9 @@
   "notion_connect_action": {
     "message": "连接"
   },
+  "notion_reconnect_notice": {
+    "message": "Bookmark Assistant 不再使用登录服务。在下方添加 Notion token，即可继续同步到原来的数据库。"
+  },
   "notion_untitled": {
     "message": "未命名"
   },

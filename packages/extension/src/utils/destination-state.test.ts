@@ -44,6 +44,7 @@ const CONNECTION = {
 describe('destination state', () => {
   it('saves a connection, bumps the revision and clears progress from the old database', async () => {
     store.last_sync_fingerprint = 'old';
+    store.notion_reconnect_notice = true;
     const empty = await readDestinationContext();
     const connected = await commitNotionConnection(empty, CONNECTION);
 
@@ -51,6 +52,7 @@ describe('destination state', () => {
     expect(connected.revision).toBeTruthy();
     expect(store[DESTINATION_REVISION_KEY]).toBe(connected.revision);
     expect(store.last_sync_fingerprint).toBeUndefined();
+    expect(store.notion_reconnect_notice).toBeUndefined();
     await expect(readNotionConnection()).resolves.toEqual(CONNECTION);
   });
 

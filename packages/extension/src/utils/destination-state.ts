@@ -1,9 +1,12 @@
+import { NOTION_RECONNECT_NOTICE_KEY } from '../core';
+
 // The Notion destination: the user's token and the database it writes to. The background
 // owns these keys; the token never leaves chrome.storage.local.
 
 export const NOTION_TOKEN_KEY = 'notion_token';
 export const NOTION_DATABASE_KEY = 'notion_database';
 export const DESTINATION_REVISION_KEY = 'destination_revision';
+export { NOTION_RECONNECT_NOTICE_KEY };
 
 export type NotionDatabaseRef = {
   id: string;
@@ -131,7 +134,7 @@ export function commitNotionConnection(
 ): Promise<DestinationContext> {
   return withCurrentDestination(expected, async () => {
     const revision = newRevision();
-    await chrome.storage.local.remove(SYNC_PROGRESS_KEYS);
+    await chrome.storage.local.remove([...SYNC_PROGRESS_KEYS, NOTION_RECONNECT_NOTICE_KEY]);
     await chrome.storage.local.set({
       [NOTION_TOKEN_KEY]: connection.token,
       [NOTION_DATABASE_KEY]: connection.database,

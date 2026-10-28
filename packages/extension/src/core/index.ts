@@ -11,12 +11,7 @@ export type {
 } from './links';
 export type { PageContent } from './content';
 export type { ChromeReadingListItemLike, FormatReadingListItemOptions } from './reading-list';
-export type {
-  CleanErrorReportsOptions,
-  ErrorReport,
-  PlanStorageCleanupOptions,
-  StorageCleanupPlan,
-} from './storage-cleanup';
+export type { StorageCleanupPlan } from './storage-cleanup';
 export type {
   LegacyLinkItemMappingResult,
   LegacyMappingLoss,
@@ -40,6 +35,6 @@ export { extractPageContentFromDocument } from './content';
 
 export { formatReadingListItemsForSync } from './reading-list';
 
-export { cleanErrorReports, planStorageCleanup } from './storage-cleanup';
+export { NOTION_RECONNECT_NOTICE_KEY, planStorageCleanup } from './storage-cleanup';
 
 export { createDefaultKnowledgeItemId, prepareLegacyLinkItemForSync } from './knowledge-item';
