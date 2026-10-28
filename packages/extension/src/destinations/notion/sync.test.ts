@@ -3,7 +3,6 @@ import type { LinkItem } from '@bookmark-assistant/types';
 import { syncLinksToNotion } from './sync';
 
 const CONNECTION = { token: 'ntn_test', databaseId: 'db-1' };
-const noWait = async () => undefined;
 
 function fakeApi(existingRecords: any[] = []) {
   return {
@@ -36,9 +35,7 @@ describe('syncLinksToNotion', () => {
     const api = fakeApi([
       { pageId: 'page-old', syncId: 'old', url: 'https://old.example/', type: 'bookmark' },
     ]);
-    const response = await syncLinksToNotion(api, CONNECTION, [link('old'), link('new')], {
-      wait: noWait,
-    });
+    const response = await syncLinksToNotion(api, CONNECTION, [link('old'), link('new')]);
     expect(api.createPage).toHaveBeenCalledTimes(1);
     expect(api.createPage.mock.calls[0][0]).toEqual({ type: 'database_id', database_id: 'db-1' });
     expect(response.summary).toMatchObject({ total: 2, success: 1, failed: 0, skippedExisting: 1 });
@@ -55,12 +52,9 @@ describe('syncLinksToNotion', () => {
         readState: 'UNREAD',
       },
     ]);
-    const response = await syncLinksToNotion(
-      api,
-      CONNECTION,
-      [link('r', { type: 'reading_list', readState: 'READ' } as Partial<LinkItem>)],
-      { wait: noWait }
-    );
+    const response = await syncLinksToNotion(api, CONNECTION, [
+      link('r', { type: 'reading_list', readState: 'READ' } as Partial<LinkItem>),
+    ]);
     expect(api.updatePage).toHaveBeenCalledWith('page-r', {}, 'ntn_test');
     expect(response.summary).toMatchObject({
       updated: 1,
@@ -74,7 +68,7 @@ describe('syncLinksToNotion', () => {
     api.createPage.mockRejectedValue(
       Object.assign(new Error('validation failed'), { status: 400 })
     );
-    const response = await syncLinksToNotion(api, CONNECTION, [link('bad')], { wait: noWait });
+    const response = await syncLinksToNotion(api, CONNECTION, [link('bad')]);
     expect(api.createPage).toHaveBeenCalledTimes(1);
     expect(response.summary).toMatchObject({ success: 0, failed: 1 });
   });
@@ -84,7 +78,7 @@ describe('syncLinksToNotion', () => {
     api.createPage
       .mockRejectedValueOnce(Object.assign(new Error('service unavailable'), { status: 503 }))
       .mockResolvedValue({ id: 'created-page' });
-    const response = await syncLinksToNotion(api, CONNECTION, [link('flaky')], { wait: noWait });
+    const response = await syncLinksToNotion(api, CONNECTION, [link('flaky')]);
     expect(response.summary).toMatchObject({ success: 1, failed: 0 });
   });
 
@@ -99,7 +93,7 @@ describe('syncLinksToNotion', () => {
       return { urls: [], syncIds: [], records: [] };
     });
     await expect(
-      syncLinksToNotion(api, CONNECTION, [link('a'), link('b')], { wait: noWait, assertCurrent })
+      syncLinksToNotion(api, CONNECTION, [link('a'), link('b')], { assertCurrent })
     ).rejects.toThrow('stale connection');
     expect(api.createPage).not.toHaveBeenCalled();
   });
@@ -107,7 +101,7 @@ describe('syncLinksToNotion', () => {
   it('fails the whole sync when the database cannot be opened', async () => {
     const api = fakeApi();
     api.verifyDatabaseAccess.mockRejectedValue(new Error('object_not_found'));
-    await expect(syncLinksToNotion(api, CONNECTION, [link('a')], { wait: noWait })).rejects.toThrow(
+    await expect(syncLinksToNotion(api, CONNECTION, [link('a')])).rejects.toThrow(
       'object_not_found'
     );
     expect(api.createPage).not.toHaveBeenCalled();

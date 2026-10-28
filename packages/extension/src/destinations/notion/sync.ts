@@ -2,8 +2,6 @@ import type { BookmarkSyncResponse, BookmarkSyncResult, LinkItem } from '@bookma
 import {
   buildGoogleS2FaviconUrl,
   diffLinkItems,
-  mergeRetryResults,
-  selectRetryableSyncFailures,
   validateBookmarkInput,
   type PlannedLinkUpdate,
 } from './core';
@@ -12,7 +10,6 @@ import type { NotionApi } from './notion-api';
 
 // Parallel writes per batch, as on the server; the API client paces the requests.
 const WRITE_CONCURRENCY = 3;
-const RETRY_DELAY_MS = 1_500;
 
 export interface NotionConnection {
   token: string;
@@ -30,7 +27,6 @@ type Writer = Pick<
 >;
 
 export interface SyncLinksOptions {
-  wait?: (ms: number) => Promise<unknown>;
   createSyncId?: () => string;
   /** Throws once the connection that started the sync is gone, before each write batch. */
   assertCurrent?: () => Promise<void>;
@@ -57,7 +53,6 @@ export async function syncLinksToNotion(
   links: LinkItem[],
   options: SyncLinksOptions = {}
 ): Promise<BookmarkSyncResponse> {
-  const wait = options.wait ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
   const createSyncId = options.createSyncId ?? (() => crypto.randomUUID());
   const assertCurrent = options.assertCurrent ?? (async () => undefined);
   const { token } = connection;
@@ -81,25 +76,7 @@ export async function syncLinksToNotion(
   const results: BookmarkSyncResult[] = [];
   for (const batch of chunk(plan.toCreate, WRITE_CONCURRENCY)) {
     await assertCurrent();
-    let batchResults = await Promise.all(batch.map((item) => write(item)));
-    // One more attempt for transient failures, matched back to their item.
-    const retryable = selectRetryableSyncFailures(batchResults);
-    if (retryable.length > 0) {
-      await wait(RETRY_DELAY_MS);
-      await assertCurrent();
-      const retried = await Promise.all(
-        retryable.map(async (failed) => {
-          const item = batch.find((candidate) =>
-            failed.syncId ? candidate.syncId === failed.syncId : candidate.title === failed.bookmark
-          );
-          if (!item) return { ...failed, retryCount: 1 };
-          const result = await write(item);
-          return result.success ? { ...result, retryCount: 1 } : { ...failed, retryCount: 1 };
-        })
-      );
-      batchResults = mergeRetryResults(batchResults, retried);
-    }
-    results.push(...batchResults);
+    results.push(...(await Promise.all(batch.map((item) => write(item)))));
   }
   for (const batch of chunk<PlannedLinkUpdate>(plan.toUpdate ?? [], WRITE_CONCURRENCY)) {
     await assertCurrent();
