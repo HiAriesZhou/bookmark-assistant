@@ -30,10 +30,6 @@
     "message": "Disconnect",
     "description": "Button to disconnect from Notion"
   },
-  "disconnected": {
-    "message": "Disconnected",
-    "description": "Status when disconnected from Notion"
-  },
   "lastSync": {
     "message": "Last sync:",
     "description": "Label for last sync time"
@@ -57,38 +53,6 @@
   "sync_progress_preparing_sources": {
     "message": "Bookmarks and Reading List are being prepared",
     "description": "Detail shown while base sync is running"
-  },
-  "sync_progress_label": {
-    "message": "Sync progress",
-    "description": "Accessible label for the staged sync progress indicator"
-  },
-  "sync_progress_stage_sync": {
-    "message": "Sync",
-    "description": "Base Notion sync stage label"
-  },
-  "sync_progress_stage_descriptions": {
-    "message": "Descriptions",
-    "description": "Description enrichment stage label"
-  },
-  "sync_progress_state_complete": {
-    "message": "Completed",
-    "description": "Accessible completed stage state"
-  },
-  "sync_progress_state_active": {
-    "message": "In progress",
-    "description": "Accessible active stage state"
-  },
-  "sync_progress_state_ready": {
-    "message": "Ready",
-    "description": "Accessible ready stage state"
-  },
-  "sync_progress_state_retrying": {
-    "message": "Retrying",
-    "description": "Accessible retrying stage state"
-  },
-  "sync_progress_state_waiting": {
-    "message": "Waiting",
-    "description": "Accessible waiting stage state"
   },
   "error": {
     "message": "Error",
@@ -165,22 +129,6 @@
   "loading": {
     "message": "Loading...",
     "description": "Loading indicator"
-  },
-  "working": {
-    "message": "Working...",
-    "description": "Working indicator"
-  },
-  "about_version": {
-    "message": "Version $1",
-    "description": "Version label with placeholder"
-  },
-  "license": {
-    "message": "License",
-    "description": "License label"
-  },
-  "documentation": {
-    "message": "Documentation",
-    "description": "Link to documentation"
   },
   "faq_guide": {
     "message": "FAQ & Guide",
@@ -321,12 +269,6 @@
   },
   "hours_unit": {
     "message": "hours"
-  },
-  "view_plans": {
-    "message": "View plans"
-  },
-  "included": {
-    "message": "Included"
   },
   "destination_not_configured": {
     "message": "Not configured"
@@ -510,72 +452,6 @@
   },
   "destination_sync_action": {
     "message": "Sync"
-  },
-  "ai_service_label": {
-    "message": "AI service"
-  },
-  "ai_service_ready": {
-    "message": "Ready"
-  },
-  "ai_service_not_configured": {
-    "message": "Not configured"
-  },
-  "ai_service_auto_detect": {
-    "message": "Detected from your key"
-  },
-  "ai_api_key_label": {
-    "message": "API key"
-  },
-  "ai_key_verified": {
-    "message": "Verified · ••••$1"
-  },
-  "ai_key_draft": {
-    "message": "Save and verify this key."
-  },
-  "ai_key_replace": {
-    "message": "Replace and verify the saved key."
-  },
-  "ai_key_privacy_hint": {
-    "message": "Page content is sent to the detected provider when AI runs."
-  },
-  "ai_key_placeholder": {
-    "message": "Paste API key"
-  },
-  "ai_key_placeholder_replace": {
-    "message": "Paste a new key to replace"
-  },
-  "ai_key_remove": {
-    "message": "Remove saved key"
-  },
-  "ai_key_save": {
-    "message": "Save and verify API key"
-  },
-  "ai_key_verifying": {
-    "message": "Verifying API key"
-  },
-  "ai_key_not_detected": {
-    "message": "No supported provider accepted this key. Check it, or add a Base URL below."
-  },
-  "ai_base_url_label": {
-    "message": "Base URL"
-  },
-  "ai_base_url_hint": {
-    "message": "Optional. Enter the provider's API address or a compatible endpoint, then save again."
-  },
-  "ai_base_url_invalid": {
-    "message": "Enter a valid Base URL without credentials or query parameters."
-  },
-  "ai_toast_key_verified": {
-    "message": "AI key verified."
-  },
-  "ai_toast_key_removed": {
-    "message": "AI API key removed."
-  },
-  "ai_error_key_save": {
-    "message": "AI key could not be saved."
-  },
-  "ai_error_key_remove": {
-    "message": "AI API key could not be removed."
   },
   "sync_needs_destination": {
     "message": "Scheduled sync needs a destination. Connect one first."
