@@ -1,4 +1,4 @@
-import { Link2, LoaderCircle, MoreHorizontal, RefreshCw } from 'lucide-react';
+import { LoaderCircle, MoreHorizontal, RefreshCw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { DestinationSummaryModel } from '../destination-view-model';
 import { relativeTime } from '../../utils/common';
@@ -9,12 +9,12 @@ import { WorkspaceSection } from './Workspace';
 export function DestinationSummary({
   destination,
   isBusy,
-  onAction,
+  onSync,
   onDisconnect,
 }: {
   destination: DestinationSummaryModel;
   isBusy: boolean;
-  onAction: () => void;
+  onSync: () => void;
   onDisconnect: () => void;
 }) {
   const { t, locale } = createTranslator();
@@ -31,19 +31,7 @@ export function DestinationSummary({
       : checking
         ? t('dashboard_connection_checking')
         : t('dashboard_connection_disconnected');
-  const idleActionLabel = connected
-    ? t('destination_sync_action')
-    : needsAttention
-      ? t('dashboard_action_reconnect')
-      : t('dashboard_action_connect');
-  const actionLabel = isBusy ? (connected ? t('syncing') : t('connecting')) : idleActionLabel;
-  const actionState = isBusy
-    ? 'busy'
-    : connected
-      ? 'sync'
-      : needsAttention
-        ? 'reconnect'
-        : 'connect';
+  const actionLabel = isBusy ? t('syncing') : t('destination_sync_action');
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -93,44 +81,18 @@ export function DestinationSummary({
         </div>
 
         <div ref={actionsRef} className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onAction}
-            disabled={checking || isBusy}
-            aria-label={actionLabel}
-            aria-busy={isBusy}
-            title={actionLabel}
-            className={
-              connected
-                ? 'library-icon-button bg-library-ink text-white hover:bg-ui-control-hover hover:text-white'
-                : 'library-primary-button relative'
-            }
-          >
-            {!connected ? (
-              <span className="grid place-items-center">
-                <span
-                  aria-hidden="true"
-                  className="invisible col-start-1 row-start-1 inline-flex items-center gap-1.5"
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  {idleActionLabel}
-                </span>
-                <StatusTransition state={actionState} className="col-start-1 row-start-1">
-                  {isBusy ? (
-                    <LoaderCircle
-                      aria-hidden="true"
-                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                    />
-                  ) : (
-                    <>
-                      <Link2 aria-hidden="true" className="h-3.5 w-3.5" />
-                      {idleActionLabel}
-                    </>
-                  )}
-                </StatusTransition>
-              </span>
-            ) : (
-              <StatusTransition state={actionState}>
+          {/* Connecting happens in the token form below; the card only syncs. */}
+          {connected ? (
+            <button
+              type="button"
+              onClick={onSync}
+              disabled={isBusy}
+              aria-label={actionLabel}
+              aria-busy={isBusy}
+              title={actionLabel}
+              className="library-icon-button bg-library-ink text-white hover:bg-ui-control-hover hover:text-white"
+            >
+              <StatusTransition state={isBusy ? 'busy' : 'sync'}>
                 {isBusy ? (
                   <LoaderCircle
                     aria-hidden="true"
@@ -140,8 +102,8 @@ export function DestinationSummary({
                   <RefreshCw aria-hidden="true" className="h-4 w-4" />
                 )}
               </StatusTransition>
-            )}
-          </button>
+            </button>
+          ) : null}
           {connected || needsAttention ? (
             <div className="relative">
               <button

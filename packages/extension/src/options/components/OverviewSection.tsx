@@ -50,15 +50,6 @@ export function OverviewSection() {
     }
   };
 
-  // Connecting happens in the token panel below the card.
-  const focusTokenInput = () =>
-    document.querySelector<HTMLInputElement>('[data-notion-token-input]')?.focus();
-
-  const handleDestinationAction = () => {
-    if (status === 'connected') void handleSync();
-    else focusTokenInput();
-  };
-
   const handleDisconnect = async () => {
     try {
       await disconnectNotionDestination(refreshDashboard);
@@ -83,7 +74,7 @@ export function OverviewSection() {
       <DestinationSummary
         destination={destination}
         isBusy={isSyncing}
-        onAction={handleDestinationAction}
+        onSync={() => void handleSync()}
         onDisconnect={() => setShowDisconnectConfirm(true)}
       />
       {status === 'disconnected' || status === 'degraded' ? (

@@ -208,12 +208,6 @@
   "dashboard_connection_attention": {
     "message": "Notion 连接已中断"
   },
-  "dashboard_action_connect": {
-    "message": "连接"
-  },
-  "dashboard_action_reconnect": {
-    "message": "重新连接"
-  },
   "sync_interval_validation": {
     "message": "最短同步间隔为 $1 小时。"
   },
