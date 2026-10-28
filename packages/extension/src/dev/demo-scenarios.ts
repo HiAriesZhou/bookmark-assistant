@@ -5,17 +5,14 @@ export const DEMO_SCENARIO_IDS = [
   'connected',
   'sync-success',
   'sync-in-progress',
-  'enrichment-processing',
-  'ai-ready',
   'save-page',
-  'pro-auto-sync',
+  'auto-sync',
 ] as const;
 export type DemoScenarioId = (typeof DEMO_SCENARIO_IDS)[number];
 export type DemoLocale = 'en' | 'zh-CN';
 
 export interface DemoScenario {
   id: DemoScenarioId;
-  plan: 'free' | 'pro';
   dashboard: DashboardSnapshot;
 }
 
@@ -105,37 +102,6 @@ export function createDemoScenarios(now: number): Record<DemoScenarioId, DemoSce
       inProgress: true,
     },
   };
-  const enrichmentProcessing: DashboardSnapshot = {
-    ...baseDashboard(now),
-    sync: {
-      ...baseDashboard(now).sync,
-      lastSyncAt: new Date(now).toISOString(),
-      enrichment: {
-        status: 'processing',
-        total: 170,
-        updatedAt: new Date(now).toISOString(),
-      },
-    },
-  };
-  const aiReady: DashboardSnapshot = {
-    ...baseDashboard(now),
-    sync: {
-      ...baseDashboard(now).sync,
-      lastSyncAt: new Date(now).toISOString(),
-      enrichment: {
-        status: 'completed',
-        total: 170,
-        generated: 158,
-        alreadyPresent: 12,
-        unavailable: 0,
-        targetSkipped: 0,
-        failed: 0,
-        aiPlanning: { status: 'planned', taskCount: 170 },
-        updatedAt: new Date(now).toISOString(),
-        completedAt: new Date(now).toISOString(),
-      },
-    },
-  };
   const savePage: DashboardSnapshot = {
     ...baseDashboard(now),
     library: { ...baseDashboard(now).library, savedToday: 7 },
@@ -150,7 +116,7 @@ export function createDemoScenarios(now: number): Record<DemoScenarioId, DemoSce
       },
     ],
   };
-  const proAutoSync: DashboardSnapshot = {
+  const autoSync: DashboardSnapshot = {
     ...baseDashboard(now),
     sync: {
       ...baseDashboard(now).sync,
@@ -160,18 +126,12 @@ export function createDemoScenarios(now: number): Record<DemoScenarioId, DemoSce
   };
 
   return {
-    'disconnected-report': { id: 'disconnected-report', plan: 'free', dashboard: disconnected },
-    connected: { id: 'connected', plan: 'free', dashboard: connected },
-    'sync-success': { id: 'sync-success', plan: 'free', dashboard: syncSuccess },
-    'sync-in-progress': { id: 'sync-in-progress', plan: 'pro', dashboard: syncInProgress },
-    'enrichment-processing': {
-      id: 'enrichment-processing',
-      plan: 'pro',
-      dashboard: enrichmentProcessing,
-    },
-    'ai-ready': { id: 'ai-ready', plan: 'pro', dashboard: aiReady },
-    'save-page': { id: 'save-page', plan: 'free', dashboard: savePage },
-    'pro-auto-sync': { id: 'pro-auto-sync', plan: 'pro', dashboard: proAutoSync },
+    'disconnected-report': { id: 'disconnected-report', dashboard: disconnected },
+    connected: { id: 'connected', dashboard: connected },
+    'sync-success': { id: 'sync-success', dashboard: syncSuccess },
+    'sync-in-progress': { id: 'sync-in-progress', dashboard: syncInProgress },
+    'save-page': { id: 'save-page', dashboard: savePage },
+    'auto-sync': { id: 'auto-sync', dashboard: autoSync },
   };
 }
 

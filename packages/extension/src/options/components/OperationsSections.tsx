@@ -1,9 +1,5 @@
-import { CheckCircle2, Circle, CircleAlert, Clock3, LoaderCircle, Sparkles } from 'lucide-react';
-import type {
-  DashboardConnectionStatus,
-  DashboardSnapshot,
-  SyncEnrichmentStatus,
-} from '../../dashboard/types';
+import { CheckCircle2, Circle, CircleAlert, LoaderCircle } from 'lucide-react';
+import type { DashboardConnectionStatus, DashboardSnapshot } from '../../dashboard/types';
 import { relativeTime } from '../../utils/common';
 import { createTranslator } from '../../utils/i18n';
 import { StatusTransition } from './StatusTransition';
@@ -12,16 +8,13 @@ import { WorkspaceSection } from './Workspace';
 export function SyncStatusSection({
   dashboard,
   connectionStatus,
-  enrichment: enrichmentOverride,
 }: {
   dashboard?: DashboardSnapshot;
   connectionStatus: DashboardConnectionStatus;
-  enrichment?: SyncEnrichmentStatus;
 }) {
   const { t, locale } = createTranslator();
   const sync = dashboard?.sync;
   const connected = connectionStatus === 'connected';
-  const enrichment = enrichmentOverride || sync?.enrichment;
   const active = sync?.inProgress;
   const failed =
     Boolean(sync?.failedCount) ||
@@ -49,25 +42,6 @@ export function SyncStatusSection({
       : completed
         ? CheckCircle2
         : Circle;
-  const descriptionActive = enrichment?.status === 'pending' || enrichment?.status === 'processing';
-  const descriptionRetrying = enrichment?.status === 'retrying';
-  const DescriptionIcon = descriptionActive
-    ? LoaderCircle
-    : descriptionRetrying
-      ? Clock3
-      : CheckCircle2;
-  const descriptionText = descriptionActive
-    ? t('sync_enrichment_processing')
-    : descriptionRetrying
-      ? t('sync_enrichment_retrying')
-      : enrichment?.status === 'completed'
-        ? t('sync_enrichment_completed', [String(enrichment.total)])
-        : undefined;
-  const aiReady =
-    enrichment?.status === 'completed' &&
-    enrichment.aiPlanning?.status === 'planned' &&
-    (enrichment.aiPlanning.taskCount || 0) > 0;
-  const aiFailed = enrichment?.aiPlanning?.status === 'failed';
   const counts = dashboard?.recentActivity.find((event) => event.kind === 'sync_completed')?.counts;
   const countItems =
     counts && !active
@@ -108,36 +82,6 @@ export function SyncStatusSection({
           </div>
           {active ? (
             <p className="text-xs text-ui-subtle">{t('sync_progress_preparing_sources')}</p>
-          ) : null}
-          {connected && !active && descriptionText ? (
-            <div className="flex items-start gap-1.5 text-xs text-ui-subtle">
-              <DescriptionIcon
-                aria-hidden="true"
-                className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${descriptionActive ? 'animate-spin motion-reduce:animate-none' : ''}`}
-              />
-              <span>{descriptionText}</span>
-            </div>
-          ) : null}
-          {connected && !active && (aiReady || aiFailed) ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ui-subtle">
-              <span className="inline-flex items-center gap-1.5">
-                {aiFailed ? (
-                  <CircleAlert aria-hidden="true" className="h-3.5 w-3.5 text-ui-warning" />
-                ) : (
-                  <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-                )}
-                {aiReady
-                  ? t('sync_enrichment_ai_ready', [String(enrichment?.aiPlanning?.taskCount)])
-                  : `${t('sync_progress_stage_ai')}: ${t('sync_progress_state_error')}`}
-              </span>
-              <a
-                href="#/settings"
-                title={t('sync_progress_run_ai_title')}
-                className="inline-flex h-7 items-center rounded-md border border-ui-line px-2 font-medium text-ui-body hover:bg-ui-surface-hover"
-              >
-                {aiReady ? t('sync_progress_run_ai') : t('nav_settings')}
-              </a>
-            </div>
           ) : null}
           {sync?.nextAutoSyncAt ? (
             <p className="text-[11px] text-ui-subtle">

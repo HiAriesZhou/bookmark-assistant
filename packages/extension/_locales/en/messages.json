@@ -50,22 +50,6 @@
     "message": "Syncing...",
     "description": "Status when syncing"
   },
-  "sync_enrichment_processing": {
-    "message": "Adding descriptions in the background…",
-    "description": "Status while optional post-sync enrichment is running"
-  },
-  "sync_enrichment_retrying": {
-    "message": "Description enrichment will retry later.",
-    "description": "Status when post-sync enrichment is waiting to retry"
-  },
-  "sync_enrichment_completed": {
-    "message": "Descriptions checked for $1 items",
-    "description": "Completed post-sync enrichment status"
-  },
-  "sync_enrichment_ai_ready": {
-    "message": "$1 items are ready for batch AI",
-    "description": "Status when batch AI tasks have been prepared"
-  },
   "sync_status_items_synced": {
     "message": "Items synced to Notion",
     "description": "Primary status after base Notion sync completes"
@@ -86,10 +70,6 @@
     "message": "Descriptions",
     "description": "Description enrichment stage label"
   },
-  "sync_progress_stage_ai": {
-    "message": "AI",
-    "description": "Optional batch AI stage label"
-  },
   "sync_progress_state_complete": {
     "message": "Completed",
     "description": "Accessible completed stage state"
@@ -106,21 +86,9 @@
     "message": "Retrying",
     "description": "Accessible retrying stage state"
   },
-  "sync_progress_state_error": {
-    "message": "Needs attention",
-    "description": "Accessible failed stage state"
-  },
   "sync_progress_state_waiting": {
     "message": "Waiting",
     "description": "Accessible waiting stage state"
-  },
-  "sync_progress_run_ai": {
-    "message": "Run AI",
-    "description": "Action that opens AI settings for ready batch work"
-  },
-  "sync_progress_run_ai_title": {
-    "message": "Open AI settings to run pending items",
-    "description": "Tooltip for the Run AI action"
   },
   "error": {
     "message": "Error",

@@ -46,22 +46,6 @@
     "message": "同步中...",
     "description": "Status when syncing"
   },
-  "sync_enrichment_processing": {
-    "message": "正在后台补充描述…",
-    "description": "Status while optional post-sync enrichment is running"
-  },
-  "sync_enrichment_retrying": {
-    "message": "描述补充将在稍后重试",
-    "description": "Status when post-sync enrichment is waiting to retry"
-  },
-  "sync_enrichment_completed": {
-    "message": "已检查 $1 个条目的描述",
-    "description": "Completed post-sync enrichment status"
-  },
-  "sync_enrichment_ai_ready": {
-    "message": "$1 个条目已准备进行批量 AI 处理",
-    "description": "Status when batch AI tasks have been prepared"
-  },
   "sync_status_items_synced": {
     "message": "条目已同步到 Notion",
     "description": "Primary status after base Notion sync completes"
@@ -82,10 +66,6 @@
     "message": "补充描述",
     "description": "Description enrichment stage label"
   },
-  "sync_progress_stage_ai": {
-    "message": "AI",
-    "description": "Optional batch AI stage label"
-  },
   "sync_progress_state_complete": {
     "message": "已完成",
     "description": "Accessible completed stage state"
@@ -102,21 +82,9 @@
     "message": "等待重试",
     "description": "Accessible retrying stage state"
   },
-  "sync_progress_state_error": {
-    "message": "需要处理",
-    "description": "Accessible failed stage state"
-  },
   "sync_progress_state_waiting": {
     "message": "等待中",
     "description": "Accessible waiting stage state"
-  },
-  "sync_progress_run_ai": {
-    "message": "运行 AI",
-    "description": "Action that opens AI settings for ready batch work"
-  },
-  "sync_progress_run_ai_title": {
-    "message": "打开 AI 设置并运行待处理条目",
-    "description": "Tooltip for the Run AI action"
   },
   "error": {
     "message": "错误",

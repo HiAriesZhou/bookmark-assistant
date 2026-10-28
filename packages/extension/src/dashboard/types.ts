@@ -60,23 +60,8 @@ export interface DashboardSnapshot {
     nextAutoSyncAt?: string;
     autoSyncEnabled: boolean;
     failedCount: number;
-    enrichment?: SyncEnrichmentStatus;
   };
   recentActivity: DashboardEvent[];
-}
-
-export interface SyncEnrichmentStatus {
-  status: 'pending' | 'processing' | 'retrying' | 'completed';
-  total: number;
-  updatedAt: string;
-  completedAt?: string;
-  generated?: number;
-  alreadyPresent?: number;
-  unavailable?: number;
-  targetSkipped?: number;
-  failed?: number;
-  aiPlanning?: { status: 'planned' | 'not_eligible' | 'failed'; taskCount?: number };
-  lastError?: string;
 }
 
 export interface StoredSyncSummary {
