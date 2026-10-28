@@ -7,6 +7,11 @@ import type {
 import { analyzeBookmarkLibrary } from '../dashboard/library-health';
 import { getReadingListItems } from '../utils/reading-list';
 import { getAutoSyncStatus } from './auto-sync';
+import {
+  DASHBOARD_CONNECTION_KEY,
+  failureAction,
+  type CachedConnection,
+} from './connection-health';
 import { notionApi } from '../destinations/notion/notion-api';
 import {
   NOTION_DATABASE_KEY,
@@ -22,18 +27,9 @@ import {
 export const DASHBOARD_EVENTS_KEY = 'dashboard_recent_activity';
 export const DASHBOARD_SYNC_SUMMARY_KEY = 'dashboard_last_sync';
 export const DASHBOARD_SAVED_TODAY_KEY = 'dashboard_saved_today';
-const DASHBOARD_CONNECTION_KEY = 'dashboard_connection';
 const MAX_EVENTS = 20;
 const CONNECTION_CACHE_MS = 5 * 60 * 1000;
 const CONNECTION_FAILURE_BACKOFF_MS = 30_000;
-
-type CachedConnection = {
-  status: 'connected' | 'degraded';
-  workspaceName?: string;
-  databaseName?: string;
-  checkedAt: string;
-  action?: 'reconnect' | 'retry';
-};
 
 function eventId(): string {
   return globalThis.crypto && 'randomUUID' in globalThis.crypto
@@ -155,7 +151,9 @@ async function readConnection(
     cached?.action === 'retry' ? CONNECTION_FAILURE_BACKOFF_MS : CONNECTION_CACHE_MS;
   const fresh = cached && Date.now() - Date.parse(cached.checkedAt) < cacheWindow;
   if (!refresh) {
-    if (fresh && cached.status !== 'connected') return { ...cached, ...names };
+    // A rejection stays until the user reconnects or a refresh succeeds.
+    if (cached?.action === 'reconnect' || (fresh && cached.status !== 'connected'))
+      return { ...cached, ...names };
     // Without a fresh failure, trust the stored connection until the user refreshes.
     return { status: 'connected', ...names, checkedAt: cached?.checkedAt };
   }
@@ -172,9 +170,7 @@ async function readConnection(
   } catch (error) {
     if (isStaleDestinationStateError(error)) throw error;
     await assertDestinationContextCurrent(context);
-    const status = (error as { status?: unknown } | null)?.status;
-    // A rejected token or a database the token cannot open needs a new connection.
-    const action = status === 401 || status === 403 || status === 404 ? 'reconnect' : 'retry';
+    const action = failureAction(error);
     const degraded: CachedConnection = { status: 'degraded', ...names, checkedAt, action };
     await withCurrentDestination(context, async () => {
       await chrome.storage.local.set({ [DASHBOARD_CONNECTION_KEY]: degraded });

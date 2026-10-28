@@ -15,6 +15,7 @@
  * Note: Removed redundant 'auto_sync' key to avoid state desync issues.
  */
 
+import { connectionNeedsReconnect } from './connection-health';
 import {
   readDestinationContext,
   isDestinationContextCurrent,
@@ -126,6 +127,8 @@ export function setupAutoSyncListener(
       if (!(await isDestinationContextCurrent(context))) return;
       const current = await chrome.storage.local.get('auto_sync_enabled');
       if (!current.auto_sync_enabled) return;
+      // Notion rejected the connection; wait for the user to reconnect.
+      if (await connectionNeedsReconnect()) return;
       // The background sync entry point waits for startup recovery and joins an
       // existing manual/alarm/catch-up request if necessary.
       await onSync(context);
@@ -172,7 +175,7 @@ export async function restoreAutoSync(
         const now = Date.now();
         const elapsedMinutes = (now - lastSyncTime) / (1000 * 60);
 
-        if (elapsedMinutes >= auto_sync_interval_minutes) {
+        if (elapsedMinutes >= auto_sync_interval_minutes && !(await connectionNeedsReconnect())) {
           console.log('⏰ Catch-up sync triggered on startup (missed schedule)');
           // Run immediately
           onSyncNeeded(context).catch((e) => console.error('Catch-up sync failed:', e));
