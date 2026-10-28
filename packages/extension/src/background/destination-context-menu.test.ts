@@ -35,8 +35,13 @@ it('omits the destination action when no connection exists', async () => {
   expect(create).not.toHaveBeenCalled();
 });
 
+const connect = () => {
+  storage.notion_token = 'ntn_test';
+  storage.notion_database = { id: 'db-1', title: 'Bookmarks' };
+};
+
 it('creates the destination action when a connection exists', async () => {
-  storage.session_token = 'session-token';
+  connect();
 
   await syncDestinationContextMenu();
 
@@ -48,9 +53,10 @@ it('creates the destination action when a connection exists', async () => {
 });
 
 it('removes the destination action after disconnecting', async () => {
-  storage.session_token = 'session-token';
+  connect();
   await syncDestinationContextMenu();
-  storage.session_token = undefined;
+  storage.notion_token = undefined;
+  storage.notion_database = undefined;
 
   await syncDestinationContextMenu();
 
@@ -58,9 +64,8 @@ it('removes the destination action after disconnecting', async () => {
   expect(create).toHaveBeenCalledTimes(1);
 });
 
-it('omits the destination action for an account without a linked Notion destination', async () => {
-  storage.session_token = 'session-token';
-  storage.notion_connected = false;
+it('omits the destination action when a token has no chosen database', async () => {
+  storage.notion_token = 'ntn_test';
 
   await syncDestinationContextMenu();
 

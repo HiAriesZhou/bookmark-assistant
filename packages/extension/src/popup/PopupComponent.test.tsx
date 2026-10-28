@@ -132,16 +132,14 @@ it('runs destination sync when connected', async () => {
   expect(syncNow).toHaveBeenCalledOnce();
 });
 
-it('saves the current page and reports its AI result when connected', async () => {
-  let finishAi!: (value: unknown) => void;
-  const sendMessage = vi.fn((message: { type: string }) => {
-    if (message.type === 'SAVE_CURRENT_PAGE') {
-      return Promise.resolve({ success: true, aiStatus: 'pending', aiRequestId: 'request-1' });
-    }
-    return new Promise((resolve) => {
-      finishAi = resolve;
-    });
-  });
+it('saves the current page to Notion when connected', async () => {
+  let finishSave!: (value: unknown) => void;
+  const sendMessage = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finishSave = resolve;
+      })
+  );
   vi.mocked(chrome.runtime).sendMessage = sendMessage as never;
   useAppStore.setState({
     hydrationState: 'cached',
@@ -157,17 +155,13 @@ it('saves the current page and reports its AI result when connected', async () =
   expect(saveButton()?.disabled).toBe(false);
 
   await act(async () => saveButton()?.click());
-  expect(sendMessage).toHaveBeenNthCalledWith(1, { type: 'SAVE_CURRENT_PAGE' });
-  expect(sendMessage).toHaveBeenNthCalledWith(2, {
-    type: 'GENERATE_CURRENT_PAGE_AI',
-    aiRequestId: 'request-1',
-  });
+  expect(sendMessage).toHaveBeenCalledWith({ type: 'SAVE_CURRENT_PAGE' });
   expect(saveButton()?.disabled).toBe(true);
-  expect(container.textContent).toContain('popup_ai_generating');
 
-  await act(async () => finishAi({ success: true, aiStatus: 'succeeded' }));
+  await act(async () => finishSave({ success: true }));
   expect(saveButton()?.disabled).toBe(false);
-  expect(container.textContent).toContain('popup_ai_succeeded');
+  expect(container.textContent).toContain('saveSuccess');
+  expect(sendMessage).toHaveBeenCalledTimes(1);
 });
 
 it('opens the local library and settings at their explicit routes', async () => {

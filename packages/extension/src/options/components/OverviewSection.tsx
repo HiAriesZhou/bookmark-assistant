@@ -1,14 +1,14 @@
-import { isStaleAccountStateError } from '../../utils/account-state';
+import { isStaleDestinationStateError } from '../../utils/destination-state';
 import { useState } from 'react';
 import { createTranslator } from '../../utils/i18n';
 import { deriveConnectionStatus, showsSyncStatus } from '../connection-view-model';
 import { disconnectNotionDestination } from '../destination-actions';
 import { createDestinationSummary } from '../destination-view-model';
-import { useNotionConnection } from '../hook/useNotionConnection';
 import { useToast } from '../hook/useToast';
 import { useAppStore } from '../store';
 import { ConfirmDialog } from './ConfirmDialog';
 import { DestinationSummary } from './DestinationSummary';
+import { NotionConnectPanel } from './NotionConnectPanel';
 import { SyncStatusSection } from './OperationsSections';
 
 export function OverviewSection() {
@@ -19,12 +19,10 @@ export function OverviewSection() {
     dashboard,
     isConnected: hasActiveConnection,
     isSyncing,
-    syncEnrichment,
     hydrationState,
     refreshDashboard,
     syncNow,
   } = useAppStore();
-  const { connect, isConnecting } = useNotionConnection();
   const connection = dashboard?.connection;
   const status = deriveConnectionStatus(
     hasActiveConnection,
@@ -43,7 +41,7 @@ export function OverviewSection() {
           : t('dashboard_event_sync_completed'),
       });
     } catch (error) {
-      if (isStaleAccountStateError(error)) return;
+      if (isStaleDestinationStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),
@@ -52,13 +50,13 @@ export function OverviewSection() {
     }
   };
 
-  const handleConnectionAction = async () => {
-    if (await connect()) await refreshDashboard(true);
-  };
+  // Connecting happens in the token panel below the card.
+  const focusTokenInput = () =>
+    document.querySelector<HTMLInputElement>('[data-notion-token-input]')?.focus();
 
   const handleDestinationAction = () => {
     if (status === 'connected') void handleSync();
-    else void handleConnectionAction();
+    else focusTokenInput();
   };
 
   const handleDisconnect = async () => {
@@ -71,7 +69,7 @@ export function OverviewSection() {
         description: t('disconnected_desc'),
       });
     } catch (error) {
-      if (isStaleAccountStateError(error)) return;
+      if (isStaleDestinationStateError(error)) return;
       show({
         variant: 'error',
         title: t('error'),
@@ -84,23 +82,30 @@ export function OverviewSection() {
     <>
       <DestinationSummary
         destination={destination}
-        isBusy={isSyncing || isConnecting}
+        isBusy={isSyncing}
         onAction={handleDestinationAction}
         onDisconnect={() => setShowDisconnectConfirm(true)}
       />
-      {showsSyncStatus(status) ? (
-        <SyncStatusSection
-          dashboard={dashboard}
-          connectionStatus={status}
-          enrichment={syncEnrichment}
+      {status === 'disconnected' || status === 'degraded' ? (
+        <NotionConnectPanel
+          onConnected={() => {
+            show({
+              variant: 'success',
+              title: t('connected'),
+              description: t('connection_success_desc'),
+            });
+            void refreshDashboard(true);
+          }}
+          onError={(message) =>
+            show({ variant: 'error', title: t('connection_failed_title'), description: message })
+          }
         />
       ) : null}
+      {showsSyncStatus(status) ? (
+        <SyncStatusSection dashboard={dashboard} connectionStatus={status} />
+      ) : null}
       <div className="sr-only" aria-live="polite">
-        {isSyncing
-          ? t('syncing')
-          : syncEnrichment?.status === 'pending' || syncEnrichment?.status === 'processing'
-            ? t('sync_enrichment_processing')
-            : ''}
+        {isSyncing ? t('syncing') : ''}
       </div>
 
       <ConfirmDialog

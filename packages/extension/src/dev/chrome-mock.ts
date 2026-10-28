@@ -232,18 +232,15 @@ function emitStorageChange(changes: Record<string, unknown>, areaName = 'local')
 }
 
 const initialScenario = activeScenario();
+const demoDatabase = { id: 'demo-database', title: 'Bookmarks', workspaceName: 'Demo' };
+const initiallyConnected = initialScenario.dashboard.connection.status !== 'disconnected';
 const storageData: Record<string, unknown> = {
-  session_token:
-    initialScenario.dashboard.connection.status === 'disconnected' ? undefined : 'demo-session',
-  notion_token:
-    initialScenario.dashboard.connection.status === 'disconnected' ? undefined : 'demo-notion',
+  notion_token: initiallyConnected ? 'demo-notion' : undefined,
+  notion_database: initiallyConnected ? demoDatabase : undefined,
+  destination_revision: 'demo-revision',
   last_sync: initialScenario.dashboard.sync.lastSyncAt,
   sync_in_progress: false,
   last_sync_error: undefined,
-  is_pro: initialScenario.plan === 'pro',
-  entitlements_cached_at: frozenNow,
-  purchase_type: initialScenario.plan === 'pro' ? 'monthly' : undefined,
-  subscription_source: initialScenario.plan === 'pro' ? 'paddle' : undefined,
   bookmark_library_metadata_v1: demoBookmarkMetadata,
 };
 
@@ -327,10 +324,22 @@ const chromeMock: any = {
       return `/${path}`;
     },
     async sendMessage(message: { type: string; refreshConnection?: boolean }) {
-      if (message.type === 'NOTION_OAUTH') {
+      if (message.type === 'NOTION_LIST_TARGETS') {
+        return {
+          success: true,
+          workspaceName: 'Demo',
+          databases: [{ id: demoDatabase.id, title: demoDatabase.title }],
+          pages: [{ id: 'demo-page', title: 'Reading' }],
+        };
+      }
+      if (message.type === 'NOTION_CONNECT') {
         activeScenarioId = 'connected';
-        await chromeMock.storage.local.set({ session_token: 'demo-session' });
-        return { success: true };
+        await chromeMock.storage.local.set({
+          notion_token: 'demo-notion',
+          notion_database: demoDatabase,
+          destination_revision: `demo-${Date.now()}`,
+        });
+        return { success: true, database: demoDatabase };
       }
       if (message.type === 'SYNC_ALL_BOOKMARKS') {
         await chromeMock.storage.local.set({
@@ -343,36 +352,13 @@ const chromeMock: any = {
       if (message.type === 'SAVE_CURRENT_PAGE') {
         return { success: true };
       }
-      if (message.type === 'GET_USER_PROFILE') {
-        const scenario = activeScenario();
-        return {
-          success: true,
-          profile: {
-            isPro: scenario.plan === 'pro',
-            plan: scenario.plan,
-            purchaseType: scenario.plan === 'pro' ? 'monthly' : undefined,
-            subscriptionSource: scenario.plan === 'pro' ? 'paddle' : undefined,
-          },
-        };
-      }
-      if (message.type === 'GET_PRICING') {
-        return { success: true, pricing: { monthly: 1.5, yearly: 11.9 } };
-      }
       if (message.type === 'GET_DASHBOARD_STATE') {
         return { success: true, dashboard: activeScenario().dashboard };
       }
       if (message.type === 'DISCONNECT_NOTION') {
         activeScenarioId = 'disconnected-report';
-        await chromeMock.storage.local.set({ notion_connected: false });
-        return { success: true };
-      }
-      if (message.type === 'DELETE_ACCOUNT') {
-        activeScenarioId = 'disconnected-report';
-        await chromeMock.storage.local.remove([
-          'session_token',
-          'notion_connected',
-          'notion_token',
-        ]);
+        await chromeMock.storage.local.remove(['notion_token', 'notion_database']);
+        await chromeMock.storage.local.set({ destination_revision: `demo-${Date.now()}` });
         return { success: true };
       }
       return { success: false, error: 'Unsupported deterministic demo message' };

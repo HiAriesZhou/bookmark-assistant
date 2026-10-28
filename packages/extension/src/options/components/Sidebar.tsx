@@ -1,10 +1,9 @@
-import { ChevronRight, Clock3, Cloud, Folder, Library, UserRound } from 'lucide-react';
+import { ChevronRight, Clock3, Cloud, Folder, Library, Settings } from 'lucide-react';
 import { useState } from 'react';
 import type { LibraryFilter, LocalBookmarkIndex } from '../../library/bookmark-library';
 import { createTranslator } from '../../utils/i18n';
 import logoUrl from '@product-logo';
 import { productConfig } from '../../product-config';
-import { useAppStore } from '../store';
 import type { RouteId } from '../router';
 
 export function Sidebar({
@@ -123,7 +122,12 @@ export function Sidebar({
           label={t('nav_destinations')}
           onClick={() => onNavigate('destinations')}
         />
-        <AccountEntry active={active === 'settings'} onClick={() => onNavigate('settings')} />
+        <SidebarButton
+          active={active === 'settings'}
+          icon={<Settings />}
+          label={t('nav_settings')}
+          onClick={() => onNavigate('settings')}
+        />
       </nav>
 
       <div className="hidden items-center justify-between px-5 pb-4 text-[9px] text-library-faint md:flex">
@@ -131,75 +135,6 @@ export function Sidebar({
         <span>{t('library_local_ready')}</span>
       </div>
     </aside>
-  );
-}
-
-function selfHostedServerName() {
-  try {
-    return new URL(productConfig.apiUrl).hostname;
-  } catch {
-    return '';
-  }
-}
-
-/** Account entry for the settings route; plan and identity come from server-backed store state. */
-function AccountEntry({ active, onClick }: { active: boolean; onClick: () => void }) {
-  const { t } = createTranslator();
-  const isSignedIn = useAppStore((state) => state.isSignedIn);
-  const userEmail = useAppStore((state) => state.userEmail);
-  const isPro = useAppStore((state) => state.isPro);
-  const selfHosted = useAppStore((state) => state.deploymentMode === 'self-hosted');
-  const workspaceName = useAppStore((state) => state.dashboard?.connection.workspaceName);
-  // Accounts created through Notion may not have an email yet.
-  const name = userEmail || workspaceName || t('account_notion_fallback');
-  const plan = selfHosted
-    ? t('account_plan_self_hosted')
-    : isPro
-      ? t('account_plan_pro')
-      : t('account_plan_free');
-  const serverName = selfHosted ? selfHostedServerName() : '';
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? 'page' : undefined}
-      title={isSignedIn ? name : undefined}
-      className={`flex min-h-9 w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-left text-[11px] transition md:py-1.5 ${active ? 'bg-library-selected text-library-ink' : 'text-library-muted hover:bg-library-hover hover:text-library-ink'}`}
-    >
-      <span
-        aria-hidden="true"
-        className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-library-line bg-white text-[10px] font-semibold uppercase text-library-ink [&>svg]:h-3.5 [&>svg]:w-3.5"
-      >
-        {isSignedIn && userEmail ? userEmail.charAt(0) : <UserRound />}
-      </span>
-      <span className="min-w-0 flex-1">
-        {isSignedIn ? (
-          <>
-            <span className="block truncate font-semibold text-library-ink">{name}</span>
-            <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
-              <span className="inline-flex h-4 shrink-0 items-center rounded-full border border-library-line px-1.5 text-[9px] font-semibold text-library-muted">
-                {plan}
-              </span>
-              {serverName ? (
-                <span className="hidden min-w-0 truncate text-[9px] text-library-faint md:block">
-                  {serverName}
-                </span>
-              ) : null}
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="block truncate font-semibold text-library-ink">
-              {t('account_login')}
-            </span>
-            <span className="hidden truncate text-[9px] text-library-faint md:block">
-              {t('account_local_no_account')}
-            </span>
-          </>
-        )}
-      </span>
-    </button>
   );
 }
 

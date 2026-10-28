@@ -88,6 +88,22 @@ describe('syncLinksToNotion', () => {
     expect(response.summary).toMatchObject({ success: 1, failed: 0 });
   });
 
+  it('stops writing once the connection that started the sync is no longer current', async () => {
+    const api = fakeApi();
+    let current = true;
+    const assertCurrent = vi.fn(async () => {
+      if (!current) throw new Error('stale connection');
+    });
+    api.existingLinks.mockImplementation(async () => {
+      current = false; // The user disconnected while existing rows were being read.
+      return { urls: [], syncIds: [], records: [] };
+    });
+    await expect(
+      syncLinksToNotion(api, CONNECTION, [link('a'), link('b')], { wait: noWait, assertCurrent })
+    ).rejects.toThrow('stale connection');
+    expect(api.createPage).not.toHaveBeenCalled();
+  });
+
   it('fails the whole sync when the database cannot be opened', async () => {
     const api = fakeApi();
     api.verifyDatabaseAccess.mockRejectedValue(new Error('object_not_found'));

@@ -77,7 +77,11 @@ export default function Options() {
             </div>
           ) : null}
           {route === 'settings' || visitedRoutes.has('settings') ? (
-            <div hidden={route !== 'settings'}>
+            <div
+              // Flex only while shown, so the footer can sit at the bottom of the pane.
+              hidden={route !== 'settings'}
+              className="min-h-full flex-col [&:not([hidden])]:flex"
+            >
               <SettingsWorkspace active={route === 'settings'} onNavigate={navigate} />
             </div>
           ) : null}

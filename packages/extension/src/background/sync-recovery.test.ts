@@ -93,41 +93,27 @@ describe('recoverInterruptedSyncState', () => {
     ]);
     expect(run).toHaveBeenCalledTimes(1);
   });
-  it('keeps a new account sync independent while coalescing requests for that account', async () => {
-    let finishA!: () => void;
-    let finishB!: () => void;
+  it('joins concurrent requests for the same connection revision', async () => {
+    let finish!: () => void;
     const gate = createSyncExecutionGate(Promise.resolve());
-    const runA = vi.fn(
+    const run = vi.fn(
       () =>
         new Promise<void>((resolve) => {
-          finishA = resolve;
+          finish = resolve;
         })
     );
-    const runB = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finishB = resolve;
-        })
-    );
-    const accountA = { revision: 'revision-a', userId: 'user-a', token: 'token-a' };
-    const accountB = { revision: 'revision-b', userId: 'user-b', token: 'token-b' };
-    const first = gate(runA, accountA);
-    const second = gate(runB, accountB);
-    expect(gate(runB, { ...accountB })).toBe(second);
-    await vi.waitFor(() => expect(runB).toHaveBeenCalledTimes(1));
-    finishA();
+    const connection = { revision: 'revision-a' };
+    const first = gate(run, connection);
+    expect(gate(run, { ...connection })).toBe(first);
+    await vi.waitFor(() => expect(run).toHaveBeenCalledTimes(1));
+    finish();
     await first;
-    expect(gate(runB, accountB)).toBe(second);
-    finishB();
-    await second;
-    await gate(vi.fn().mockResolvedValue(undefined), accountB);
-    expect(runA).toHaveBeenCalledTimes(1);
-    expect(runB).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledTimes(1);
   });
 
-  it('does not overlap a sync for the same account after its revision changes', async () => {
-    // Reconnecting Notion renews the revision while the earlier server sync,
-    // which cannot be cancelled, may still be writing to the same database.
+  it('does not overlap a sync after the connection revision changes', async () => {
+    // Connecting another database renews the revision while the earlier sync,
+    // whose Notion requests cannot be cancelled, may still be writing.
     let finishBefore!: () => void;
     const gate = createSyncExecutionGate(Promise.resolve());
     const before = vi.fn(
@@ -138,9 +124,9 @@ describe('recoverInterruptedSyncState', () => {
     );
     const after = vi.fn().mockResolvedValue(undefined);
 
-    const first = gate(before, { revision: 'before-reconnect', userId: 'user-a', token: 'a1' });
+    const first = gate(before, { revision: 'before-reconnect' });
     await vi.waitFor(() => expect(before).toHaveBeenCalledTimes(1));
-    const reconnected = { revision: 'after-reconnect', userId: 'user-a', token: 'a2' };
+    const reconnected = { revision: 'after-reconnect' };
     const second = gate(after, reconnected);
     expect(gate(after, reconnected)).toBe(second);
 

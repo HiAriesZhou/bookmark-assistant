@@ -1,110 +1,52 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import type { AiGenerationStatus, DeploymentProfile } from '@bookmark-assistant/types';
 import type { DashboardSnapshot } from '../dashboard/types';
+import type { NotionDatabaseRef } from './destination-state';
 
-/** Current-page AI outcomes: server task statuses plus decisions made locally. */
-export type CurrentPageAiStatus =
-  | AiGenerationStatus
-  | 'not_started'
-  | 'not_configured'
-  | 'needs_attention'
-  | 'skipped_ineligible_page'
-  | 'skipped_navigation_changed'
-  | 'skipped_insufficient_content'
-  | 'skipped_fetch_disallowed';
-// Centralized typed messaging between Options/Content and Background
-// Define request/response contracts as a discriminated union
+export type NotionTargetSummary = { id: string; title: string };
 
+// Centralized typed messaging between Options/Popup and Background.
+// Requests that change destination state carry the revision the caller saw, so the
+// background can reject them after the connection changed elsewhere.
 export type MessageMap = {
-  NOTION_OAUTH: {
-    req: { accountRevision?: string | null };
-    res: { success: boolean; error?: string; accountRevision?: string };
-  };
   SYNC_ALL_BOOKMARKS: {
-    req: { accountRevision?: string | null };
+    req: { destinationRevision?: string | null };
     res: { success: boolean; error?: string; noChanges?: boolean };
   };
-  GET_USER_PROFILE: {
-    req: { forceRefresh?: boolean };
-    res: { success: boolean; profile?: any; error?: string };
-  };
-  GET_PRICING: {
-    req: {};
+  NOTION_LIST_TARGETS: {
+    req: { token: string };
     res: {
       success: boolean;
-      pricing?: { monthly: number; yearly: number };
-      limits?: any;
       error?: string;
+      workspaceName?: string;
+      databases?: NotionTargetSummary[];
+      pages?: NotionTargetSummary[];
+    };
+  };
+  NOTION_CONNECT: {
+    req: {
+      token: string;
+      databaseId?: string;
+      parentPageId?: string;
+      destinationRevision?: string | null;
+    };
+    res: {
+      success: boolean;
+      error?: string;
+      destinationRevision?: string;
+      database?: NotionDatabaseRef;
     };
   };
   DISCONNECT_NOTION: {
-    req: { accountRevision?: string | null };
-    res: { success: boolean; error?: string; accountRevision?: string };
-  };
-  DELETE_ACCOUNT: {
-    req: { accountRevision?: string | null };
-    res: { success: boolean; error?: string; accountRevision?: string };
-  };
-  SIGN_IN_EMAIL_START: {
-    req: { email: string; locale?: string };
-    res: { success: boolean; error?: string; code?: string };
-  };
-  SIGN_IN_EMAIL_VERIFY: {
-    req: { email: string; code: string; accountRevision?: string | null };
-    res: {
-      success: boolean;
-      error?: string;
-      code?: string;
-      accountCreated?: boolean;
-      userEmail?: string;
-      accountRevision?: string;
-    };
-  };
-  SIGN_IN_GOOGLE: {
-    req: { accountRevision?: string | null };
-    res: {
-      success: boolean;
-      error?: string;
-      code?: string;
-      accountCreated?: boolean;
-      userEmail?: string;
-      accountRevision?: string;
-    };
-  };
-  SIGN_OUT: {
-    req: { accountRevision?: string | null };
-    res: { success: boolean; error?: string; accountRevision?: string };
-  };
-  GET_DEPLOYMENT_PROFILE: {
-    req: {};
-    res: { success: boolean; profile?: DeploymentProfile; error?: string };
-  };
-  RESTORE_PURCHASE: {
-    req: { email: string };
-    res: { success: boolean; message?: string; error?: string };
-  };
-  GET_PORTAL_LINK: { req: {}; res: { success: boolean; url?: string; error?: string } };
-  CANCEL_SUBSCRIPTION: { req: {}; res: { success: boolean; error?: string } };
-  GET_SUBSCRIPTION_INFO: {
-    req: {};
-    res: { success: boolean; nextBillingDate?: string; status?: string; error?: string };
+    req: { destinationRevision?: string | null };
+    res: { success: boolean; error?: string; destinationRevision?: string };
   };
   SCHEDULE_AUTO_SYNC: {
-    req: { enabled: boolean; intervalHours: number; accountRevision?: string | null };
+    req: { enabled: boolean; intervalHours: number; destinationRevision?: string | null };
     res: { success: boolean; error?: string };
   };
   SAVE_CURRENT_PAGE: {
     req: {};
-    res: {
-      success: boolean;
-      error?: string;
-      aiStatus?: CurrentPageAiStatus | 'pending';
-      aiRequestId?: string;
-    };
-  };
-  GENERATE_CURRENT_PAGE_AI: {
-    req: { aiRequestId: string };
-    res: { success: boolean; error?: string; aiStatus?: CurrentPageAiStatus };
+    res: { success: boolean; error?: string };
   };
   GET_DASHBOARD_STATE: {
     req: { refreshConnection?: boolean };
@@ -119,34 +61,19 @@ export type MessageResponse<T extends MessageType> = MessageMap[T]['res'];
 
 // Optional convenience constant for autocomplete and ref safety
 export const Messages: { [K in MessageType]: K } = {
-  NOTION_OAUTH: 'NOTION_OAUTH',
   SYNC_ALL_BOOKMARKS: 'SYNC_ALL_BOOKMARKS',
-  GET_USER_PROFILE: 'GET_USER_PROFILE',
-  GET_PRICING: 'GET_PRICING',
+  NOTION_LIST_TARGETS: 'NOTION_LIST_TARGETS',
+  NOTION_CONNECT: 'NOTION_CONNECT',
   DISCONNECT_NOTION: 'DISCONNECT_NOTION',
-  DELETE_ACCOUNT: 'DELETE_ACCOUNT',
-  SIGN_IN_EMAIL_START: 'SIGN_IN_EMAIL_START',
-  SIGN_IN_EMAIL_VERIFY: 'SIGN_IN_EMAIL_VERIFY',
-  SIGN_IN_GOOGLE: 'SIGN_IN_GOOGLE',
-  SIGN_OUT: 'SIGN_OUT',
-  GET_DEPLOYMENT_PROFILE: 'GET_DEPLOYMENT_PROFILE',
-  RESTORE_PURCHASE: 'RESTORE_PURCHASE',
-  GET_PORTAL_LINK: 'GET_PORTAL_LINK',
-  CANCEL_SUBSCRIPTION: 'CANCEL_SUBSCRIPTION',
-  GET_SUBSCRIPTION_INFO: 'GET_SUBSCRIPTION_INFO',
   SCHEDULE_AUTO_SYNC: 'SCHEDULE_AUTO_SYNC',
   SAVE_CURRENT_PAGE: 'SAVE_CURRENT_PAGE',
-  GENERATE_CURRENT_PAGE_AI: 'GENERATE_CURRENT_PAGE_AI',
   GET_DASHBOARD_STATE: 'GET_DASHBOARD_STATE',
 };
 
-// Notion OAuth can include template duplication and server-side database resolution.
-export const OAUTH_MESSAGE_TIMEOUT_MS = 300_000;
-// Base Notion capture is independent from AI and should acknowledge quickly.
+// Connecting verifies the token, may create a database and checks access.
+export const NOTION_CONNECT_MESSAGE_TIMEOUT_MS = 60_000;
+// Saving one page writes a single Notion row and should acknowledge quickly.
 export const SAVE_CURRENT_PAGE_MESSAGE_TIMEOUT_MS = 120_000;
-// A separate message keeps the user-visible AI phase bounded without delaying
-// the successful save acknowledgement.
-export const GENERATE_CURRENT_PAGE_AI_MESSAGE_TIMEOUT_MS = 4 * 60_000;
 
 export async function sendMessage<T extends MessageType>(
   message: MessageRequest<T>,

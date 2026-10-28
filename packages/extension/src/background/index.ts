@@ -12,29 +12,24 @@ import {
   toSyncFingerprintItems,
   withBookmarkType,
 } from '../core';
-import { extractPageContentFromDocument } from '../core';
 import {
-  launchNotionOAuth,
-  exchangeCodeForToken,
-  signInWithGoogle,
-  debugOAuthSetup,
-} from './oauth';
-import {
-  NOTION_CONNECTED_KEY,
-  readNotionDestination,
-  withCurrentAccount,
-  isStaleAccountStateError,
-  readAccountContext,
-  assertAccountContextCurrent,
-  isAccountContextCurrent,
-  StaleAccountStateError,
-  type AccountContext,
-} from '../utils/account-state';
-import { validateConfig, debugConfig } from './config';
-import { serverAPI, APIError, SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS } from './server-api';
+  NOTION_DATABASE_KEY,
+  NOTION_TOKEN_KEY,
+  StaleDestinationStateError,
+  assertDestinationContextCurrent,
+  clearNotionConnection,
+  commitNotionConnection,
+  isDestinationContextCurrent,
+  isStaleDestinationStateError,
+  readDestinationContext,
+  readNotionConnection,
+  withCurrentDestination,
+  type DestinationContext,
+} from '../utils/destination-state';
+import { notionApi } from '../destinations/notion/notion-api';
+import { syncLinksToNotion } from '../destinations/notion/sync';
 import { addMessageListener, Messages, type MessageResponse } from '../utils/message';
 import { scheduleAutoSync, setupAutoSyncListener, restoreAutoSync } from './auto-sync';
-import { reportError } from '../utils/error-reporter';
 import { cleanupStorage } from '../utils/storage-cleanup';
 import { getReadingListItems } from '../utils/reading-list';
 import type { StoredSyncSummary } from '../dashboard/types';
@@ -43,42 +38,32 @@ import {
   classifyDashboardError,
   getDashboardSnapshot,
   inferSyncResult,
-  recordAccountActivity,
+  recordDestinationActivity,
   recordDashboardEvent,
   recordDashboardSave,
 } from './dashboard';
-import { currentPageAiReadiness, type CurrentPageAiReadiness } from './ai-page-policy';
 import {
   canCommitSyncFingerprint,
   createSyncExecutionGate,
   recoverInterruptedSyncState,
 } from './sync-recovery';
 import {
-  consumePendingCurrentPageAi,
-  createPendingCurrentPageAi,
-  extractedPageMatchesPending,
-  wasCurrentPageCreated,
-} from './current-page-ai';
-import { enqueueSyncEnrichment, setupSyncEnrichmentRecovery } from './sync-enrichment';
-import {
   SAVE_TO_NOTION_CONTEXT_MENU_ID,
   syncDestinationContextMenu,
 } from './destination-context-menu';
 
-console.log('[BG] Service worker starting...');
-
 // Bump only when payload shape, fingerprint inputs, or Notion write-back semantics change.
 // This is a production sync migration gate, not a local debug switch.
 const SYNC_SCHEMA_VERSION = 13;
+const DEFAULT_DATABASE_TITLE = 'Bookmark Assistant';
 
 function createSyncId(prefix: string) {
   return globalThis.crypto && 'randomUUID' in globalThis.crypto
-    ? (globalThis.crypto as any).randomUUID()
+    ? globalThis.crypto.randomUUID()
     : `${prefix}-${Date.now()}`;
 }
 
 type CurrentPageCaptureSource = 'current_page' | 'context_menu';
-const CURRENT_PAGE_AI_REQUEST_TTL_MS = 5 * 60_000;
 
 // A new MV3 worker cannot resume an in-flight request from an earlier worker.
 async function resetStaleSyncState() {
@@ -100,23 +85,9 @@ async function resetStaleSyncState() {
   }
 }
 
-debugConfig();
-debugOAuthSetup();
-
 // Reset stale state before any manual, automatic, or catch-up sync can begin.
 const backgroundInitialization = resetStaleSyncState()
-  .then(async () => {
-    // Clean up storage (remove redundant fields, fix NaN issues, etc.)
-    await cleanupStorage();
-
-    const configValidation = validateConfig();
-    if (!configValidation.isValid) {
-      console.error('❌ Configuration errors:', configValidation.errors);
-    }
-    if (configValidation.warnings.length > 0) {
-      console.warn('⚠️ Configuration warnings:', configValidation.warnings);
-    }
-  })
+  .then(() => cleanupStorage())
   .catch((error) => {
     console.warn('[Background] Initialization failed; continuing with sync available:', error);
   });
@@ -129,39 +100,47 @@ type BookmarkSyncResult = {
 
 const runSyncOnce = createSyncExecutionGate<BookmarkSyncResult>(backgroundInitialization);
 
-// Extract sync logic into a reusable function
+// Writes use the connection captured when the work started and stop once it changes.
+function notionConnectionFrom(context: DestinationContext) {
+  if (!context.token || !context.databaseId) throw new Error('Notion is not connected');
+  return { token: context.token, databaseId: context.databaseId };
+}
+
+const writeOptionsFor = (context: DestinationContext) => ({
+  assertCurrent: () => assertDestinationContextCurrent(context),
+});
+
 async function performBookmarkSync(
   trigger: 'manual' | 'auto' = 'manual',
-  expectedContext?: AccountContext
+  expectedContext?: DestinationContext
 ): Promise<BookmarkSyncResult> {
-  const context = expectedContext ?? (await readAccountContext());
-  await assertAccountContextCurrent(context);
+  const context = expectedContext ?? (await readDestinationContext());
+  await assertDestinationContextCurrent(context);
   return runSyncOnce(() => performBookmarkSyncAfterInitialization(trigger, context), context);
 }
 
 async function performBookmarkSyncAfterInitialization(
   trigger: 'manual' | 'auto',
-  context: AccountContext
+  context: DestinationContext
 ): Promise<BookmarkSyncResult> {
   const setState = async (patch: Record<string, any>) => {
     try {
-      await withCurrentAccount(context, () => chrome.storage.local.set(patch));
+      await withCurrentDestination(context, () => chrome.storage.local.set(patch));
     } catch (e) {
-      if (isStaleAccountStateError(e)) throw e;
+      if (isStaleDestinationStateError(e)) throw e;
       console.warn('Failed to update sync state:', patch, e);
     }
   };
 
   const recordEvent = (event: Parameters<typeof recordDashboardEvent>[0]) =>
-    withCurrentAccount(context, () => recordDashboardEvent(event));
+    withCurrentDestination(context, () => recordDashboardEvent(event));
 
-  // Declare variables outside try block so they're accessible in catch
   let formatted: LinkItem[] = [];
-  let currentHash: string | undefined;
   let latestSummary: StoredSyncSummary | undefined;
 
   try {
-    await assertAccountContextCurrent(context);
+    await assertDestinationContextCurrent(context);
+    const connection = notionConnectionFrom(context);
     const startedAt = Date.now();
     const MIN_PROGRESS_MS = 1200; // keep UI spinner visible to avoid flicker / rapid re-clicks
     const bookmarkTree = await chrome.bookmarks.getTree();
@@ -175,19 +154,13 @@ async function performBookmarkSyncAfterInitialization(
     });
     await recordEvent({ kind: 'sync_started', trigger });
 
-    console.log('[Sync] Starting to flatten bookmarks...');
     const collectedBookmarks = await collectBookmarkSyncItems(flat);
     formatted = collectedBookmarks.items;
     const minimalForHash = [...collectedBookmarks.fingerprintItems];
-    console.log(`[Sync] Flattened ${formatted.length} bookmarks`);
 
-    // Collect reading list items
     let readingListItems: LinkItem[] = [];
     try {
       readingListItems = await getReadingListItems();
-      if (readingListItems.length > 0) {
-        console.log(`[Sync] Found ${readingListItems.length} reading list items`);
-      }
     } catch (err) {
       console.warn('[Sync] Failed to get reading list items:', err);
     }
@@ -196,57 +169,41 @@ async function performBookmarkSyncAfterInitialization(
     const bookmarksWithType = withBookmarkType(formatted);
     const readingListUrls = new Set(readingListItems.map((item) => item.url));
     const bookmarksForSync = bookmarksWithType.filter((item) => !readingListUrls.has(item.url));
-    const legacyBookmarksForSync = bookmarksForSync.map((bookmark) => {
-      const prepared = prepareLegacyLinkItemForSync(bookmark, {
+    const prepare = (item: LinkItem, invalidMessage: string) => {
+      const prepared = prepareLegacyLinkItemForSync(item, {
         now: () => new Date(),
         createId: createDefaultKnowledgeItemId,
         normalizeUrl,
       });
-      if (!prepared.success) {
-        throw new Error('Chrome bookmark capture cannot be synced');
-      }
+      if (!prepared.success) throw new Error(invalidMessage);
       return prepared.item;
-    });
-    const legacyReadingListItems = readingListItems.map((readingListItem) => {
-      const prepared = prepareLegacyLinkItemForSync(readingListItem, {
-        now: () => new Date(),
-        createId: createDefaultKnowledgeItemId,
-        normalizeUrl,
-      });
-      if (!prepared.success) {
-        throw new Error('Reading list capture cannot be synced');
-      }
-      return prepared.item;
-    });
-    const allItems = [...legacyBookmarksForSync, ...legacyReadingListItems];
-    console.log(
-      `[Sync] Total items to sync: ${allItems.length} (${bookmarksForSync.length} bookmarks, ${readingListItems.length} reading list)`
-    );
+    };
+    const allItems = [
+      ...bookmarksForSync.map((item) => prepare(item, 'Chrome bookmark capture cannot be synced')),
+      ...readingListItems.map((item) => prepare(item, 'Reading list capture cannot be synced')),
+    ];
 
     minimalForHash.push(...toSyncFingerprintItems(readingListItems, 'Reading List'));
 
-    const fp = await createSyncFingerprint(minimalForHash);
+    const fingerprint = await createSyncFingerprint(minimalForHash);
     const {
-      last_sync_fingerprint: prevFp,
-      last_sync_count: prevCount,
-      last_sync_payload_version: prevPayloadVersion,
+      last_sync_fingerprint: previousFingerprint,
+      last_sync_count: previousCount,
+      last_sync_payload_version: previousPayloadVersion,
     } = await chrome.storage.local.get([
       'last_sync_fingerprint',
       'last_sync_count',
       'last_sync_payload_version',
     ]);
     const currentCount = allItems.length;
-    currentHash = fp; // Use existing declaration
-    const previousHash = prevFp;
 
-    // Hash comparison: compare total count and hash
-    // This prevents unnecessary sync when bookmarks haven't changed
+    // Skip the Notion round trip when nothing changed since the last full sync.
     const hasNoChanges =
-      typeof prevCount === 'number' &&
-      typeof previousHash === 'string' &&
-      prevPayloadVersion === SYNC_SCHEMA_VERSION &&
-      prevCount === currentCount &&
-      previousHash === currentHash;
+      typeof previousCount === 'number' &&
+      typeof previousFingerprint === 'string' &&
+      previousPayloadVersion === SYNC_SCHEMA_VERSION &&
+      previousCount === currentCount &&
+      previousFingerprint === fingerprint;
 
     if (hasNoChanges) {
       const completedAt = new Date().toISOString();
@@ -258,9 +215,8 @@ async function performBookmarkSyncAfterInitialization(
         failed: 0,
         skipped: currentCount,
       };
-      // No changes — keep last successful sync timestamp; just notify summary
       await setState({
-        last_sync: completedAt, // Update timestamp even for no changes
+        last_sync: completedAt,
         last_sync_summary: 'no_changes',
         last_sync_count: currentCount,
         last_sync_payload_version: SYNC_SCHEMA_VERSION,
@@ -272,7 +228,6 @@ async function performBookmarkSyncAfterInitialization(
         result: 'no_changes',
         counts: { total: currentCount, success: 0, failed: 0, skipped: currentCount },
       });
-      // Ensure minimal progress duration
       const elapsed = Date.now() - startedAt;
       if (elapsed < MIN_PROGRESS_MS) {
         await new Promise((r) => setTimeout(r, MIN_PROGRESS_MS - elapsed));
@@ -281,56 +236,34 @@ async function performBookmarkSyncAfterInitialization(
       return { success: true, noChanges: true } as const;
     }
 
-    console.log(
-      `[Sync] Preparing to sync ${allItems.length} items (${bookmarksForSync.length} bookmarks, ${readingListItems.length} reading list) to server`
-    );
-
-    console.log('[Sync] Sending bookmarks to server...');
-    await assertAccountContextCurrent(context);
-    const syncResponse = await serverAPI.syncBookmarks(
+    await assertDestinationContextCurrent(context);
+    const syncResponse = await syncLinksToNotion(
+      notionApi,
+      connection,
       allItems,
-      { deferEnhancements: true },
-      context
+      writeOptionsFor(context)
     );
-    console.log('[Sync] Server sync summary:', syncResponse.summary);
-    if (syncResponse.summary?.readingListTotal !== undefined) {
-      console.log(
-        `[Sync] Reading list server result: total=${syncResponse.summary.readingListTotal}, success=${syncResponse.summary.readingListSuccess ?? 0}, failed=${syncResponse.summary.readingListFailed ?? 0}, skipped=${syncResponse.summary.readingListSkippedExisting ?? 0}`
+    const completedAt = new Date().toISOString();
+    const failedCount = syncResponse.summary.failed || 0;
+    latestSummary = {
+      result: failedCount > 0 ? 'partial_failure' : 'success',
+      completedAt,
+      total: syncResponse.summary.total || currentCount,
+      success: syncResponse.summary.success || 0,
+      failed: failedCount,
+      skipped: syncResponse.summary.skippedExisting || 0,
+    };
+    if (!canCommitSyncFingerprint({ failed: failedCount })) {
+      throw new Error(
+        `Notion sync completed with ${failedCount} failed item(s). Please try again.`
       );
     }
-    const completedAt = new Date().toISOString();
-    const failedCount = syncResponse.summary?.failed || 0;
-    const deferredCount = syncResponse.summary?.deferred || syncResponse.partialSync?.skipped || 0;
-    const successCount = syncResponse.summary?.success || 0;
-    const skippedCount = syncResponse.summary?.skippedExisting || 0;
-    latestSummary = {
-      result: failedCount > 0 || deferredCount > 0 ? 'partial_failure' : 'success',
-      completedAt,
-      total: syncResponse.summary?.total || currentCount,
-      success: successCount,
-      failed: failedCount + deferredCount,
-      skipped: skippedCount,
-    };
-    if (
-      !canCommitSyncFingerprint({
-        failed: failedCount,
-        deferred: deferredCount,
-        partialSkipped: syncResponse.partialSync?.skipped,
-      })
-    ) {
-      const reason =
-        deferredCount > 0
-          ? `${deferredCount} item(s) were deferred before the server deadline`
-          : `${failedCount} failed item(s)`;
-      throw new Error(`Server sync completed with ${reason}. Please try again.`);
-    }
-    console.log('[Sync] Server sync completed successfully');
 
     await setState({
       last_sync: completedAt,
       last_sync_summary: null,
       last_sync_count: currentCount,
-      last_sync_fingerprint: fp,
+      last_sync_fingerprint: fingerprint,
       last_sync_payload_version: SYNC_SCHEMA_VERSION,
       [DASHBOARD_SYNC_SUMMARY_KEY]: latestSummary,
     });
@@ -346,18 +279,6 @@ async function performBookmarkSyncAfterInitialization(
       },
     });
 
-    if (syncResponse.enrichment?.items.length) {
-      try {
-        await enqueueSyncEnrichment(syncResponse.enrichment, context);
-      } catch (error) {
-        // The base sync and fingerprint are already durable. Surface enrichment
-        // separately without turning a successful Notion sync into a failure.
-        if (isStaleAccountStateError(error)) throw error;
-        console.warn('[Sync Enrichment] Failed to persist deferred work:', error);
-      }
-    }
-
-    // Ensure minimal progress duration before clearing flag
     const elapsed = Date.now() - startedAt;
     if (elapsed < MIN_PROGRESS_MS) {
       await new Promise((r) => setTimeout(r, MIN_PROGRESS_MS - elapsed));
@@ -365,33 +286,11 @@ async function performBookmarkSyncAfterInitialization(
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
     return { success: true } as const;
   } catch (err) {
-    if (isStaleAccountStateError(err) || !(await isAccountContextCurrent(context)))
-      return { success: false, error: 'Account state changed' };
-    console.error('❌ Server-side bookmark sync failed:', err);
+    if (isStaleDestinationStateError(err) || !(await isDestinationContextCurrent(context)))
+      return { success: false, error: 'The Notion connection changed' };
+    console.error('❌ Notion bookmark sync failed:', err);
 
-    // Report error to server for monitoring
-    const error = err instanceof Error ? err : new Error(String(err));
-    await reportError(error, {
-      operation: 'sync',
-      bookmarkCount: formatted?.length || 0,
-      syncHash: currentHash,
-    });
-
-    const summary: Record<string, any> = {};
-    if (err instanceof APIError) {
-      if (err.status === 429) {
-        const ra = Number.isFinite(err.retryAfterSeconds) ? (err.retryAfterSeconds as number) : 0;
-        // Heuristic: long retry-after (>= 1h) implies daily limit; short is cooldown
-        summary.last_sync_summary = ra >= 3600 ? 'limit' : 'cooldown';
-        if (ra > 0) {
-          summary.sync_cooldown_until = Date.now() + ra * 1000;
-        }
-      } else if (err.status === 409) {
-        summary.last_sync_summary = 'in_progress';
-      } else if (err.status === 403) {
-        summary.last_sync_summary = 'limit';
-      }
-    }
+    const rateLimited = (err as { status?: unknown } | null)?.status === 429;
     const completedAt = new Date().toISOString();
     const result = inferSyncResult(latestSummary, err);
     const failedSummary: StoredSyncSummary = latestSummary
@@ -400,7 +299,7 @@ async function performBookmarkSyncAfterInitialization(
     await setState({
       last_sync_error: err instanceof Error ? err.message : String(err),
       [DASHBOARD_SYNC_SUMMARY_KEY]: failedSummary,
-      ...summary,
+      ...(rateLimited ? { last_sync_summary: 'cooldown' } : {}),
     });
     await recordEvent({
       kind: 'sync_completed',
@@ -415,19 +314,17 @@ async function performBookmarkSyncAfterInitialization(
       errorCategory: classifyDashboardError(err),
       action: result === 'limited' ? undefined : 'retry',
     });
-    try {
-      await new Promise((r) => setTimeout(r, 600));
-    } catch {}
+    await new Promise((r) => setTimeout(r, 600));
     await setState({ sync_in_progress: false, sync_started_at: null, sync_trigger: null });
-    return { success: false, error: String(err) } as const;
+    return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
   }
 }
 
-// Both capture surfaces share only the base save; current-page AI stays below.
+// Current page and context menu captures share this single-row save.
 async function syncCapturedLink(
+  context: DestinationContext,
   bookmark: LinkItem,
-  invalidCaptureMessage: string,
-  context: AccountContext
+  invalidCaptureMessage: string
 ) {
   const mapping = prepareLegacyLinkItemForSync(bookmark, {
     now: () => new Date(),
@@ -435,39 +332,26 @@ async function syncCapturedLink(
     normalizeUrl,
   });
   if (!mapping.success) throw new Error(invalidCaptureMessage);
-  const syncResponse = await serverAPI.syncBookmarks(
+  const response = await syncLinksToNotion(
+    notionApi,
+    notionConnectionFrom(context),
     [mapping.item],
-    {
-      aiBatchEligible: false,
-      requestTimeoutMs: SINGLE_ITEM_SYNC_REQUEST_TIMEOUT_MS,
-    },
-    context
+    writeOptionsFor(context)
   );
-  return { item: mapping.item, syncResponse };
+  const failure = response.results.find((result) => !result.success);
+  if (failure && !failure.success) throw new Error(failure.error || 'Notion did not save the page');
 }
 
-// Save the base capture first. AI is a separate, explicitly bounded message so
-// the popup can acknowledge a successful Notion write immediately.
 async function saveCurrentPage(
   source: CurrentPageCaptureSource = 'current_page'
 ): Promise<MessageResponse<'SAVE_CURRENT_PAGE'>> {
-  const context = await readAccountContext();
+  const context = await readDestinationContext();
   try {
-    // Saving the current page needs a linked Notion destination.
-    if (!(await readNotionDestination())) {
-      return { success: false, error: 'Not connected' };
-    }
+    if (!(await readNotionConnection())) return { success: false, error: 'Not connected' };
 
-    // Get the current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.url || !tab.title) {
-      return { success: false, error: 'No active tab found' };
-    }
-
-    if (!isWebPageUrl(tab.url)) {
-      return { success: false, error: 'Cannot save internal page' };
-    }
+    if (!tab || !tab.url || !tab.title) return { success: false, error: 'No active tab found' };
+    if (!isWebPageUrl(tab.url)) return { success: false, error: 'Cannot save internal page' };
 
     const bookmark =
       source === 'current_page'
@@ -480,62 +364,14 @@ async function saveCurrentPage(
             { createSyncId: () => createSyncId('quick-save'), source: 'context_menu' }
           );
 
-    const { item, syncResponse } = await syncCapturedLink(
-      bookmark,
-      'Current page capture cannot be synced',
-      context
+    await syncCapturedLink(context, bookmark, 'Current page capture cannot be synced');
+    await recordDestinationActivity(context, () => recordDashboardSave(source)).catch((error) =>
+      console.warn('[saveCurrentPage] Saved, but dashboard activity was not recorded:', error)
     );
-
-    await recordAccountActivity(context, () => recordDashboardSave(source)).catch(
-      (dashboardError) => {
-        console.warn(
-          '[saveCurrentPage] Saved, but dashboard activity was not recorded:',
-          dashboardError
-        );
-      }
-    );
-
-    if (
-      source !== 'current_page' ||
-      tab.id === undefined ||
-      !item.syncId ||
-      !wasCurrentPageCreated(syncResponse.results || [], item.syncId)
-    ) {
-      return { success: true, aiStatus: 'not_started' };
-    }
-
-    // Register an AI handoff only when AI will run, so a plain save stays plain.
-    // If the check is unavailable, the handoff checks again before reading the page.
-    const readiness = await readCurrentPageAiReadiness(tab.url).catch(() => 'ready' as const);
-    if (readiness !== 'ready') return { success: true, aiStatus: readiness };
-
-    try {
-      const aiRequestId = await createPendingCurrentPageAi(
-        {
-          tabId: tab.id,
-          url: tab.url,
-          syncId: item.syncId,
-          knowledgeItemId: createDefaultKnowledgeItemId({
-            source: 'current_page',
-            canonicalUrl: normalizeUrl(tab.url),
-          }),
-        },
-        {
-          requestId: createSyncId('current-page-ai'),
-          expiresAt: Date.now() + CURRENT_PAGE_AI_REQUEST_TTL_MS,
-        }
-      );
-      return { success: true, aiStatus: 'pending', aiRequestId };
-    } catch (aiHandoffError) {
-      console.warn(
-        '[saveCurrentPage] Base save completed, but AI handoff was not stored:',
-        aiHandoffError
-      );
-      return { success: true, aiStatus: 'not_started' };
-    }
+    return { success: true };
   } catch (error) {
     console.error('[saveCurrentPage] Failed:', error);
-    await recordAccountActivity(context, () =>
+    await recordDestinationActivity(context, () =>
       recordDashboardEvent({
         kind: 'error',
         source,
@@ -548,378 +384,144 @@ async function saveCurrentPage(
   }
 }
 
-// Reads AI settings only; page content stays in the tab until AI is ready.
-async function readCurrentPageAiReadiness(url: string): Promise<CurrentPageAiReadiness> {
-  const [settingsResult, credentialResult] = await Promise.all([
-    serverAPI.getAiSettings(),
-    serverAPI.getAiCredential(),
-  ]);
-  return currentPageAiReadiness(url, settingsResult?.settings, credentialResult?.credential);
-}
-
-async function generateCurrentPageAi(
-  aiRequestId: string
-): Promise<MessageResponse<'GENERATE_CURRENT_PAGE_AI'>> {
-  const pending = await consumePendingCurrentPageAi(aiRequestId);
-  if (!pending || pending.expiresAt <= Date.now()) {
-    return { success: true, aiStatus: 'not_started' };
-  }
-
-  try {
-    // Privacy and entitlement checks happen before page content is read.
-    const readiness = await readCurrentPageAiReadiness(pending.url);
-    if (readiness !== 'ready') return { success: true, aiStatus: readiness };
-
-    const extracted = await chrome.scripting.executeScript({
-      target: { tabId: pending.tabId },
-      func: extractPageContentFromDocument,
-    });
-    const page = extracted[0]?.result;
-    if (!extractedPageMatchesPending(pending, page)) {
-      return { success: true, aiStatus: 'skipped_navigation_changed' };
-    }
-    const body = page.text || '';
-    if (!body) return { success: true, aiStatus: 'skipped_insufficient_content' };
-
-    const result = await serverAPI.generateCurrentPage({
-      knowledgeItemId: pending.knowledgeItemId,
-      syncId: pending.syncId,
-      url: pending.url,
-      body,
-    });
-    return { success: true, aiStatus: result.status };
-  } catch (error) {
-    console.warn('[generateCurrentPageAi] AI processing did not start:', error);
-    return { success: true, aiStatus: 'not_started' };
-  }
-}
-
-// Setup auto-sync alarm listener
 setupAutoSyncListener(async (context) => {
   await performBookmarkSync('auto', context);
 });
-
-// Restore auto-sync alarm on service worker startup
 restoreAutoSync((context) => performBookmarkSync('auto', context));
-setupSyncEnrichmentRecovery();
 
-// Register context menu click listener before its connection-derived state is applied.
+// Register the context menu click listener before its connection-derived state is applied.
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  console.log('[DEBUG] Context menu clicked:', info.menuItemId);
-  if (info.menuItemId === SAVE_TO_NOTION_CONTEXT_MENU_ID) {
-    console.log('[DEBUG] saveToNotion handler started');
-    if (!(await readNotionDestination())) {
-      console.log('[Context Menu] Not connected to Notion');
-      return;
-    }
+  if (info.menuItemId !== SAVE_TO_NOTION_CONTEXT_MENU_ID) return;
+  if (!(await readNotionConnection())) return;
 
-    // Context Menu is a distinct capture source and remains URL-only. It must
-    // not silently enter the current-page or batch-AI flows.
-    if (!info.linkUrl) {
-      await saveCurrentPage('context_menu');
-      return;
-    }
-
-    // Link saves intentionally remain URL-only and do not claim to summarize the
-    // surrounding page.
-    const url = info.linkUrl;
-    const title = (info as any).linkText || tab?.title || 'Untitled';
-
-    if (!url) {
-      console.log('[DEBUG] No URL found');
-      return;
-    }
-
-    if (!isWebPageUrl(url)) {
-      console.log('[Context Menu] Skipping a link that is not a web page');
-      return;
-    }
-
-    console.log('[Context Menu] Saving page');
-    const context = await readAccountContext();
-    try {
-      const bookmark = formatSavedLinkForSync(
-        {
-          title,
-          url,
-          description: '',
-          path: 'Quick Saves',
-        },
-        {
-          createSyncId: () => createSyncId('quick-save'),
-          source: 'context_menu',
-        }
-      );
-
-      await syncCapturedLink(bookmark, 'Context menu capture cannot be synced', context);
-      await recordAccountActivity(context, () => recordDashboardSave('context_menu'));
-      console.log('[Context Menu] Page saved successfully');
-    } catch (error) {
-      console.error('[Context Menu] Save failed:', error);
-      await recordAccountActivity(context, () =>
-        recordDashboardEvent({
-          kind: 'error',
-          source: 'context_menu',
-          result: 'failed',
-          errorCategory: classifyDashboardError(error),
-          action: 'retry',
-        })
-      );
-    }
+  // A page click saves the page; a link click saves only that link's URL.
+  if (!info.linkUrl) {
+    await saveCurrentPage('context_menu');
+    return;
+  }
+  const url = info.linkUrl;
+  if (!isWebPageUrl(url)) return;
+  const title = (info as { linkText?: string }).linkText || tab?.title || 'Untitled';
+  const context = await readDestinationContext();
+  try {
+    const bookmark = formatSavedLinkForSync(
+      { title, url, description: '', path: 'Quick Saves' },
+      { createSyncId: () => createSyncId('quick-save'), source: 'context_menu' }
+    );
+    await syncCapturedLink(context, bookmark, 'Context menu capture cannot be synced');
+    await recordDestinationActivity(context, () => recordDashboardSave('context_menu'));
+  } catch (error) {
+    console.error('[Context Menu] Save failed:', error);
+    await recordDestinationActivity(context, () =>
+      recordDashboardEvent({
+        kind: 'error',
+        source: 'context_menu',
+        result: 'failed',
+        errorCategory: classifyDashboardError(error),
+        action: 'retry',
+      })
+    );
   }
 });
 
 // Keep destination-only actions aligned with the active connection.
 void syncDestinationContextMenu();
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local' || (!changes.session_token && !changes[NOTION_CONNECTED_KEY])) return;
+  if (areaName !== 'local' || (!changes[NOTION_TOKEN_KEY] && !changes[NOTION_DATABASE_KEY])) return;
   void syncDestinationContextMenu();
 });
 
-/**
- * Stores fresh entitlements after a Notion connection. The new session
- * token invalidates the profile cache, so other readers join this request.
- * A failed refresh never fails the sign-in itself.
- */
-async function refreshStoredEntitlements(context: AccountContext): Promise<void> {
-  try {
-    await serverAPI.getUserProfile({}, context);
-  } catch (profileError) {
-    console.warn('⚠️ Failed to refresh entitlements after OAuth:', profileError);
-  }
-}
-
-async function signInFailure(err: unknown, context?: AccountContext) {
-  if (isStaleAccountStateError(err) || (context && !(await isAccountContextCurrent(context)))) {
-    return { success: false as const, error: 'Account state changed' };
-  }
-  const error = err instanceof Error ? err.message : String(err);
-  const code =
-    err && typeof err === 'object' && 'code' in err && typeof err.code === 'string'
-      ? err.code
-      : undefined;
-  return { success: false as const, error, ...(code ? { code } : {}) };
-}
-
-async function messageAccountContext(req: {
-  accountRevision?: string | null;
-}): Promise<AccountContext> {
-  const context = await readAccountContext();
-  if ('accountRevision' in req && req.accountRevision !== context.revision)
-    throw new StaleAccountStateError();
+async function messageDestinationContext(req: {
+  destinationRevision?: string | null;
+}): Promise<DestinationContext> {
+  const context = await readDestinationContext();
+  if ('destinationRevision' in req && req.destinationRevision !== context.revision)
+    throw new StaleDestinationStateError();
   return context;
 }
 
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
 addMessageListener({
-  [Messages.NOTION_OAUTH]: async (req) => {
-    const context = await messageAccountContext(req);
-    try {
-      // Set connecting state at the start
-      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: true }));
-      const code = await launchNotionOAuth();
-      const result = await exchangeCodeForToken(code, context);
-      const connectedContext = await messageAccountContext({
-        accountRevision: result.accountRevision,
-      });
-      // A successful exchange advances the revision. Guard the subsequent commits too.
-      await withCurrentAccount(connectedContext, () =>
-        chrome.storage.local.set({ is_connecting: false })
-      );
-
-      await refreshStoredEntitlements(connectedContext);
-
-      await withCurrentAccount(connectedContext, () =>
-        recordDashboardEvent({ kind: 'connection_checked', result: 'success' })
-      );
-
-      return result;
-    } catch (error) {
-      if (isStaleAccountStateError(error) || !(await isAccountContextCurrent(context)))
-        return { success: false, error: 'Account state changed' };
-      await withCurrentAccount(context, () => chrome.storage.local.set({ is_connecting: false }));
-
-      // Report OAuth errors to server
-      const err = error instanceof Error ? error : new Error(String(error));
-      await reportError(err, {
-        operation: 'oauth',
-        stage: 'exchange_token',
-      });
-
-      throw error;
-    }
-  },
   [Messages.SYNC_ALL_BOOKMARKS]: async (req) => {
-    const context = await messageAccountContext(req);
+    const context = await messageDestinationContext(req);
     return await performBookmarkSync('manual', context);
   },
-  [Messages.SAVE_CURRENT_PAGE]: async () => {
-    console.log('[BG] SAVE_CURRENT_PAGE message received');
-    return await saveCurrentPage();
-  },
-  [Messages.GENERATE_CURRENT_PAGE_AI]: async (req) => {
-    console.log('[BG] GENERATE_CURRENT_PAGE_AI message received');
-    return await generateCurrentPageAi(req.aiRequestId);
-  },
-  [Messages.GET_USER_PROFILE]: async (req) => {
-    try {
-      const { user, isPro } = await serverAPI.getUserProfile({
-        forceRefresh: req.forceRefresh === true,
-      });
-      return { success: true, profile: user, isPro } as const;
-    } catch (err) {
-      if (!isStaleAccountStateError(err)) console.error('❌ Failed to get user profile:', err);
-      return { success: false, error: String(err) } as const;
-    }
-  },
+  [Messages.SAVE_CURRENT_PAGE]: async () => await saveCurrentPage(),
   [Messages.GET_DASHBOARD_STATE]: async (req) => {
     try {
       const dashboard = await getDashboardSnapshot(req.refreshConnection === true);
       return { success: true, dashboard } as const;
     } catch (err) {
-      if (!isStaleAccountStateError(err)) console.error('❌ Failed to build dashboard state:', err);
-      return { success: false, error: String(err) } as const;
+      if (!isStaleDestinationStateError(err))
+        console.error('❌ Failed to build dashboard state:', err);
+      return { success: false, error: errorMessage(err) } as const;
     }
   },
-  [Messages.GET_PRICING]: async () => {
+  [Messages.NOTION_LIST_TARGETS]: async (req) => {
     try {
-      const { pricing } = await serverAPI.getPricing();
-      return { success: true, pricing } as const;
+      const token = req.token.trim();
+      const [self, targets] = await Promise.all([
+        notionApi.getSelf(token),
+        notionApi.listTargets(token),
+      ]);
+      return { success: true, workspaceName: self.workspaceName, ...targets } as const;
     } catch (err) {
-      console.error('❌ Failed to get pricing:', err);
-      return { success: false, error: String(err) } as const;
+      return { success: false, error: errorMessage(err) } as const;
     }
   },
-  [Messages.GET_PORTAL_LINK]: async () => {
+  [Messages.NOTION_CONNECT]: async (req) => {
     try {
-      const res = await serverAPI.getPortalLink();
-      return { success: res.success, url: res.url, error: res.error } as const;
+      const context = await messageDestinationContext(req);
+      const token = req.token.trim();
+      const databaseId =
+        req.databaseId ||
+        (req.parentPageId
+          ? (
+              await notionApi.createBookmarkDatabase(
+                token,
+                req.parentPageId,
+                DEFAULT_DATABASE_TITLE
+              )
+            ).databaseId
+          : undefined);
+      if (!databaseId) throw new Error('Choose a database or a page for the new database');
+      const [verified, self] = await Promise.all([
+        notionApi.verifyDatabaseAccess(databaseId, token),
+        notionApi.getSelf(token).catch(() => ({ workspaceName: undefined })),
+      ]);
+      const database = {
+        id: verified.databaseId,
+        title: verified.title || DEFAULT_DATABASE_TITLE,
+        ...(self.workspaceName ? { workspaceName: self.workspaceName } : {}),
+      };
+      const connected = await commitNotionConnection(context, { token, database });
+      await recordDashboardEvent({ kind: 'connection_checked', result: 'success' });
+      return { success: true, destinationRevision: connected.revision!, database } as const;
     } catch (err) {
-      console.error('❌ Failed to get portal link:', err);
-      return { success: false, error: String(err) } as const;
-    }
-  },
-  [Messages.CANCEL_SUBSCRIPTION]: async () => {
-    try {
-      const res = await serverAPI.cancelSubscription();
-      return { success: res.success, error: res.error } as const;
-    } catch (err) {
-      console.error('❌ Failed to cancel subscription:', err);
-      return { success: false, error: String(err) } as const;
-    }
-  },
-  [Messages.GET_SUBSCRIPTION_INFO]: async () => {
-    try {
-      const res = await serverAPI.getSubscriptionInfo();
-      return {
-        success: res.success,
-        nextBillingDate: res.nextBillingDate,
-        status: res.status,
-        error: res.error,
-      } as const;
-    } catch (err) {
-      console.error('❌ Failed to get subscription info:', err);
-      return { success: false, error: String(err) } as const;
+      if (isStaleDestinationStateError(err))
+        return { success: false, error: 'The Notion connection changed' } as const;
+      return { success: false, error: errorMessage(err) } as const;
     }
   },
   [Messages.DISCONNECT_NOTION]: async (req) => {
     try {
-      const origin = await messageAccountContext(req);
-      const context = await serverAPI.disconnectNotion(origin);
-      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
-      return { success: true, accountRevision: context.revision! } as const;
+      const context = await messageDestinationContext(req);
+      const cleared = await clearNotionConnection(context);
+      await scheduleAutoSync(false, 0);
+      return { success: true, destinationRevision: cleared.revision! } as const;
     } catch (err) {
-      console.error('❌ Notion disconnect failed:', err);
-      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
-    }
-  },
-  [Messages.DELETE_ACCOUNT]: async (req) => {
-    try {
-      const origin = await messageAccountContext(req);
-      const context = await serverAPI.deleteAccount(origin);
-      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
-      return { success: true, accountRevision: context.revision! } as const;
-    } catch (err) {
-      console.error('❌ Account deletion failed:', err);
-      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
-    }
-  },
-  [Messages.SIGN_IN_EMAIL_START]: async (req) => {
-    try {
-      await serverAPI.startEmailSignIn(req.email, req.locale);
-      return { success: true } as const;
-    } catch (err) {
-      return signInFailure(err);
-    }
-  },
-  [Messages.SIGN_IN_EMAIL_VERIFY]: async (req) => {
-    let context: AccountContext | undefined;
-    try {
-      context = await messageAccountContext(req);
-      const result = await serverAPI.verifyEmailSignIn(req.email, req.code, context);
-      const signedIn = await messageAccountContext({ accountRevision: result.accountRevision });
-      await refreshStoredEntitlements(signedIn);
-      return {
-        success: true,
-        accountCreated: result.accountCreated,
-        userEmail: result.userEmail,
-        accountRevision: result.accountRevision,
-      } as const;
-    } catch (err) {
-      return signInFailure(err, context);
-    }
-  },
-  [Messages.SIGN_IN_GOOGLE]: async (req) => {
-    let context: AccountContext | undefined;
-    try {
-      context = await messageAccountContext(req);
-      const result = await signInWithGoogle(context);
-      const signedIn = await messageAccountContext({ accountRevision: result.accountRevision });
-      await refreshStoredEntitlements(signedIn);
-      return {
-        success: true,
-        accountCreated: result.accountCreated,
-        userEmail: result.userEmail,
-        accountRevision: result.accountRevision,
-      } as const;
-    } catch (err) {
-      return signInFailure(err, context);
-    }
-  },
-  [Messages.SIGN_OUT]: async (req) => {
-    try {
-      const origin = await messageAccountContext(req);
-      const context = await serverAPI.logout(origin);
-      await withCurrentAccount(context, () => scheduleAutoSync(false, 0));
-      return { success: true, accountRevision: context.revision! } as const;
-    } catch (err) {
-      return signInFailure(err);
-    }
-  },
-  [Messages.GET_DEPLOYMENT_PROFILE]: async () => {
-    try {
-      const profile = await serverAPI.getDeploymentProfile();
-      return { success: true, profile } as const;
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : String(err) } as const;
-    }
-  },
-  [Messages.RESTORE_PURCHASE]: async (req: { email: string }) => {
-    try {
-      const res = await serverAPI.restorePurchase(req.email);
-      return { success: res.success, message: res.message } as const;
-    } catch (err) {
-      console.error('❌ Restore purchase failed:', err);
-      return { success: false, error: String(err) } as const;
+      return { success: false, error: errorMessage(err) } as const;
     }
   },
   [Messages.SCHEDULE_AUTO_SYNC]: async (req) => {
     try {
-      const context = await messageAccountContext(req);
-      await withCurrentAccount(context, () => scheduleAutoSync(req.enabled, req.intervalHours));
+      const context = await messageDestinationContext(req);
+      await withCurrentDestination(context, () => scheduleAutoSync(req.enabled, req.intervalHours));
       return { success: true } as const;
     } catch (err) {
       console.error('❌ Failed to schedule auto-sync:', err);
-      return { success: false, error: String(err) } as const;
+      return { success: false, error: errorMessage(err) } as const;
     }
   },
 });
@@ -932,30 +534,3 @@ try {
 } catch {
   // Some environments may not support action.onClicked in mocks; ignore
 }
-
-// Global error handlers to catch unhandled errors
-if (typeof self !== 'undefined') {
-  self.addEventListener('error', (event) => {
-    console.error('[Global Error]', event.error);
-    reportError(event.error || new Error(event.message), {
-      type: 'unhandled',
-      filename: event.filename,
-      lineno: event.lineno,
-      colno: event.colno,
-    }).catch(() => {
-      // Fail silently if error reporting fails
-    });
-  });
-
-  self.addEventListener('unhandledrejection', (event) => {
-    console.error('[Unhandled Rejection]', event.reason);
-    const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
-    reportError(error, {
-      type: 'unhandled_promise',
-    }).catch(() => {
-      // Fail silently if error reporting fails
-    });
-  });
-}
-
-console.log('[BG] Service worker initialization complete');

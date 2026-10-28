@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sendMessage } from '../utils/message';
-import { parseCachedPricing, preserveInMemoryActivity, useAppStore } from './store';
+import { preserveInMemoryActivity, useAppStore } from './store';
 import type { DashboardSnapshot } from '../dashboard/types';
 
 vi.mock('../utils/message', async () => {
@@ -40,7 +40,7 @@ describe('manual sync store action', () => {
     expect(useAppStore.getState().isSyncing).toBe(true);
     await vi.waitFor(() =>
       expect(sendMessage).toHaveBeenCalledWith(
-        { type: 'SYNC_ALL_BOOKMARKS', accountRevision: null },
+        { type: 'SYNC_ALL_BOOKMARKS', destinationRevision: null },
         { timeoutMs: 630_000 }
       )
     );
@@ -99,15 +99,5 @@ describe('dashboard snapshot cache updates', () => {
     finishRefresh?.({ success: false, error: 'server unavailable' });
     await Promise.all([first, second]);
     expect(useAppStore.getState().isDashboardLoading).toBe(false);
-  });
-});
-
-describe('pricing cache', () => {
-  it('rejects prices cached before the yearly pricing schema', () => {
-    expect(parseCachedPricing({ monthly: 2.5, yearly: 30 })).toBeNull();
-    expect(parseCachedPricing({ monthly: 1.5, yearly: 11.9, schemaVersion: 2 })).toEqual({
-      monthly: 1.5,
-      yearly: 11.9,
-    });
   });
 });
