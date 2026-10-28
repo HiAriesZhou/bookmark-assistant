@@ -398,8 +398,8 @@ function NotionPreview({ articles, locale }: { articles: Article[]; locale: Webs
       </div>
       <p className="editorial-sync-note">
         {t(
-          'Sample data · No connection to your Notion account.',
-          '示例数据 · 不连接你的 Notion 账户。'
+          'Sample data · Not connected to your Notion workspace.',
+          '示例数据 · 未连接你的 Notion 工作区。'
         )}
       </p>
     </section>
@@ -587,10 +587,7 @@ export function EditorialLanding({ copy, locale }: { copy: WebsiteCopy; locale: 
                 </div>
                 <div>
                   <dt>{t('Description', '描述')}</dt>
-                  <dd>
-                    {article.description}
-                    <span className="editorial-ai-label">AI</span>
-                  </dd>
+                  <dd>{article.description}</dd>
                 </div>
                 <div>
                   <dt>{t('Folder', '文件夹')}</dt>
@@ -613,14 +610,17 @@ export function EditorialLanding({ copy, locale }: { copy: WebsiteCopy; locale: 
           </FrostedMetadata>
         </div>
         <div className="editorial-ai-note" id="ai">
-          <strong>{t('Optional AI enrichment', '可选 AI 增强')}</strong>
+          <strong>{t('Optional AI organize', '可选 AI 整理')}</strong>
           <p>
             {t(
-              'For eligible newly saved public pages, add a short summary and useful tags.',
-              '为符合条件的新保存公开网页添加简短摘要与实用标签。'
+              'Add your own provider key to get better folders for the bookmarks in view.',
+              '添加自己的服务商 key，为当前视图中的书签建议更合适的文件夹。'
             )}
             <small>
-              {t('Optional · Generated content stays editable.', '可选功能 · 生成内容仍可编辑。')}
+              {t(
+                'Optional · Nothing moves until you apply it.',
+                '可选功能 · 应用之前不会移动任何书签。'
+              )}
             </small>
           </p>
         </div>
