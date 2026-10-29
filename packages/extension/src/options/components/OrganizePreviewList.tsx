@@ -1,33 +1,40 @@
 import { ArrowRight } from 'lucide-react';
-import { groupOrganizeProposals, type OrganizeFolder } from '../../core';
+import { groupOrganizeProposals } from '../../core';
 import { getBookmarkDomain, type LocalBookmark } from '../../library/bookmark-library';
 import { createTranslator } from '../../utils/i18n';
-import type { ReviewedProposal } from '../hook/useLibraryOrganize';
+import type { OrganizeTargetOption, ReviewedProposal } from '../hook/useLibraryOrganize';
 import { SelectMenu } from './SelectMenu';
 
 export function OrganizePreviewList({
   proposals,
-  folders,
+  targets,
   bookmarksById,
   folderPathById,
   onChange,
 }: {
   proposals: ReviewedProposal[];
-  folders: OrganizeFolder[];
+  /** Category targets first, then the other folders. */
+  targets: OrganizeTargetOption[];
   bookmarksById: Map<string, LocalBookmark>;
   folderPathById: Map<string, string>;
   onChange: (bookmarkId: string, changes: Partial<ReviewedProposal>) => void;
 }) {
   const { t } = createTranslator();
-  const folderOptions = folders.map((folder) => ({ value: folder.id, label: folder.path }));
-  const groups = groupOrganizeProposals(proposals, folders);
+  const label = (target: OrganizeTargetOption) =>
+    target.isNew ? `${target.label} · ${t('organize_new_folder')}` : target.label;
+  const folderOptions = targets.map((target) => ({ value: target.value, label: label(target) }));
+  const labelOf = new Map(folderOptions.map((option) => [option.value, option.label]));
+  const groups = groupOrganizeProposals(
+    proposals,
+    targets.map((target) => ({ id: target.value }))
+  );
 
   return (
     <div className="space-y-4">
       {groups.map((group) => (
-        <section key={group.folderId} aria-label={folderPathById.get(group.folderId)}>
+        <section key={group.folderId} aria-label={labelOf.get(group.folderId)}>
           <h3 className="mb-1.5 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-library-muted">
-            {folderPathById.get(group.folderId) ?? group.folderId}
+            {labelOf.get(group.folderId) ?? folderPathById.get(group.folderId) ?? group.folderId}
           </h3>
           <ul className="divide-y divide-library-line rounded-xl border border-library-line">
             {group.proposals.map((proposal) => {
@@ -64,8 +71,13 @@ export function OrganizePreviewList({
                         className="min-w-0 max-w-[50%]"
                       />
                     </div>
-                    {proposal.reason ? (
+                    {proposal.reason || !proposal.confident ? (
                       <p className="mt-1 text-[11px] leading-4 text-library-muted">
+                        {!proposal.confident ? (
+                          <span className="mr-1.5 font-medium text-ui-warning">
+                            {t('organize_low_confidence')}
+                          </span>
+                        ) : null}
                         {proposal.reason}
                       </p>
                     ) : null}

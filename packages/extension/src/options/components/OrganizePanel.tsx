@@ -1,7 +1,7 @@
 import { KeyRound, Sparkles, Undo2, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { hasOrganizeTargets, type OrganizeScope } from '../../core';
+import type { OrganizeScope } from '../../core';
 import type { LocalBookmark, LocalBookmarkFolder } from '../../library/bookmark-library';
 import { createTranslator } from '../../utils/i18n';
 import { useLibraryOrganize, type OrganizePanelError } from '../hook/useLibraryOrganize';
@@ -52,7 +52,8 @@ export function OrganizePanel({
 }) {
   const { t, locale } = createTranslator();
   const titleId = useId();
-  const organize = useLibraryOrganize(scope, locale);
+  const library = useMemo(() => ({ bookmarks, folders }), [bookmarks, folders]);
+  const organize = useLibraryOrganize(scope, locale, library);
   const busy = organize.phase === 'running' || organize.phase === 'applying' || organize.undoing;
   const bookmarksById = useMemo(
     () => new Map(bookmarks.map((bookmark) => [bookmark.id, bookmark])),
@@ -149,7 +150,7 @@ export function OrganizePanel({
           ) : (
             <PreviewStep
               organize={organize}
-              scope={scope}
+              barPath={folders.find((folder) => folder.parentId === '0')?.path ?? ''}
               bookmarksById={bookmarksById}
               folderPathById={folderPathById}
             />
@@ -247,9 +248,7 @@ function ReadyStep({ organize, scope }: { organize: OrganizeController; scope: O
           {t('organize_scope_excluded', [String(scope.excludedCount)])}
         </p>
       ) : null}
-      {!hasOrganizeTargets(scope) ? (
-        <p className="text-xs text-library-muted">{t('organize_no_folders')}</p>
-      ) : null}
+      <p className="text-xs leading-5 text-library-muted">{t('organize_taxonomy_note')}</p>
       <div className="flex flex-wrap items-center gap-2 rounded-lg bg-library-canvas px-3 py-2 text-xs">
         <KeyRound aria-hidden="true" className="h-3.5 w-3.5 text-library-muted" />
         <span className="flex-1">
@@ -272,12 +271,12 @@ function ReadyStep({ organize, scope }: { organize: OrganizeController; scope: O
 
 function PreviewStep({
   organize,
-  scope,
+  barPath,
   bookmarksById,
   folderPathById,
 }: {
   organize: OrganizeController;
-  scope: OrganizeScope;
+  barPath: string;
   bookmarksById: Map<string, LocalBookmark>;
   folderPathById: Map<string, string>;
 }) {
@@ -308,7 +307,7 @@ function PreviewStep({
       </div>
       <OrganizePreviewList
         proposals={organize.proposals}
-        folders={scope.folders}
+        targets={organize.targetOptions(barPath)}
         bookmarksById={bookmarksById}
         folderPathById={folderPathById}
         onChange={organize.updateProposal}
@@ -351,7 +350,7 @@ function Footer({
         <button
           type="button"
           className="library-primary-button"
-          disabled={!hasOrganizeTargets(scope)}
+          disabled={!scope.items.length}
           onClick={() => void organize.start()}
         >
           <Sparkles aria-hidden="true" className="h-4 w-4" />

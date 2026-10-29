@@ -25,6 +25,13 @@ export interface OrganizeUndoJournal {
   schemaVersion: 1;
   createdAt: string;
   entries: OrganizeUndoEntry[];
+  /** Category folders this run created; undo removes them once they are empty again. */
+  createdFolderIds?: string[];
+}
+
+export interface ApplyOrganizeOptions {
+  /** Placeholder folder ids that stand for new category folders, with their titles. */
+  newFolderTitles?: Record<string, string>;
 }
 
 export async function readOrganizeUndo(): Promise<OrganizeUndoJournal | undefined> {
@@ -37,9 +44,10 @@ export async function readOrganizeUndo(): Promise<OrganizeUndoJournal | undefine
 
 /** Skips anything that changed after the preview: the user's edits win. */
 export function applyOrganizeMoves(
-  moves: OrganizeMove[]
+  moves: OrganizeMove[],
+  options: ApplyOrganizeOptions = {}
 ): Promise<{ moved: number; skipped: number }> {
-  return withJournalLock(() => applyMoves(moves));
+  return withJournalLock(() => applyMoves(moves, options.newFolderTitles ?? {}));
 }
 
 /** Moves bookmarks back in reverse order, leaving ones the user moved again. */
@@ -60,8 +68,16 @@ function withJournalLock<T>(operation: () => Promise<T>): Promise<T> {
   return next;
 }
 
-async function applyMoves(moves: OrganizeMove[]): Promise<{ moved: number; skipped: number }> {
+async function applyMoves(
+  requested: OrganizeMove[],
+  newFolderTitles: Record<string, string>
+): Promise<{ moved: number; skipped: number }> {
   const previous = await readOrganizeUndo();
+  const { folderIds, createdFolderIds } = await resolveNewFolders(requested, newFolderTitles);
+  const moves = requested.map((move) => ({
+    ...move,
+    toFolderId: folderIds.get(move.toFolderId) ?? move.toFolderId,
+  }));
   let journal: OrganizeUndoJournal | undefined;
   let skipped = 0;
 
@@ -82,6 +98,7 @@ async function applyMoves(moves: OrganizeMove[]): Promise<{ moved: number; skipp
       schemaVersion: 1,
       createdAt: journal?.createdAt ?? new Date().toISOString(),
       entries: [...(journal?.entries ?? []), entry],
+      ...(createdFolderIds.length ? { createdFolderIds } : {}),
     };
     await writeJournal(withEntry);
     try {
@@ -94,6 +111,7 @@ async function applyMoves(moves: OrganizeMove[]): Promise<{ moved: number; skipp
   }
 
   if (!journal) {
+    await removeEmptyFolders(createdFolderIds);
     await (previous
       ? writeJournal(previous)
       : chrome.storage.local.remove(ORGANIZE_UNDO_STORAGE_KEY));
@@ -125,11 +143,64 @@ async function undoMoves(): Promise<{ restored: number; skipped: number }> {
       skipped += 1;
     }
   }
+  await removeEmptyFolders(journal.createdFolderIds ?? []);
   // Never discard a journal written by a newer run.
   if ((await readOrganizeUndo())?.createdAt === journal.createdAt) {
     await chrome.storage.local.remove(ORGANIZE_UNDO_STORAGE_KEY);
   }
   return { restored, skipped };
+}
+
+/**
+ * Creates the category folders the moves need on the bookmarks bar. A folder with the same
+ * title already on the bar is reused, so repeated runs do not stack duplicates.
+ */
+async function resolveNewFolders(
+  moves: OrganizeMove[],
+  newFolderTitles: Record<string, string>
+): Promise<{ folderIds: Map<string, string>; createdFolderIds: string[] }> {
+  const folderIds = new Map<string, string>();
+  const createdFolderIds: string[] = [];
+  const needed = [...new Set(moves.map((move) => move.toFolderId))].filter(
+    (id) => newFolderTitles[id]
+  );
+  if (!needed.length) return { folderIds, createdFolderIds };
+  const bar = await bookmarksBar();
+  const children = await chrome.bookmarks.getChildren(bar.id);
+  for (const placeholder of needed) {
+    const title = newFolderTitles[placeholder];
+    const existing = children.find((child) => !child.url && child.title === title);
+    if (existing) {
+      folderIds.set(placeholder, existing.id);
+      continue;
+    }
+    const created = await chrome.bookmarks.create({ parentId: bar.id, title });
+    folderIds.set(placeholder, created.id);
+    createdFolderIds.push(created.id);
+  }
+  return { folderIds, createdFolderIds };
+}
+
+async function bookmarksBar(): Promise<chrome.bookmarks.BookmarkTreeNode> {
+  const [root] = await chrome.bookmarks.getTree();
+  const children = root?.children ?? [];
+  const bar =
+    children.find((child) => (child as { folderType?: string }).folderType === 'bookmarks-bar') ??
+    children[0];
+  if (!bar) throw new Error('The bookmarks bar is unavailable');
+  return bar;
+}
+
+async function removeEmptyFolders(folderIds: string[]): Promise<void> {
+  for (const folderId of folderIds) {
+    try {
+      if (!(await chrome.bookmarks.getChildren(folderId)).length) {
+        await chrome.bookmarks.remove(folderId);
+      }
+    } catch {
+      // Already gone or no longer a folder: nothing to clean up.
+    }
+  }
 }
 
 async function getNode(id: string): Promise<chrome.bookmarks.BookmarkTreeNode | undefined> {
