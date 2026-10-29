@@ -49,7 +49,8 @@
     "marketing:sync-website-assets": "pnpm -F @bookmark-assistant/marketing sync-website-assets",
     "build:prod": "pnpm -F @bookmark-assistant/extension build:prod",
     "source:snapshot": "node scripts/export-source-snapshot.mjs",
-    "source:check": "node scripts/check-open-source.mjs"
+    "source:check": "node scripts/check-open-source.mjs",
+    "eval:organize": "vitest run -c vitest.eval.config.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
