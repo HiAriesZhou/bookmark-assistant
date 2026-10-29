@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isAiProvider } from '@bookmark-assistant/types';
 import { AI_PROVIDER_HOST_PERMISSIONS } from '../../ai/providers';
 import type { OrganizeErrorCode, OrganizeKeySummary } from '../../background/library-organize';
@@ -55,6 +55,8 @@ export interface OrganizeTargetOption {
   label: string;
   /** A category folder that does not exist yet and is created when applied. */
   isNew: boolean;
+  /** One of the eight category targets, listed before the other folders. */
+  isCategory: boolean;
 }
 
 /** Provider errors plus local failures that leave Chrome bookmarks as they were. */
@@ -344,6 +346,17 @@ export function useLibraryOrganize(
     await runBatches(failedBatches, proposals, plan);
   };
 
+  const newFolderTitles = useMemo<Record<string, string>>(
+    () =>
+      Object.fromEntries(
+        ORGANIZE_CATEGORY_IDS.map((category) => [
+          newCategoryFolderId(category),
+          organizeCategoryName(category, uiLanguage),
+        ])
+      ),
+    [uiLanguage]
+  );
+
   const newFolderTitle = (folderId: string) => {
     const category = categoryOfNewFolderId(folderId);
     return category ? organizeCategoryName(category, uiLanguage) : undefined;
@@ -358,13 +371,18 @@ export function useLibraryOrganize(
     const options = categoryTargets.map((folderId) => {
       const title = newFolderTitle(folderId);
       return title
-        ? { value: folderId, label: `${barPath} / ${title}`, isNew: true }
-        : { value: folderId, label: pathOf.get(folderId) ?? folderId, isNew: false };
+        ? { value: folderId, label: `${barPath} / ${title}`, isNew: true, isCategory: true }
+        : {
+            value: folderId,
+            label: pathOf.get(folderId) ?? folderId,
+            isNew: false,
+            isCategory: true,
+          };
     });
     const listed = new Set(categoryTargets);
     for (const folder of scope.folders) {
       if (!listed.has(folder.id))
-        options.push({ value: folder.id, label: folder.path, isNew: false });
+        options.push({ value: folder.id, label: folder.path, isNew: false, isCategory: false });
     }
     return options;
   };
@@ -397,12 +415,6 @@ export function useLibraryOrganize(
         fromParentId,
         toFolderId,
       }));
-    const newFolderTitles = Object.fromEntries(
-      ORGANIZE_CATEGORY_IDS.map((category) => [
-        newCategoryFolderId(category),
-        organizeCategoryName(category, uiLanguage),
-      ])
-    );
     try {
       setResult(await applyOrganizeMoves(moves, { newFolderTitles }));
       setPhase('done');
@@ -447,6 +459,7 @@ export function useLibraryOrganize(
     start,
     retryFailed,
     targetOptions,
+    newFolderTitles,
     cancel,
     updateProposal,
     selectAll,

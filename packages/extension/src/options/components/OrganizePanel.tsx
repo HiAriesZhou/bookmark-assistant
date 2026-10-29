@@ -5,7 +5,7 @@ import type { OrganizeScope } from '../../core';
 import type { LocalBookmark, LocalBookmarkFolder } from '../../library/bookmark-library';
 import { createTranslator } from '../../utils/i18n';
 import { useLibraryOrganize, type OrganizePanelError } from '../hook/useLibraryOrganize';
-import { OrganizePreviewList } from './OrganizePreviewList';
+import { OrganizePreviewTree } from './OrganizePreviewTree';
 import { SelectMenu, type SelectMenuOption } from './SelectMenu';
 
 const PROVIDERS: SelectMenuOption[] = [
@@ -150,7 +150,8 @@ export function OrganizePanel({
           ) : (
             <PreviewStep
               organize={organize}
-              barPath={folders.find((folder) => folder.parentId === '0')?.path ?? ''}
+              folders={folders}
+              bookmarks={bookmarks}
               bookmarksById={bookmarksById}
               folderPathById={folderPathById}
             />
@@ -271,12 +272,14 @@ function ReadyStep({ organize, scope }: { organize: OrganizeController; scope: O
 
 function PreviewStep({
   organize,
-  barPath,
+  folders,
+  bookmarks,
   bookmarksById,
   folderPathById,
 }: {
   organize: OrganizeController;
-  barPath: string;
+  folders: LocalBookmarkFolder[];
+  bookmarks: LocalBookmark[];
   bookmarksById: Map<string, LocalBookmark>;
   folderPathById: Map<string, string>;
 }) {
@@ -305,9 +308,14 @@ function PreviewStep({
           {t('organize_select_none')}
         </button>
       </div>
-      <OrganizePreviewList
+      <OrganizePreviewTree
         proposals={organize.proposals}
-        targets={organize.targetOptions(barPath)}
+        targets={organize.targetOptions(
+          folders.find((folder) => folder.parentId === '0')?.path ?? ''
+        )}
+        newFolderTitles={organize.newFolderTitles}
+        folders={folders}
+        bookmarks={bookmarks}
         bookmarksById={bookmarksById}
         folderPathById={folderPathById}
         onChange={organize.updateProposal}

@@ -181,6 +181,15 @@ it('previews category moves, selects only confident ones and applies them', asyn
   expect([...checkboxes].map((box) => box.checked)).toEqual([true, false]);
   expect(document.body.textContent).toContain('organize_low_confidence');
   expect(document.body.textContent).toContain('organize_new_folder');
+  // The preview is the changed part of the tree: Design gains "a", a new Career folder
+  // receives the unselected "b", and the bar keeps nothing loose afterwards.
+  const tree = document.body.querySelector('[role="tree"]')!;
+  expect(
+    [...tree.querySelectorAll('[role="treeitem"][aria-expanded]')].map((node) =>
+      node.getAttribute('aria-label')
+    )
+  ).toEqual(['Bar', 'Design', 'Career']);
+  expect(document.body.textContent).toContain('organize_preview_stays:Bar');
   expect(button('organize_apply')?.textContent).toBe('organize_apply:1');
 
   await act(async () => button('organize_apply')!.click());

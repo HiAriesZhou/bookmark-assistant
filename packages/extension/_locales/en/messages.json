@@ -552,6 +552,21 @@
   "organize_preview_summary": {
     "message": "$1 moves suggested. Nothing changes until you apply them."
   },
+  "organize_preview_tree": {
+    "message": "Library after organizing"
+  },
+  "organize_preview_kept": {
+    "message": "$1 bookmarks already here"
+  },
+  "organize_preview_empty_after": {
+    "message": "Empty after organizing"
+  },
+  "organize_preview_from": {
+    "message": "From $1"
+  },
+  "organize_preview_stays": {
+    "message": "Stays in $1"
+  },
   "organize_select_all": {
     "message": "Select all"
   },
@@ -565,10 +580,19 @@
     "message": "new"
   },
   "organize_low_confidence": {
-    "message": "Unsure, not selected."
+    "message": "Unsure"
   },
   "organize_target_folder": {
     "message": "Target folder for $1"
+  },
+  "organize_change_target": {
+    "message": "Move to…"
+  },
+  "organize_target_categories": {
+    "message": "Categories"
+  },
+  "organize_target_other": {
+    "message": "Other folders"
   },
   "organize_retry_failed": {
     "message": "Retry $1 unfinished batches"

@@ -552,6 +552,21 @@
   "organize_preview_summary": {
     "message": "建议移动 $1 条。应用之前不会做任何改动。"
   },
+  "organize_preview_tree": {
+    "message": "整理后的书签结构"
+  },
+  "organize_preview_kept": {
+    "message": "原有 $1 条书签"
+  },
+  "organize_preview_empty_after": {
+    "message": "整理后为空"
+  },
+  "organize_preview_from": {
+    "message": "来自 $1"
+  },
+  "organize_preview_stays": {
+    "message": "保留在 $1"
+  },
   "organize_select_all": {
     "message": "全选"
   },
@@ -565,10 +580,19 @@
     "message": "新建"
   },
   "organize_low_confidence": {
-    "message": "不确定，默认不移动。"
+    "message": "不确定"
   },
   "organize_target_folder": {
     "message": "$1 的目标文件夹"
+  },
+  "organize_change_target": {
+    "message": "改到…"
+  },
+  "organize_target_categories": {
+    "message": "分类"
+  },
+  "organize_target_other": {
+    "message": "其他文件夹"
   },
   "organize_retry_failed": {
     "message": "重试 $1 个未完成的批次"
