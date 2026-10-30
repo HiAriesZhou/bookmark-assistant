@@ -1,6 +1,6 @@
 {
   "name": "bookmark-assistant",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "description": "Free, open-source Chrome bookmark manager with optional Notion sync and AI folder suggestions.",
   "private": true,
   "packageManager": "pnpm@9.12.0",
