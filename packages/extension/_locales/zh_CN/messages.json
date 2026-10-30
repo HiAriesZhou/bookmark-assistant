@@ -537,20 +537,35 @@
   "organize_scope_excluded": {
     "message": "$1 条书签不会离开本机：受管理、常见本地或内网地址，或非网页地址。"
   },
-  "organize_no_folders": {
-    "message": "没有可以移入的文件夹。"
+  "organize_taxonomy_note": {
+    "message": "按用途把书签分成 8 类：工具与应用、工作与项目、学习与参考、求职与职业、资讯与阅读、购物与财务、生活服务、娱乐与社交。已有的对应文件夹会直接沿用，缺少的分类会在书签栏新建。"
   },
   "organize_start": {
     "message": "生成建议"
   },
   "organize_progress": {
-    "message": "正在分析第 $1 / $2 批…"
+    "message": "正在处理第 $1 / $2 步…"
   },
   "organize_preview_empty": {
     "message": "没有需要移动的书签，它们看起来已经放对了位置。"
   },
   "organize_preview_summary": {
     "message": "建议移动 $1 条。应用之前不会做任何改动。"
+  },
+  "organize_preview_tree": {
+    "message": "整理后的书签结构"
+  },
+  "organize_preview_kept": {
+    "message": "原有 $1 条书签"
+  },
+  "organize_preview_empty_after": {
+    "message": "整理后为空"
+  },
+  "organize_preview_from": {
+    "message": "来自 $1"
+  },
+  "organize_preview_stays": {
+    "message": "保留在 $1"
   },
   "organize_select_all": {
     "message": "全选"
@@ -561,8 +576,23 @@
   "organize_select_bookmark": {
     "message": "移动 $1"
   },
+  "organize_new_folder": {
+    "message": "新建"
+  },
+  "organize_low_confidence": {
+    "message": "不确定"
+  },
   "organize_target_folder": {
     "message": "$1 的目标文件夹"
+  },
+  "organize_change_target": {
+    "message": "改到…"
+  },
+  "organize_target_categories": {
+    "message": "分类"
+  },
+  "organize_target_other": {
+    "message": "其他文件夹"
   },
   "organize_retry_failed": {
     "message": "重试 $1 个未完成的批次"

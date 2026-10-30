@@ -99,12 +99,29 @@ pnpm source:check
 
 Routine testing is headless and never opens the system browser.
 
+Real-provider AI organize evaluation is separate: `pnpm eval:organize` sends only
+the synthetic evaluation library to the provider and may incur API charges. It
+reads the key from `~/.config/bookmark-assistant/ai-test.key`; select the matching
+provider with `BA_EVAL_PROVIDER` (default: `deepseek`). A missing or empty key fails
+with `Evaluation NOT RUN` rather than reporting success. Evaluation requires at
+least two classification runs (`BA_EVAL_RUNS`, default: 2) and a positive integer
+batch size (`BA_EVAL_BATCH`, default: 20). Every folder mapping run must match the
+expected mappings and remain stable; category accuracy must reach 90% and
+run-to-run consistency 95%. Passing synthetic evaluation or mocked E2E does not
+verify a real bookmark library, Notion workspace, or an unevaluated provider.
+
 ## Releases and source
 
 Official artwork, store snapshots and official links are part of this repository, so a
 tagged commit is the complete corresponding source of a store package. Public binary
 releases must identify their exact source snapshot or commit and include the applicable
 third-party notices.
+
+`packages/marketing/store` preserves the last recorded store upload snapshot, so
+its permissions, listing and screenshots can differ from development source.
+Before the next store upload, advance the product version, prepare the matching
+store snapshot, and record the exact source revision and ZIP checksum. Preserve
+previous version locks as historical records.
 
 `pnpm source:snapshot` exports the current source, including pending changes, into a
 new history-free directory under `.build` with a file checksum manifest. It does not

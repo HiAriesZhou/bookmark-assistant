@@ -273,6 +273,7 @@ describe('AI provider adapters', () => {
       openai: '"reasoning":{"effort":"minimal"}',
       groq: '"reasoning_effort":"low"',
       gemini: '"thinkingConfig":{"thinkingBudget":0}',
+      deepseek: '"thinking":{"type":"disabled"}',
     };
     for (const provider of AI_PROVIDERS) {
       const fetcher = successfulFetch();
@@ -284,6 +285,18 @@ describe('AI provider adapters', () => {
       expect(String(defaultCall![1]?.body)).not.toMatch(/reasoning|thinking/);
       if (expected[provider]) expect(String(fastCall![1]?.body)).toContain(expected[provider]);
       else expect(fastCall![1]?.body).toBe(defaultCall![1]?.body);
+    }
+  });
+
+  it('asks for temperature 0 when deterministic, except on OpenAI', async () => {
+    for (const provider of AI_PROVIDERS) {
+      const fetcher = successfulFetch();
+      await createAiProviderAdapter(provider, fetcher)
+        .generate('key', 'content', { deterministic: true })
+        .catch(() => undefined);
+      const body = String(vi.mocked(fetcher).mock.calls[0]![1]?.body);
+      if (provider === 'openai') expect(body).not.toContain('temperature');
+      else expect(body).toMatch(/"temperature":0[,}]/);
     }
   });
 });

@@ -13,5 +13,6 @@ Certificate of Origin 1.1: https://developercertificate.org/ . Only contribute
 code you have the right to submit; preserve notices for third-party material.
 
 Official artwork is included under GPL-3.0-only; the name and logo are governed by
-TRADEMARKS.md. A contributor can run the complete application against their own
-server and integration configuration.
+TRADEMARKS.md. The extension runs without a server. Contributors can configure
+their own Notion token and AI provider key to verify the optional integrations;
+`deploy/README.md` covers the frozen server for older extension versions.

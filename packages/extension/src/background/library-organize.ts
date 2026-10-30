@@ -9,13 +9,18 @@ import {
 } from '../ai/providers';
 import {
   ORGANIZE_BATCH_SIZE,
-  ORGANIZE_MAX_OUTPUT_TOKENS,
+  ORGANIZE_MAX_FOLDERS,
   OrganizeResponseError,
-  buildOrganizePrompt,
-  parseOrganizeResponse,
+  buildAssignPrompt,
+  buildFolderMapPrompt,
+  isOrganizeCategoryId,
+  parseAssignResponse,
+  parseFolderMapResponse,
   toShareableBookmarkUrl,
-  type OrganizeBatch,
-  type OrganizeProposal,
+  type OrganizeAssignment,
+  type OrganizeFolderMap,
+  type OrganizeFolderMapRequest,
+  type OrganizeItem,
 } from '../core';
 
 /**
@@ -25,7 +30,10 @@ import {
 export const LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY =
   'library_organize_provider_credential_v1';
 const API_KEY_MAX_LENGTH = 512;
-const BATCH_MAX_FOLDERS = 300;
+// Without reasoning, a 20-item answer needs well under 1,500 tokens.
+const ASSIGN_MAX_OUTPUT_TOKENS = 3_000;
+const FOLDER_MAP_MAX_OUTPUT_TOKENS = 2_000;
+const SAMPLE_TITLES_MAX = 4;
 
 interface StoredOrganizeKey {
   provider: AiProvider;
@@ -116,33 +124,58 @@ async function releaseProviderPermissions(providers: readonly AiProvider[]): Pro
     .catch(() => false);
 }
 
-export async function runOrganizeBatch(
-  batch: OrganizeBatch,
+/** Step 1: which existing folders already serve a category. */
+export async function runFolderMap(
+  request: OrganizeFolderMapRequest,
+  fetcher: FetchLike = fetch
+): Promise<{ folderMap: OrganizeFolderMap }> {
+  if (!isValidFolderMapRequest(request)) throw new OrganizeError('invalid_request');
+  const text = await generate(buildFolderMapPrompt(request), FOLDER_MAP_MAX_OUTPUT_TOKENS, fetcher);
+  return { folderMap: parseOrThrow(() => parseFolderMapResponse(text, request)) };
+}
+
+/** Step 2: a category for every bookmark in one batch. */
+export async function runAssignBatch(
+  items: OrganizeItem[],
   uiLanguage: string,
   fetcher: FetchLike = fetch
-): Promise<{ proposals: OrganizeProposal[]; discardedCount: number }> {
-  if (!isValidBatch(batch)) throw new OrganizeError('invalid_request');
+): Promise<{ assignments: OrganizeAssignment[] }> {
+  if (!isValidItems(items)) throw new OrganizeError('invalid_request');
+  const text = await generate(
+    buildAssignPrompt(items, uiLanguage),
+    ASSIGN_MAX_OUTPUT_TOKENS,
+    fetcher
+  );
+  return { assignments: parseOrThrow(() => parseAssignResponse(text, items)) };
+}
+
+async function generate(prompt: string, maxOutputTokens: number, fetcher: FetchLike) {
   const stored = await readStoredKey();
   if (!stored) throw new OrganizeError('not_configured');
   await assertProviderPermission(stored.provider);
-
   const adapter = createAiProviderAdapter(stored.provider, fetcher, undefined, undefined, {
     browserClient: true,
   });
-  let text: string;
   try {
-    ({ text } = await adapter.generate(stored.apiKey, buildOrganizePrompt(batch, uiLanguage), {
-      maxOutputTokens: ORGANIZE_MAX_OUTPUT_TOKENS,
-      lowLatency: true,
-    }));
+    // Classification needs no long reasoning, and the worker cannot wait for it.
+    return (
+      await adapter.generate(stored.apiKey, prompt, {
+        maxOutputTokens,
+        lowLatency: true,
+        deterministic: true,
+      })
+    ).text;
   } catch (error) {
     if (error instanceof AiProviderGenerationError) {
       throw new OrganizeError(error.code, error.retryAfterMs);
     }
     throw error;
   }
+}
+
+function parseOrThrow<T>(parse: () => T): T {
   try {
-    return parseOrganizeResponse(text, batch);
+    return parse();
   } catch (error) {
     if (error instanceof OrganizeResponseError) throw new OrganizeError('invalid_response');
     throw error;
@@ -169,21 +202,33 @@ function summarize(stored: StoredOrganizeKey): OrganizeKeySummary {
   return { provider: stored.provider, last4: stored.apiKey.slice(-4) };
 }
 
+const isText = (value: unknown): value is string => typeof value === 'string';
+
 /** The Options page builds batches, but the worker re-checks what leaves the device. */
-function isValidBatch(batch: OrganizeBatch): boolean {
-  if (!batch || !Array.isArray(batch.items) || !Array.isArray(batch.folders)) return false;
-  if (!batch.items.length || batch.items.length > ORGANIZE_BATCH_SIZE) return false;
-  if (!batch.folders.length || batch.folders.length > BATCH_MAX_FOLDERS) return false;
-  const isText = (value: unknown) => typeof value === 'string';
-  return (
-    batch.items.every(
-      (item) =>
-        isText(item?.id) &&
-        isText(item.parentId) &&
-        isText(item.title) &&
-        isText(item.folderPath) &&
-        isText(item.url) &&
-        toShareableBookmarkUrl(item.url) === item.url
-    ) && batch.folders.every((folder) => isText(folder?.id) && isText(folder.path))
+function isValidItems(items: OrganizeItem[]): boolean {
+  if (!Array.isArray(items) || !items.length || items.length > ORGANIZE_BATCH_SIZE) return false;
+  return items.every(
+    (item) =>
+      isText(item?.id) &&
+      isText(item.parentId) &&
+      isText(item.title) &&
+      isText(item.folderPath) &&
+      isText(item.url) &&
+      toShareableBookmarkUrl(item.url) === item.url &&
+      (item.currentCategory === undefined || isOrganizeCategoryId(item.currentCategory))
+  );
+}
+
+function isValidFolderMapRequest(request: OrganizeFolderMapRequest): boolean {
+  const folders = request?.folders;
+  if (!Array.isArray(folders) || folders.length > ORGANIZE_MAX_FOLDERS) return false;
+  return folders.every(
+    (folder) =>
+      isText(folder?.id) &&
+      isText(folder.path) &&
+      Number.isInteger(folder.bookmarkCount) &&
+      Array.isArray(folder.sampleTitles) &&
+      folder.sampleTitles.length <= SAMPLE_TITLES_MAX &&
+      folder.sampleTitles.every(isText)
   );
 }

@@ -537,20 +537,35 @@
   "organize_scope_excluded": {
     "message": "$1 bookmarks stay on this device: managed, common local or private-network, or non-web addresses."
   },
-  "organize_no_folders": {
-    "message": "There are no folders to move these bookmarks into."
+  "organize_taxonomy_note": {
+    "message": "Bookmarks are sorted by purpose into eight categories: Tools & Apps, Work & Projects, Learning & Reference, Career, News & Reading, Shopping & Money, Life & Services, and Entertainment & Social. Folders that already serve a category are reused; missing categories are created on the bookmarks bar."
   },
   "organize_start": {
     "message": "Suggest folders"
   },
   "organize_progress": {
-    "message": "Analyzing batch $1 of $2…"
+    "message": "Step $1 of $2…"
   },
   "organize_preview_empty": {
     "message": "No moves suggested. These bookmarks already look well placed."
   },
   "organize_preview_summary": {
     "message": "$1 moves suggested. Nothing changes until you apply them."
+  },
+  "organize_preview_tree": {
+    "message": "Library after organizing"
+  },
+  "organize_preview_kept": {
+    "message": "$1 bookmarks already here"
+  },
+  "organize_preview_empty_after": {
+    "message": "Empty after organizing"
+  },
+  "organize_preview_from": {
+    "message": "From $1"
+  },
+  "organize_preview_stays": {
+    "message": "Stays in $1"
   },
   "organize_select_all": {
     "message": "Select all"
@@ -561,8 +576,23 @@
   "organize_select_bookmark": {
     "message": "Move $1"
   },
+  "organize_new_folder": {
+    "message": "new"
+  },
+  "organize_low_confidence": {
+    "message": "Unsure"
+  },
   "organize_target_folder": {
     "message": "Target folder for $1"
+  },
+  "organize_change_target": {
+    "message": "Move to…"
+  },
+  "organize_target_categories": {
+    "message": "Categories"
+  },
+  "organize_target_other": {
+    "message": "Other folders"
   },
   "organize_retry_failed": {
     "message": "Retry $1 unfinished batches"

@@ -52,11 +52,10 @@ test.describe('AI library organization', () => {
     await context?.close();
   });
 
-  test('previews, corrects, applies and undoes AI folder suggestions', async () => {
+  test('sorts by category, creates a missing category folder and undoes it', async () => {
     providerRequests = [];
     const ids = await worker.evaluate(async () => {
-      const design = await chrome.bookmarks.create({ parentId: '1', title: 'Design' });
-      const reading = await chrome.bookmarks.create({ parentId: '1', title: 'Reading' });
+      const reading = await chrome.bookmarks.create({ parentId: '1', title: 'Read later' });
       const figma = await chrome.bookmarks.create({
         parentId: '1',
         title: 'Figma tips',
@@ -67,7 +66,7 @@ test.describe('AI library organization', () => {
         title: 'Long essay',
         url: 'https://essay.example/post',
       });
-      return { design: design.id, reading: reading.id, figma: figma.id, essay: essay.id };
+      return { reading: reading.id, figma: figma.id, essay: essay.id };
     });
     await worker.evaluate(grantPermissions);
 
@@ -79,17 +78,23 @@ test.describe('AI library organization', () => {
         return;
       }
       const payload = JSON.parse(body.input.split('\n').at(-1)!) as {
-        folders: Array<{ id: string; path: string }>;
-        bookmarks: Array<{ id: string; title: string }>;
+        folders?: Array<{ id: string; path: string }>;
+        bookmarks?: Array<{ id: string; title: string }>;
       };
-      const alias = (title: string) => payload.bookmarks.find((item) => item.title === title)!.id;
-      const folder = (name: string) => payload.folders.find((item) => item.path.endsWith(name))!.id;
-      const text = JSON.stringify({
-        moves: [
-          { item: alias('Figma tips'), folder: folder('Design'), reason: 'Design tooling' },
-          { item: alias('Long essay'), folder: folder('Design'), reason: 'Unsure' },
-        ],
-      });
+      const text = payload.folders
+        ? // Step 1: the existing "Read later" folder already serves News & Reading.
+          JSON.stringify({
+            folders: payload.folders
+              .filter((folder) => folder.path.endsWith('Read later'))
+              .map((folder) => ({ folder: folder.id, category: 'reading' })),
+          })
+        : JSON.stringify({
+            items: payload.bookmarks!.map((item) =>
+              item.title === 'Figma tips'
+                ? { item: item.id, reason: 'Design tool', category: 'tools', confidence: 'high' }
+                : { item: item.id, reason: 'An essay', category: 'reading', confidence: 'low' }
+            ),
+          });
       await route.fulfill({
         status: 200,
         json: { id: 'plan', output: [{ content: [{ type: 'output_text', text }] }] },
@@ -115,9 +120,12 @@ test.describe('AI library organization', () => {
     await expect(dialog.getByText('Figma tips')).toBeVisible();
     expect(providerRequests.join('\n')).not.toContain('session=secret');
 
-    await dialog
-      .getByRole('checkbox', { name: await message('organize_select_bookmark', ['Long essay']) })
-      .uncheck();
+    // The uncertain suggestion is shown but not selected.
+    await expect(
+      dialog.getByRole('checkbox', {
+        name: await message('organize_select_bookmark', ['Long essay']),
+      })
+    ).not.toBeChecked();
     await dialog.getByRole('button', { name: await message('organize_apply', ['1']) }).click();
     await expect(dialog).toContainText(await message('organize_apply_result', ['1', '0']));
 
@@ -126,11 +134,20 @@ test.describe('AI library organization', () => {
         async (bookmarkId) => (await chrome.bookmarks.get(bookmarkId))[0].parentId,
         id
       );
-    expect(await parentOf(ids.figma)).toBe(ids.design);
+    const toolsFolder = await worker.evaluate(async () =>
+      (await chrome.bookmarks.getChildren('1')).find((node) => node.title === 'Tools & Apps')
+    );
+    expect(toolsFolder?.url).toBeUndefined();
+    expect(await parentOf(ids.figma)).toBe(toolsFolder?.id);
     expect(await parentOf(ids.essay)).toBe('1');
 
     await dialog.getByRole('button', { name: await message('organize_undo') }).click();
     await expect(dialog).toContainText(await message('organize_undo_result', ['1', '0']));
     expect(await parentOf(ids.figma)).toBe('1');
+    expect(
+      await worker.evaluate(async () =>
+        (await chrome.bookmarks.getChildren('1')).some((node) => node.title === 'Tools & Apps')
+      )
+    ).toBe(false);
   });
 });

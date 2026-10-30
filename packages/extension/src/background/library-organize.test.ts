@@ -7,7 +7,8 @@ import {
   deleteOrganizeKey,
   isOrganizeSenderAllowed,
   readOrganizeKeySummary,
-  runOrganizeBatch,
+  runAssignBatch,
+  runFolderMap,
   saveOrganizeKey,
 } from './library-organize';
 
@@ -47,17 +48,19 @@ function respond(status: number, body: unknown = {}): FetchLike {
   return vi.fn(async () => new Response(JSON.stringify(body), { status }));
 }
 
-const batch = {
-  items: [
-    {
-      id: '100',
-      parentId: '1',
-      title: 'Figma tips',
-      url: 'https://figma.com/blog',
-      folderPath: 'Bookmarks Bar',
-    },
+const items = [
+  {
+    id: '100',
+    parentId: '1',
+    title: 'Figma tips',
+    url: 'https://figma.com/blog',
+    folderPath: 'Bookmarks Bar',
+  },
+];
+const folderRequest = {
+  folders: [
+    { id: '12', path: 'Bookmarks Bar / Job', bookmarkCount: 1, sampleTitles: ['LeetCode'] },
   ],
-  folders: [{ id: '10', path: 'Bookmarks Bar / Design' }],
 };
 
 function openAiText(text: string) {
@@ -139,25 +142,38 @@ describe('organize key storage', () => {
   });
 });
 
-describe('runOrganizeBatch', () => {
+describe('organize provider calls', () => {
   beforeEach(async () => {
     grantedOrigins.add('https://api.openai.com/*');
     await saveOrganizeKey('openai', 'sk-test-1234', respond(200));
   });
 
-  it('asks the provider for a plan and returns validated proposals', async () => {
+  it('maps existing folders onto categories', async () => {
     const fetcher = respond(
       200,
-      openAiText('{"moves":[{"item":"b1","folder":"f1","reason":"Design"}]}')
+      openAiText('{"folders":[{"folder":"f1","category":"career"},{"folder":"f9","category":"x"}]}')
     );
-    const result = await runOrganizeBatch(batch, 'en', fetcher);
+    await expect(runFolderMap(folderRequest, fetcher)).resolves.toEqual({
+      folderMap: { '12': 'career' },
+    });
+    expect(String(vi.mocked(fetcher).mock.calls[0]![1]?.body)).toContain('Bookmarks Bar / Job');
+  });
 
-    expect(result.proposals).toEqual([
-      { bookmarkId: '100', fromParentId: '1', toFolderId: '10', reason: 'Design' },
-    ]);
+  it('assigns a category to each bookmark with a fast, bounded request', async () => {
+    const fetcher = respond(
+      200,
+      openAiText(
+        '{"items":[{"item":"b1","reason":"Design blog","category":"reading","confidence":"high"}]}'
+      )
+    );
+    await expect(runAssignBatch(items, 'en', fetcher)).resolves.toEqual({
+      assignments: [
+        { bookmarkId: '100', category: 'reading', confident: true, reason: 'Design blog' },
+      ],
+    });
     const [url, init] = vi.mocked(fetcher).mock.calls[0]!;
     expect(url).toBe('https://api.openai.com/v1/responses');
-    expect(String(init?.body)).toContain('"max_output_tokens":6000');
+    expect(String(init?.body)).toContain('"max_output_tokens":3000');
     expect(String(init?.body)).toContain('"reasoning":{"effort":"minimal"}');
     expect(String(init?.body)).toContain('Figma tips');
   });
@@ -165,7 +181,7 @@ describe('runOrganizeBatch', () => {
   it('reports a missing key without calling a provider', async () => {
     await deleteOrganizeKey();
     const fetcher = respond(200);
-    await expect(runOrganizeBatch(batch, 'en', fetcher)).rejects.toMatchObject({
+    await expect(runAssignBatch(items, 'en', fetcher)).rejects.toMatchObject({
       code: 'not_configured',
     });
     expect(fetcher).not.toHaveBeenCalled();
@@ -173,7 +189,7 @@ describe('runOrganizeBatch', () => {
 
   it('reports a revoked permission', async () => {
     grantedOrigins.clear();
-    await expect(runOrganizeBatch(batch, 'en', respond(200))).rejects.toMatchObject({
+    await expect(runFolderMap(folderRequest, respond(200))).rejects.toMatchObject({
       code: 'permission_required',
     });
   });
@@ -182,7 +198,7 @@ describe('runOrganizeBatch', () => {
     const fetcher: FetchLike = vi.fn(
       async () => new Response('{}', { status: 429, headers: { 'retry-after': '3' } })
     );
-    await expect(runOrganizeBatch(batch, 'en', fetcher)).rejects.toMatchObject({
+    await expect(runAssignBatch(items, 'en', fetcher)).rejects.toMatchObject({
       code: 'rate_limited',
       retryAfterMs: 3_000,
     });
@@ -193,29 +209,40 @@ describe('runOrganizeBatch', () => {
     [401, 'invalid_api_key'],
     [503, 'service_unavailable'],
   ])('maps provider status %s to %s', async (status, code) => {
-    await expect(runOrganizeBatch(batch, 'en', respond(status))).rejects.toMatchObject({ code });
+    await expect(runAssignBatch(items, 'en', respond(status))).rejects.toMatchObject({ code });
   });
 
-  it('reports output that is not an organization plan', async () => {
-    await expect(
-      runOrganizeBatch(batch, 'en', respond(200, openAiText('I cannot help')))
-    ).rejects.toBeInstanceOf(OrganizeError);
-    await expect(
-      runOrganizeBatch(batch, 'en', respond(200, openAiText('I cannot help')))
-    ).rejects.toMatchObject({ code: 'invalid_response' });
+  it('reports output that is not a plan', async () => {
+    const fetcher = respond(200, openAiText('I cannot help'));
+    await expect(runAssignBatch(items, 'en', fetcher)).rejects.toBeInstanceOf(OrganizeError);
+    await expect(runFolderMap(folderRequest, fetcher)).rejects.toMatchObject({
+      code: 'invalid_response',
+    });
   });
 
   it.each([
-    { items: [], folders: batch.folders },
-    { items: batch.items, folders: [] },
-    { items: Array.from({ length: 16 }, () => batch.items[0]), folders: batch.folders },
-    { items: [{ ...batch.items[0], url: 'http://localhost/secret' }], folders: batch.folders },
-    { items: 'nope', folders: batch.folders },
-  ])('rejects a malformed batch', async (invalidBatch) => {
+    [],
+    Array.from({ length: 21 }, () => items[0]),
+    [{ ...items[0], url: 'http://localhost/secret' }],
+    'nope',
+  ])('rejects malformed items before calling the provider', async (invalidItems) => {
     const fetcher = respond(200);
-    await expect(runOrganizeBatch(invalidBatch as never, 'en', fetcher)).rejects.toMatchObject({
+    await expect(runAssignBatch(invalidItems as never, 'en', fetcher)).rejects.toMatchObject({
       code: 'invalid_request',
     });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed folder request', async () => {
+    const fetcher = respond(200);
+    const tooManyTitles = {
+      folders: [{ ...folderRequest.folders[0], sampleTitles: ['a', 'b', 'c', 'd', 'e'] }],
+    };
+    for (const request of [{ folders: 'nope' }, tooManyTitles]) {
+      await expect(runFolderMap(request as never, fetcher)).rejects.toMatchObject({
+        code: 'invalid_request',
+      });
+    }
     expect(fetcher).not.toHaveBeenCalled();
   });
 });

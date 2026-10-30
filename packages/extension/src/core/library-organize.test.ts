@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ORGANIZE_MAX_FOLDERS,
   ORGANIZE_MAX_ITEMS,
-  OrganizeResponseError,
-  buildOrganizePrompt,
   chunkOrganizeItems,
-  hasOrganizeTargets,
   groupOrganizeProposals,
-  parseOrganizeResponse,
   planOrganizeScope,
   toShareableBookmarkUrl,
   type OrganizeBookmarkInput,
@@ -104,14 +100,10 @@ describe('planOrganizeScope', () => {
     expect(scope.totalCandidates).toBe(ORGANIZE_MAX_ITEMS + 5);
   });
 
-  it('limits target folders to the scope subtree and never offers managed folders', () => {
-    const scope = planOrganizeScope([bookmark({ id: '1', parentId: '11' })], folders, {
-      scopeFolderId: '11',
-    });
-    expect(scope.folders.map((folder) => folder.id)).toEqual(['11', '12']);
-
-    const all = planOrganizeScope([bookmark({ id: '1' })], folders);
-    expect(all.folders.map((folder) => folder.id)).not.toContain('90');
+  it('offers every folder in the library except managed ones', () => {
+    const scope = planOrganizeScope([bookmark({ id: '1', parentId: '11' })], folders);
+    expect(scope.folders.map((folder) => folder.id)).toEqual(['11', '1', '10', '12', '2']);
+    expect(scope.folders.find((folder) => folder.id === '12')?.parentId).toBe('11');
   });
 
   it('keeps the most used folders when the folder list is too long', () => {
@@ -133,109 +125,10 @@ describe('planOrganizeScope', () => {
   });
 });
 
-describe('hasOrganizeTargets', () => {
-  const item = { id: 'a', parentId: '11', title: '', url: 'https://a.example/', folderPath: '' };
-
-  it('is false when the only folder is where every item already is', () => {
-    expect(hasOrganizeTargets({ items: [item], folders: [{ id: '11', path: 'Leaf' }] })).toBe(
-      false
-    );
-    expect(hasOrganizeTargets({ items: [item], folders: [] })).toBe(false);
-  });
-
-  it('is true when some item could move', () => {
-    expect(
-      hasOrganizeTargets({
-        items: [item],
-        folders: [
-          { id: '11', path: 'Leaf' },
-          { id: '12', path: 'Other' },
-        ],
-      })
-    ).toBe(true);
-  });
-});
-
 describe('chunkOrganizeItems', () => {
   it('splits items into fixed-size batches', () => {
     expect(chunkOrganizeItems([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
   });
-});
-
-describe('organize prompt and response', () => {
-  const batch = {
-    items: [
-      {
-        id: '100',
-        parentId: '1',
-        title: 'Figma tips',
-        url: 'https://figma.com/blog',
-        folderPath: 'Bookmarks Bar',
-      },
-      {
-        id: '101',
-        parentId: '10',
-        title: 'Spacing',
-        url: 'https://design.example/spacing',
-        folderPath: 'Bookmarks Bar / Design',
-      },
-    ],
-    folders: [
-      { id: '10', path: 'Bookmarks Bar / Design' },
-      { id: '11', path: 'Bookmarks Bar / Engineering' },
-    ],
-  };
-
-  it('describes items and folders by short aliases without Chrome ids', () => {
-    const prompt = buildOrganizePrompt(batch, 'zh-CN');
-    expect(prompt).toContain('"b1"');
-    expect(prompt).toContain('"f2"');
-    expect(prompt).toContain('Figma tips');
-    expect(prompt).toContain('Simplified Chinese');
-    expect(prompt).not.toContain('"100"');
-  });
-
-  it('maps valid moves back to bookmarks and folders', () => {
-    const result = parseOrganizeResponse(
-      '```json\n{"moves":[{"item":"b1","folder":"f1","reason":"Design tooling"}]}\n```',
-      batch
-    );
-    expect(result.proposals).toEqual([
-      { bookmarkId: '100', fromParentId: '1', toFolderId: '10', reason: 'Design tooling' },
-    ]);
-    expect(result.discardedCount).toBe(0);
-  });
-
-  it('discards unknown aliases, no-op moves and repeated items', () => {
-    const result = parseOrganizeResponse(
-      JSON.stringify({
-        moves: [
-          { item: 'b9', folder: 'f1' },
-          { item: 'b1', folder: 'f9' },
-          { item: 'b2', folder: 'f1' },
-          { item: 'b1', folder: 'f2', reason: 'x'.repeat(500) },
-          { item: 'b1', folder: 'f1' },
-          'garbage',
-        ],
-      }),
-      batch
-    );
-    expect(result.proposals).toHaveLength(1);
-    expect(result.proposals[0]).toMatchObject({ bookmarkId: '100', toFolderId: '11' });
-    expect(result.proposals[0].reason.length).toBeLessThanOrEqual(120);
-    expect(result.discardedCount).toBe(5);
-  });
-
-  it('treats an empty move list as keeping everything in place', () => {
-    expect(parseOrganizeResponse('{"moves":[]}', batch).proposals).toEqual([]);
-  });
-
-  it.each(['not json', '{"moves":', '{"other":[]}', '[]'])(
-    'rejects malformed output %s',
-    (text) => {
-      expect(() => parseOrganizeResponse(text, batch)).toThrow(OrganizeResponseError);
-    }
-  );
 });
 
 describe('groupOrganizeProposals', () => {

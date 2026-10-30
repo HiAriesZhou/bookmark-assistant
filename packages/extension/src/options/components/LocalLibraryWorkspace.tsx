@@ -177,11 +177,8 @@ export function LocalLibraryWorkspace({
   const openOrganize = () => {
     if (!library || !confirmDiscardDraft()) return;
     setNotice(undefined);
-    setOrganizeScope(
-      planOrganizeScope(results, library.folders, {
-        scopeFolderId: filter.kind === 'folder' ? filter.folderId : undefined,
-      })
-    );
+    // The current view chooses which bookmarks to sort; categories live library-wide.
+    setOrganizeScope(planOrganizeScope(results, library.folders));
   };
 
   const filterOptions = createFilterOptions(filter, t, library);
