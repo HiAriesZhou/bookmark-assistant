@@ -100,7 +100,18 @@ async function applyMoves(
       entries: [...(journal?.entries ?? []), entry],
       ...(createdFolderIds.length ? { createdFolderIds } : {}),
     };
-    await writeJournal(withEntry);
+    try {
+      await writeJournal(withEntry);
+    } catch (error) {
+      await removeEmptyFolders(createdFolderIds);
+      if (!journal) {
+        // A failed move may have left a provisional entry; keep the previous undo if possible.
+        await (
+          previous ? writeJournal(previous) : chrome.storage.local.remove(ORGANIZE_UNDO_STORAGE_KEY)
+        ).catch(() => undefined);
+      }
+      throw error;
+    }
     try {
       await chrome.bookmarks.move(move.bookmarkId, { parentId: move.toFolderId });
       journal = withEntry;
@@ -167,16 +178,21 @@ async function resolveNewFolders(
   if (!needed.length) return { folderIds, createdFolderIds };
   const bar = await bookmarksBar();
   const children = await chrome.bookmarks.getChildren(bar.id);
-  for (const placeholder of needed) {
-    const title = newFolderTitles[placeholder];
-    const existing = children.find((child) => !child.url && child.title === title);
-    if (existing) {
-      folderIds.set(placeholder, existing.id);
-      continue;
+  try {
+    for (const placeholder of needed) {
+      const title = newFolderTitles[placeholder];
+      const existing = children.find((child) => !child.url && child.title === title);
+      if (existing) {
+        folderIds.set(placeholder, existing.id);
+        continue;
+      }
+      const created = await chrome.bookmarks.create({ parentId: bar.id, title });
+      folderIds.set(placeholder, created.id);
+      createdFolderIds.push(created.id);
     }
-    const created = await chrome.bookmarks.create({ parentId: bar.id, title });
-    folderIds.set(placeholder, created.id);
-    createdFolderIds.push(created.id);
+  } catch (error) {
+    await removeEmptyFolders(createdFolderIds);
+    throw error;
   }
   return { folderIds, createdFolderIds };
 }
