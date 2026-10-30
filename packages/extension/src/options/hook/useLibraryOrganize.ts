@@ -313,7 +313,8 @@ export function useLibraryOrganize(
     const request = {
       folders: sampleOrganizeFolders(
         scope.folders,
-        library.bookmarks,
+        // Folder examples cross the same provider boundary as classification items.
+        scope.items,
         rootFolderIds(library.folders)
       ),
     };
