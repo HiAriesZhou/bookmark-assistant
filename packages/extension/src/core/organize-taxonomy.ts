@@ -282,6 +282,8 @@ export function parseAssignResponse(text: string, items: OrganizeItem[]): Organi
         typeof record.reason === 'string' ? record.reason.trim().slice(0, REASON_MAX_LENGTH) : '',
     });
   }
+  // An omitted item is a failed batch, not an implicit "unsorted" decision.
+  if (seen.size !== items.length) throw new OrganizeResponseError();
   return assignments;
 }
 

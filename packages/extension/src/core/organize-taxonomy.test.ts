@@ -81,6 +81,13 @@ describe('folder mapping', () => {
 });
 
 describe('assignment', () => {
+  it.each(['{"items":[]}', '{"items":[{"item":"b1","category":"career"}]}'])(
+    'rejects incomplete assignment batches: %s',
+    (response) => {
+      expect(() => parseAssignResponse(response, items)).toThrow(OrganizeResponseError);
+    }
+  );
+
   it('asks for one purpose category per bookmark with the site shown separately', () => {
     const prompt = buildAssignPrompt(items, 'zh-CN');
     expect(prompt).toContain('"site":"bytebytego.com"');
@@ -120,8 +127,9 @@ describe('assignment', () => {
       { bookmarkId: '101', category: 'unsorted', confident: false, reason: 'x'.repeat(120) },
     ]);
     expect(
-      parseAssignResponse('{"items":[{"item":"b1","category":"fun","confidence":"low"}]}', items)[0]
-        .confident
+      parseAssignResponse('{"items":[{"item":"b1","category":"fun","confidence":"low"}]}', [
+        items[0],
+      ])[0].confident
     ).toBe(false);
     expect(() => parseAssignResponse('not json', items)).toThrow(OrganizeResponseError);
   });
