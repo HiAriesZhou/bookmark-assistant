@@ -39,6 +39,8 @@ app.set('trust proxy', 1);
 // 🛡️ Security middleware
 app.use(helmet());
 app.use(securityHeaders);
+// Paddle signs the original bytes, before any JSON parsing or normalization.
+app.use('/api/paddle/webhooks/paddle', express.raw({ type: 'application/json', limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 // CORS configuration
