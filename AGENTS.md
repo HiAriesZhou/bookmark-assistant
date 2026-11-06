@@ -1,7 +1,9 @@
 # Bookmark Assistant repository rules
 
-Bookmark Assistant is a free, open-source Chrome extension with a GPL-3.0-only source
-tree. It runs entirely in the browser: no account, no plans and no service of its own.
+Bookmark Assistant is an open-source Chrome extension with a GPL-3.0-only source
+tree. Local use remains free and works without an account. Optional self-hosted and
+official hosted services share the open-source server. Paid entitlements apply only
+to the official service; self-hosting requires no official billing or license server.
 Keep AI classification, new destinations and LiteContext expansion out of unrelated
 changes.
 
@@ -14,8 +16,10 @@ changes.
   The Bookmark Assistant name and logo are protected by TRADEMARKS.md, not by
   hiding files. Preserve third-party licenses and trademark ownership; keep
   third-party logos out of the tree. Do not add commercial-use restrictions.
-- Public copy names the product Bookmark Assistant and presents it as free and open
-  source. Do not mention plans, tiers, pricing, accounts or a hosted service.
+- Public copy names the product Bookmark Assistant. Distinguish free local use and
+  self-hosting from optional paid official hosting. Never gate existing local
+  features behind a service account or imply that AI provider usage is included.
+  Announce a hosted capability only after its runtime path has been verified.
 - Product versions and runtime public copy have one source; profile-specific build
   resources go into ignored output directories. Never edit generated mirrors.
 - Keep README as an entry point. Product planning, strategy, architecture decisions
@@ -35,14 +39,23 @@ changes.
   New destinations, such as Obsidian, are separate changes.
 - AI is optional and uses the user's own provider key, called directly from the
   extension. Provider adapters live in `packages/extension/src/ai` and use the shared
-  provider types; the frozen server keeps its own copy. Provider hosts are optional
+  provider types; the server currently keeps its own copy. Provider hosts are optional
   host permissions requested when needed.
-- Notion tokens and AI keys stay in `chrome.storage.local`. Never put them in
-  `chrome.storage.sync`, logs, diagnostics or error reports.
-- Legacy server (`packages/server`, Express/Prisma/PostgreSQL): frozen. It only serves
-  extension versions released before the client-only version and receives no new
-  features. Merges to `main` still redeploy it, so its build and tests must stay
-  green, and shared types it uses must not change until it is shut down.
+- Direct-mode Notion tokens and AI keys stay in `chrome.storage.local`. Hosted
+  credentials require explicit connection consent and encryption at rest. Never
+  put credentials in `chrome.storage.sync`, logs, diagnostics or error reports.
+  Service sessions are scoped to server origin and account; switching servers
+  must never forward credentials or accept results from the previous connection.
+- Server (`packages/server`, Express/Prisma/PostgreSQL): shared by self-hosted and
+  official deployments. Preserve old client contracts during the rollout. Merges
+  to `main` can redeploy production: do not merge deployment-triggering changes
+  before the user's final release confirmation.
+- Billing is server-authoritative. Verify Paddle signatures against the exact raw
+  body before parsing events, deduplicate deliveries and reject stale state changes.
+  Self-hosted deployments never require Paddle. Keep existing subscriptions valid
+  when adding purchase options.
+- Debug entry points and synthetic scenarios belong only in development builds;
+  production artifacts must not contain mock credentials or entitlement bypasses.
 - Types hold the shared KnowledgeItem, AI and deployment contracts. Shared holds
   brand artwork and scrollbar styles. Website: Next.js. Marketing: public copy and
   headless rendering/validation tools.
