@@ -140,12 +140,31 @@ router.post('/webhooks/paddle', async (req: Request, res: Response) => {
       });
     }
 
-    const signature = req.headers['paddle-signature'] as string;
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing signature' });
+    if (!paddle || !config.paddle.webhookSecret) {
+      return res.status(503).json({ error: 'Webhook verification is not configured' });
     }
 
-    const event = req.body as PaddleWebhookEvent;
+    const signature = req.headers['paddle-signature'];
+    if (typeof signature !== 'string' || !Buffer.isBuffer(req.body)) {
+      return res.status(400).json({ error: 'Invalid webhook signature or body' });
+    }
+    const rawBody = req.body.toString('utf8');
+    // The SDK validates the HMAC and timestamp. Never trust the presence of a header.
+    try {
+      if (
+        !(await paddle.webhooks.isSignatureValid(rawBody, config.paddle.webhookSecret, signature))
+      ) {
+        return res.status(400).json({ error: 'Invalid webhook signature' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'Invalid webhook signature' });
+    }
+    let event: PaddleWebhookEvent;
+    try {
+      event = JSON.parse(rawBody) as PaddleWebhookEvent;
+    } catch {
+      return res.status(400).json({ error: 'Invalid webhook JSON' });
+    }
     if (!event || !event.data) {
       return res.status(400).json({ error: 'Invalid event structure' });
     }
