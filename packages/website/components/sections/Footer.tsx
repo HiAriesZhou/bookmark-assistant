@@ -6,7 +6,8 @@ import {
   NOTION_TOKEN_GUIDE_URL,
   SUPPORT_EMAIL,
   TERMS_OF_SERVICE_URL,
-  projectStoryUrl,
+  OFFICIAL_BUILD,
+  authorOrSourceUrl,
 } from '@/lib/product-links';
 import { localePath, type WebsiteCopy, type WebsiteLocale } from '@/lib/i18n';
 
@@ -76,11 +77,17 @@ export function Footer({ copy, locale }: { copy: WebsiteCopy; locale: WebsiteLoc
               <li>
                 <a
                   className="hover:text-[#334f40]"
-                  href={projectStoryUrl(locale)}
+                  href={authorOrSourceUrl()}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                 >
-                  {locale === 'zh-CN' ? '项目案例' : 'Project story'}
+                  {OFFICIAL_BUILD
+                    ? locale === 'zh-CN'
+                      ? '作者 AriesZhou'
+                      : 'By AriesZhou'
+                    : locale === 'zh-CN'
+                      ? '查看源码'
+                      : 'View source'}
                 </a>
               </li>
             </ul>

@@ -1,6 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 // @ts-expect-error Shared build tooling is ESM.
 import { OFFICIAL_LINKS, resolveBuildConfig } from '../../scripts/build-config.mjs';
+
+describe('website credit links', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('credits the author on X for the official website', async () => {
+    vi.stubEnv('NEXT_PUBLIC_OFFICIAL_BUILD', 'true');
+    vi.resetModules();
+    const links = await import('../../packages/website/lib/product-links');
+    expect(links.authorOrSourceUrl()).toBe('https://x.com/AriesZhou');
+  });
+
+  it('keeps other websites linked to their own source', async () => {
+    vi.stubEnv('NEXT_PUBLIC_OFFICIAL_BUILD', 'false');
+    vi.stubEnv('NEXT_PUBLIC_SOURCE_URL', 'https://git.example/fork');
+    vi.resetModules();
+    const links = await import('../../packages/website/lib/product-links');
+    expect(links.authorOrSourceUrl()).toBe('https://git.example/fork');
+  });
+});
 
 describe('build configuration', () => {
   it('builds the official product by default', () => {
