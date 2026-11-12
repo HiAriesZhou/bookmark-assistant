@@ -6,8 +6,47 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+# PR updates replace old work; main/develop commits use independent groups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Classify PR changes
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          full=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --no-renames --name-only -z "$BASE_SHA"...HEAD > "$RUNNER_TEMP/changed-paths"
+            full=false
+            while IFS= read -r -d '' path; do
+              case "$path" in
+                README.md|CONTRIBUTING.md|AGENTS.md|CLAUDE.md|deploy/README.md|packages/extension/src/core/README.md|packages/server/src/core/README.md|packages/shared/README.md|packages/marketing/README.md) ;;
+                *) full=true; break ;;
+              esac
+            done < "$RUNNER_TEMP/changed-paths"
+          fi
+          printf 'full=%s\n' "$full" >> "$GITHUB_OUTPUT"
+
   self-hosted-container:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -40,6 +79,8 @@ jobs:
         if: always()
         run: docker compose --env-file deploy/.env -f deploy/compose.yml down
   migration-drift:
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -75,9 +116,15 @@ jobs:
         run: pnpm -F @bookmark-assistant/server prisma:check-drift
 
   lint-and-test:
+    needs: changes
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require successful change classification
+        env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
+        run: test "$SCOPE_RESULT" = success
       - uses: actions/checkout@v7
 
       - name: Setup pnpm
@@ -113,20 +160,25 @@ jobs:
           .build/gitleaks/gitleaks dir .build/audit-source --redact=100 --no-banner --config .gitleaks.toml
 
       - name: Lint
+        if: needs.changes.outputs.full == 'true'
         run: pnpm lint
 
       - name: Unit Tests
+        if: needs.changes.outputs.full == 'true'
         run: pnpm vitest run --exclude='packages/server/**'
 
       - name: Server Tests
+        if: needs.changes.outputs.full == 'true'
         run: pnpm -F @bookmark-assistant/server test
 
       - name: i18n Check
+        if: needs.changes.outputs.full == 'true'
         run: pnpm check:i18n
 
   build-extension:
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
 
     steps:
       - uses: actions/checkout@v7
@@ -151,7 +203,8 @@ jobs:
 
   website-quality:
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
 
     steps:
       - uses: actions/checkout@v7
@@ -171,6 +224,14 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: packages/website/.next/cache
+          key: ${{ runner.os }}-node24-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-node24-next-${{ hashFiles('pnpm-lock.yaml') }}-
+
       - name: Lint and build website
         run: |
           pnpm -F @bookmark-assistant/website lint
@@ -179,9 +240,11 @@ jobs:
       - name: Run website smoke checks
         run: pnpm -F @bookmark-assistant/website smoke
 
+  # The E2E script builds production output itself; no build-job artifact is consumed.
   extension-e2e:
     runs-on: ubuntu-latest
-    needs: build-extension
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
 
     steps:
       - uses: actions/checkout@v7
