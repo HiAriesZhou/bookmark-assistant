@@ -36,7 +36,8 @@ import {
   deleteOrganizeKey,
   isOrganizeSenderAllowed,
   readOrganizeKeySummary,
-  runOrganizeBatch,
+  runAssignBatch,
+  runFolderMap,
   saveOrganizeKey,
   type OrganizeErrorCode,
 } from './library-organize';
@@ -555,8 +556,10 @@ addMessageListener({
       await deleteOrganizeKey();
       return {};
     }),
-  [Messages.ORGANIZE_PREVIEW_BATCH]: (req, sender) =>
-    handleOrganizeMessage(sender, () => runOrganizeBatch(req.batch, req.uiLanguage)),
+  [Messages.ORGANIZE_MAP_FOLDERS]: (req, sender) =>
+    handleOrganizeMessage(sender, () => runFolderMap(req.request)),
+  [Messages.ORGANIZE_ASSIGN_BATCH]: (req, sender) =>
+    handleOrganizeMessage(sender, () => runAssignBatch(req.items, req.uiLanguage)),
   [Messages.SCHEDULE_AUTO_SYNC]: async (req) => {
     try {
       const context = await messageDestinationContext(req);

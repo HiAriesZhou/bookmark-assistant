@@ -8,6 +8,7 @@ import {
 
 interface FakeNode {
   id: string;
+  title?: string;
   parentId?: string;
   url?: string;
   unmodifiable?: 'managed';
@@ -132,6 +133,92 @@ describe('applyOrganizeMoves', () => {
     const before = await readOrganizeUndo();
     await applyOrganizeMoves([{ bookmarkId: 'gone', fromParentId: '1', toFolderId: '10' }]);
     expect(await readOrganizeUndo()).toEqual(before);
+  });
+});
+
+describe('new category folders', () => {
+  const newFolderTitles = { 'new:tools': 'Tools', 'new:learning': 'Learning' };
+  const moves = [
+    { bookmarkId: 'a', fromParentId: '1', toFolderId: 'new:tools' },
+    { bookmarkId: 'b', fromParentId: '1', toFolderId: 'new:learning' },
+  ];
+
+  beforeEach(() => {
+    let nextFolder = 0;
+    chrome.bookmarks.getTree = vi.fn(async () => [
+      { id: '0', children: [{ ...nodes.get('1'), title: 'Bar' }] },
+    ]) as unknown as typeof chrome.bookmarks.getTree;
+    chrome.bookmarks.create = vi.fn(async ({ parentId, title }) => {
+      const node = { id: `new-${++nextFolder}`, parentId, title };
+      addNode(node);
+      return node as chrome.bookmarks.BookmarkTreeNode;
+    });
+    chrome.bookmarks.remove = vi.fn(async (id: string) => {
+      if (childIds(id).length) throw new Error('Folder is not empty');
+      const node = nodes.get(id);
+      nodes.delete(id);
+      children.set(
+        node!.parentId!,
+        childIds(node!.parentId!).filter((child) => child !== id)
+      );
+    });
+  });
+
+  it('creates the needed folders and removes them when undo leaves them empty', async () => {
+    await expect(applyOrganizeMoves(moves, { newFolderTitles })).resolves.toEqual({
+      moved: 2,
+      skipped: 0,
+    });
+    expect(childIds('new-1')).toEqual(['a']);
+    expect(childIds('new-2')).toEqual(['b']);
+    await undoOrganizeMoves();
+    expect(nodes.has('new-1')).toBe(false);
+    expect(nodes.has('new-2')).toBe(false);
+  });
+
+  it('cleans up created folders and preserves the previous journal if a later create fails', async () => {
+    await applyOrganizeMoves([{ bookmarkId: 'c', fromParentId: '1', toFolderId: '10' }]);
+    const previous = await readOrganizeUndo();
+    const create = vi.mocked(chrome.bookmarks.create);
+    create.mockImplementationOnce(create.getMockImplementation()!);
+    create.mockRejectedValueOnce(new Error('Chrome refused folder creation'));
+
+    await expect(applyOrganizeMoves(moves, { newFolderTitles })).rejects.toThrow(
+      'Chrome refused folder creation'
+    );
+    expect(nodes.has('new-1')).toBe(false);
+    expect(await readOrganizeUndo()).toEqual(previous);
+    expect(nodes.get('a')?.parentId).toBe('1');
+  });
+
+  it('cleans up empty folders when the first journal write fails', async () => {
+    await applyOrganizeMoves([{ bookmarkId: 'c', fromParentId: '1', toFolderId: '10' }]);
+    const previous = await readOrganizeUndo();
+    vi.mocked(chrome.storage.local.set).mockRejectedValueOnce(new Error('Storage unavailable'));
+
+    await expect(applyOrganizeMoves(moves, { newFolderTitles })).rejects.toThrow(
+      'Storage unavailable'
+    );
+    expect(nodes.has('new-1')).toBe(false);
+    expect(nodes.has('new-2')).toBe(false);
+    expect(await readOrganizeUndo()).toEqual(previous);
+    expect(nodes.get('a')?.parentId).toBe('1');
+  });
+
+  it('keeps completed moves undoable if a later journal write fails', async () => {
+    const set = vi.mocked(chrome.storage.local.set);
+    set.mockImplementationOnce(set.getMockImplementation()!);
+    set.mockRejectedValueOnce(new Error('Storage unavailable'));
+
+    await expect(applyOrganizeMoves(moves, { newFolderTitles })).rejects.toThrow(
+      'Storage unavailable'
+    );
+    expect(childIds('new-1')).toEqual(['a']);
+    expect(nodes.has('new-2')).toBe(false);
+    expect((await readOrganizeUndo())?.entries.map((entry) => entry.bookmarkId)).toEqual(['a']);
+    await undoOrganizeMoves();
+    expect(nodes.get('a')?.parentId).toBe('1');
+    expect(nodes.has('new-1')).toBe(false);
   });
 });
 

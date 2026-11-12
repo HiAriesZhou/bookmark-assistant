@@ -105,6 +105,11 @@ export interface AiProviderGenerationOptions {
    * workers cannot wait much longer than 30 s for a response.
    */
   lowLatency?: boolean;
+  /**
+   * Asks for the most repeatable answer (temperature 0) where the provider accepts it.
+   * OpenAI's reasoning models accept only their default, so OpenAI is unchanged.
+   */
+  deterministic?: boolean;
 }
 
 export interface AiProviderAdapter {
@@ -160,15 +165,20 @@ export function createAiProviderAdapter(
       {
         maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS,
         lowLatency = false,
+        deterministic = false,
       }: AiProviderGenerationOptions = {}
     ): Promise<AiProviderGenerationResult> {
       let response: Response;
       try {
         response = await send(
-          withLowLatency(
+          withDeterministic(
             provider,
-            buildGenerationRequest(provider, baseUrl, model, apiKey, prompt, maxOutputTokens),
-            lowLatency
+            withLowLatency(
+              provider,
+              buildGenerationRequest(provider, baseUrl, model, apiKey, prompt, maxOutputTokens),
+              lowLatency
+            ),
+            deterministic
           )
         );
       } catch {
@@ -277,6 +287,18 @@ function buildValidationRequest(
   }
 }
 
+function withDeterministic(
+  provider: AiProvider,
+  request: [string, RequestInit],
+  deterministic: boolean
+): [string, RequestInit] {
+  if (!deterministic || provider === 'openai') return request;
+  const body = JSON.parse(String(request[1].body)) as Record<string, any>;
+  if (provider === 'gemini') body.generationConfig = { ...body.generationConfig, temperature: 0 };
+  else body.temperature = 0;
+  return [request[0], { ...request[1], body: JSON.stringify(body) }];
+}
+
 /** Only parameters documented for the default models; other providers are unchanged. */
 function withLowLatency(
   provider: AiProvider,
@@ -294,6 +316,10 @@ function withLowLatency(
       break;
     case 'gemini':
       body.generationConfig = { ...body.generationConfig, thinkingConfig: { thinkingBudget: 0 } };
+      break;
+    case 'deepseek':
+      // V4 models think by default; reasoning adds tens of seconds to a short answer.
+      body.thinking = { type: 'disabled' };
       break;
     default:
       return request;

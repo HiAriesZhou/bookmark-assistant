@@ -18,6 +18,7 @@ export function SelectMenu({
   prefix,
   triggerIcon,
   disabled = false,
+  compactLabel,
   className = '',
 }: {
   value: string;
@@ -27,6 +28,8 @@ export function SelectMenu({
   prefix?: string;
   triggerIcon?: ReactNode;
   disabled?: boolean;
+  /** Shows a small text trigger with this label instead of the selected option. */
+  compactLabel?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -137,9 +140,13 @@ export function SelectMenu({
             });
           }
         }}
-        className="library-select-button !h-auto min-h-9 py-2 disabled:cursor-not-allowed disabled:bg-ui-control-disabled disabled:text-ui-disabled"
+        className={
+          compactLabel
+            ? 'inline-flex h-6 items-center gap-0.5 rounded-md px-1.5 text-[11px] text-library-muted hover:bg-library-canvas hover:text-library-ink'
+            : 'library-select-button !h-auto min-h-9 py-2 disabled:cursor-not-allowed disabled:bg-ui-control-disabled disabled:text-ui-disabled'
+        }
       >
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span className={compactLabel ? 'hidden' : 'flex min-w-0 items-center gap-1.5'}>
           {triggerIcon || selected?.icon ? (
             <span aria-hidden="true" className="shrink-0">
               {triggerIcon ?? selected?.icon}
@@ -150,6 +157,7 @@ export function SelectMenu({
             {selected?.label ?? ''}
           </span>
         </span>
+        {compactLabel ? <span className="whitespace-nowrap">{compactLabel}</span> : null}
         <ChevronDown
           aria-hidden="true"
           className={`h-3.5 w-3.5 shrink-0 text-library-muted transition-transform ${open ? 'rotate-180' : ''}`}

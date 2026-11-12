@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { DashboardSnapshot } from '../dashboard/types';
 import type { NotionDatabaseRef } from './destination-state';
-import type { OrganizeBatch, OrganizeProposal } from '../core';
+import type {
+  OrganizeAssignment,
+  OrganizeFolderMap,
+  OrganizeFolderMapRequest,
+  OrganizeItem,
+} from '../core';
 import type { OrganizeErrorCode, OrganizeKeySummary } from '../background/library-organize';
 
 export type NotionTargetSummary = { id: string; title: string };
@@ -66,12 +71,20 @@ export type MessageMap = {
     req: {};
     res: { success: boolean; errorCode?: OrganizeErrorCode };
   };
-  ORGANIZE_PREVIEW_BATCH: {
-    req: { batch: OrganizeBatch; uiLanguage: string };
+  ORGANIZE_MAP_FOLDERS: {
+    req: { request: OrganizeFolderMapRequest };
     res: {
       success: boolean;
-      proposals?: OrganizeProposal[];
-      discardedCount?: number;
+      folderMap?: OrganizeFolderMap;
+      errorCode?: OrganizeErrorCode;
+      retryAfterMs?: number;
+    };
+  };
+  ORGANIZE_ASSIGN_BATCH: {
+    req: { items: OrganizeItem[]; uiLanguage: string };
+    res: {
+      success: boolean;
+      assignments?: OrganizeAssignment[];
       errorCode?: OrganizeErrorCode;
       retryAfterMs?: number;
     };
@@ -95,7 +108,8 @@ export const Messages: { [K in MessageType]: K } = {
   ORGANIZE_KEY_GET: 'ORGANIZE_KEY_GET',
   ORGANIZE_KEY_SAVE: 'ORGANIZE_KEY_SAVE',
   ORGANIZE_KEY_DELETE: 'ORGANIZE_KEY_DELETE',
-  ORGANIZE_PREVIEW_BATCH: 'ORGANIZE_PREVIEW_BATCH',
+  ORGANIZE_MAP_FOLDERS: 'ORGANIZE_MAP_FOLDERS',
+  ORGANIZE_ASSIGN_BATCH: 'ORGANIZE_ASSIGN_BATCH',
 };
 
 // Connecting verifies the token, may create a database and checks access.

@@ -18,9 +18,17 @@ export type {
   OrganizeFolder,
   OrganizeFolderInput,
   OrganizeItem,
-  OrganizeProposal,
   OrganizeScope,
 } from './library-organize';
+export type {
+  OrganizeAssignment,
+  OrganizeCategory,
+  OrganizeCategoryId,
+  OrganizeCategoryProposal,
+  OrganizeFolderMap,
+  OrganizeFolderMapRequest,
+  OrganizeFolderSample,
+} from './organize-taxonomy';
 export type {
   LegacyLinkItemMappingResult,
   LegacyMappingLoss,
@@ -50,15 +58,29 @@ export { createDefaultKnowledgeItemId, prepareLegacyLinkItemForSync } from './kn
 
 export {
   ORGANIZE_BATCH_SIZE,
+  ORGANIZE_MAX_FOLDERS,
   ORGANIZE_MAX_ITEMS,
-  ORGANIZE_MAX_OUTPUT_TOKENS,
-  ORGANIZE_PROMPT_VERSION,
   OrganizeResponseError,
-  buildOrganizePrompt,
   chunkOrganizeItems,
   groupOrganizeProposals,
-  hasOrganizeTargets,
-  parseOrganizeResponse,
   planOrganizeScope,
   toShareableBookmarkUrl,
 } from './library-organize';
+
+export {
+  ORGANIZE_CATEGORIES,
+  ORGANIZE_CATEGORY_IDS,
+  ORGANIZE_TAXONOMY_VERSION,
+  buildAssignPrompt,
+  buildFolderMapPrompt,
+  categoryOfFolder,
+  categoryOfNewFolderId,
+  isOrganizeCategoryId,
+  newCategoryFolderId,
+  organizeCategoryName,
+  parseAssignResponse,
+  parseFolderMapResponse,
+  planCategoryMoves,
+  resolveCategoryTargets,
+  sampleOrganizeFolders,
+} from './organize-taxonomy';

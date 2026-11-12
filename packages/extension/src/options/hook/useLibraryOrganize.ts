@@ -1,11 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isAiProvider } from '@bookmark-assistant/types';
 import { AI_PROVIDER_HOST_PERMISSIONS } from '../../ai/providers';
 import type { OrganizeErrorCode, OrganizeKeySummary } from '../../background/library-organize';
 import {
+  ORGANIZE_CATEGORY_IDS,
+  categoryOfFolder,
+  categoryOfNewFolderId,
   chunkOrganizeItems,
+  newCategoryFolderId,
+  organizeCategoryName,
+  planCategoryMoves,
+  resolveCategoryTargets,
+  sampleOrganizeFolders,
   type OrganizeBatch,
-  type OrganizeProposal,
+  type OrganizeCategoryId,
+  type OrganizeCategoryProposal,
+  type OrganizeFolderMap,
   type OrganizeScope,
 } from '../../core';
 import {
@@ -24,8 +34,29 @@ export type OrganizePhase =
   | 'applying'
   | 'done';
 
-export interface ReviewedProposal extends OrganizeProposal {
+export interface ReviewedProposal extends OrganizeCategoryProposal {
   selected: boolean;
+}
+
+/** The library as Options has it; used to sample folders and resolve category targets. */
+export interface OrganizeLibrary {
+  bookmarks: Array<{ parentId?: string; title: string }>;
+  folders: Array<{ id: string; parentId?: string; path: string }>;
+}
+
+interface OrganizePlan {
+  folderMap: OrganizeFolderMap;
+  targets: Record<OrganizeCategoryId, string>;
+  parentOf: Map<string, string | undefined>;
+}
+
+export interface OrganizeTargetOption {
+  value: string;
+  label: string;
+  /** A category folder that does not exist yet and is created when applied. */
+  isNew: boolean;
+  /** One of the eight category targets, listed before the other folders. */
+  isCategory: boolean;
 }
 
 /** Provider errors plus local failures that leave Chrome bookmarks as they were. */
@@ -50,7 +81,7 @@ const FATAL_ERRORS = new Set<OrganizeErrorCode>([
 
 export type BatchSender = (batch: OrganizeBatch) => Promise<{
   success: boolean;
-  proposals?: OrganizeProposal[];
+  proposals?: OrganizeCategoryProposal[];
   errorCode?: OrganizeErrorCode;
   retryAfterMs?: number;
 }>;
@@ -70,11 +101,11 @@ export async function runOrganizeBatches(
     sleep?: (milliseconds: number) => Promise<unknown>;
   }
 ): Promise<{
-  proposals: OrganizeProposal[];
+  proposals: OrganizeCategoryProposal[];
   failedBatches: OrganizeBatch[];
   fatalError?: OrganizeErrorCode;
 }> {
-  const proposals: OrganizeProposal[] = [];
+  const proposals: OrganizeCategoryProposal[] = [];
   const failedBatches: OrganizeBatch[] = [];
   const sleep = options.sleep ?? wait;
   for (const [index, batch] of batches.entries()) {
@@ -110,7 +141,18 @@ export async function runOrganizeBatches(
   return { proposals, failedBatches };
 }
 
-export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
+/** Root containers such as the bookmarks bar are never mapped to a category. */
+function rootFolderIds(folders: OrganizeLibrary['folders']) {
+  return new Set(
+    folders.filter((folder) => !folder.parentId || folder.parentId === '0').map((f) => f.id)
+  );
+}
+
+export function useLibraryOrganize(
+  scope: OrganizeScope,
+  uiLanguage: string,
+  library: OrganizeLibrary
+) {
   const [phase, setPhase] = useState<OrganizePhase>('loading');
   const [key, setKey] = useState<OrganizeKeySummary | null>(null);
   const [errorCode, setErrorCode] = useState<OrganizePanelError>();
@@ -122,6 +164,7 @@ export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
   const [undoResult, setUndoResult] = useState<{ restored: number; skipped: number }>();
   const [canUndo, setCanUndo] = useState(false);
   const cancelled = useRef(false);
+  const [plan, setPlan] = useState<OrganizePlan>();
 
   const refreshUndo = useCallback(async () => {
     setCanUndo(Boolean((await readOrganizeUndo())?.entries.length));
@@ -194,26 +237,61 @@ export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
     setPhase('ready');
   };
 
-  const runBatches = async (batches: OrganizeBatch[], previous: ReviewedProposal[]) => {
-    cancelled.current = false;
-    setErrorCode(undefined);
-    setProgress({ completed: 0, total: batches.length });
-    setPhase('running');
+  const buildPlan = (folderMap: OrganizeFolderMap): OrganizePlan => {
+    const directCounts = new Map<string, number>();
+    for (const bookmark of library.bookmarks) {
+      if (bookmark.parentId)
+        directCounts.set(bookmark.parentId, (directCounts.get(bookmark.parentId) ?? 0) + 1);
+    }
+    return {
+      folderMap,
+      targets: resolveCategoryTargets(folderMap, scope.folders, directCounts),
+      parentOf: new Map(library.folders.map((folder) => [folder.id, folder.parentId])),
+    };
+  };
+
+  const runBatches = async (
+    batches: OrganizeBatch[],
+    previous: ReviewedProposal[],
+    current: OrganizePlan,
+    stepsDone = 0
+  ) => {
+    const total = stepsDone + batches.length;
     const outcome = await runOrganizeBatches(
       batches,
-      (batch) =>
-        sendMessage(
-          { type: Messages.ORGANIZE_PREVIEW_BATCH, batch, uiLanguage },
+      async (batch) => {
+        const response = await sendMessage(
+          {
+            type: Messages.ORGANIZE_ASSIGN_BATCH,
+            items: batch.items.map((item) => ({
+              ...item,
+              currentCategory: categoryOfFolder(item.parentId, current.folderMap, current.parentOf),
+            })),
+            uiLanguage,
+          },
           { timeoutMs: ORGANIZE_MESSAGE_TIMEOUT_MS }
-        ),
+        );
+        if (!response.success) return response;
+        return {
+          success: true,
+          proposals: planCategoryMoves(
+            response.assignments ?? [],
+            batch.items,
+            current.folderMap,
+            current.targets,
+            current.parentOf
+          ),
+        };
+      },
       {
         isCancelled: () => cancelled.current,
-        onProgress: (completed) => setProgress({ completed, total: batches.length }),
+        onProgress: (completed) => setProgress({ completed: stepsDone + completed, total }),
       }
     );
     const reviewed = [
       ...previous,
-      ...outcome.proposals.map((proposal) => ({ ...proposal, selected: true })),
+      // Uncertain suggestions are shown but left unselected.
+      ...outcome.proposals.map((proposal) => ({ ...proposal, selected: proposal.confident })),
     ];
     setProposals(reviewed);
     setFailedBatches(outcome.failedBatches);
@@ -225,13 +303,90 @@ export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
     setPhase('preview');
   };
 
-  const start = () =>
-    runBatches(
-      chunkOrganizeItems(scope.items).map((items) => ({ items, folders: scope.folders })),
-      []
-    );
+  const start = async () => {
+    cancelled.current = false;
+    setErrorCode(undefined);
+    const batches = chunkOrganizeItems(scope.items).map((items) => ({ items }));
+    // Mapping existing folders is the first step of the progress bar.
+    setProgress({ completed: 0, total: batches.length + 1 });
+    setPhase('running');
+    const request = {
+      folders: sampleOrganizeFolders(
+        scope.folders,
+        // Folder examples cross the same provider boundary as classification items.
+        scope.items,
+        rootFolderIds(library.folders)
+      ),
+    };
+    const mapped = await sendMessage(
+      { type: Messages.ORGANIZE_MAP_FOLDERS, request },
+      { timeoutMs: ORGANIZE_MESSAGE_TIMEOUT_MS }
+    ).catch(() => ({ success: false, errorCode: 'provider_request_failed' as const }));
+    if (!mapped.success || !('folderMap' in mapped) || !mapped.folderMap) {
+      const code = mapped.errorCode ?? 'provider_request_failed';
+      setErrorCode(code);
+      setPhase(code === 'not_configured' ? 'setup' : 'ready');
+      return;
+    }
+    if (cancelled.current) {
+      setPhase('ready');
+      return;
+    }
+    const current = buildPlan(mapped.folderMap);
+    setPlan(current);
+    setProgress({ completed: 1, total: batches.length + 1 });
+    await runBatches(batches, [], current, 1);
+  };
 
-  const retryFailed = () => runBatches(failedBatches, proposals);
+  const retryFailed = async () => {
+    if (!plan) return;
+    cancelled.current = false;
+    setErrorCode(undefined);
+    setProgress({ completed: 0, total: failedBatches.length });
+    setPhase('running');
+    await runBatches(failedBatches, proposals, plan);
+  };
+
+  const newFolderTitles = useMemo<Record<string, string>>(
+    () =>
+      Object.fromEntries(
+        ORGANIZE_CATEGORY_IDS.map((category) => [
+          newCategoryFolderId(category),
+          organizeCategoryName(category, uiLanguage),
+        ])
+      ),
+    [uiLanguage]
+  );
+
+  const newFolderTitle = (folderId: string) => {
+    const category = categoryOfNewFolderId(folderId);
+    return category ? organizeCategoryName(category, uiLanguage) : undefined;
+  };
+
+  /** Category targets first, then every other folder, for the per-bookmark target menu. */
+  const targetOptions = (barPath: string): OrganizeTargetOption[] => {
+    const pathOf = new Map(scope.folders.map((folder) => [folder.id, folder.path]));
+    const categoryTargets = plan
+      ? ORGANIZE_CATEGORY_IDS.map((category) => plan.targets[category])
+      : [];
+    const options = categoryTargets.map((folderId) => {
+      const title = newFolderTitle(folderId);
+      return title
+        ? { value: folderId, label: `${barPath} / ${title}`, isNew: true, isCategory: true }
+        : {
+            value: folderId,
+            label: pathOf.get(folderId) ?? folderId,
+            isNew: false,
+            isCategory: true,
+          };
+    });
+    const listed = new Set(categoryTargets);
+    for (const folder of scope.folders) {
+      if (!listed.has(folder.id))
+        options.push({ value: folder.id, label: folder.path, isNew: false, isCategory: false });
+    }
+    return options;
+  };
 
   const cancel = () => {
     cancelled.current = true;
@@ -262,7 +417,7 @@ export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
         toFolderId,
       }));
     try {
-      setResult(await applyOrganizeMoves(moves));
+      setResult(await applyOrganizeMoves(moves, { newFolderTitles }));
       setPhase('done');
     } catch {
       // Moves already made are journaled, so Undo still covers them.
@@ -304,6 +459,8 @@ export function useLibraryOrganize(scope: OrganizeScope, uiLanguage: string) {
     backToReady,
     start,
     retryFailed,
+    targetOptions,
+    newFolderTitles,
     cancel,
     updateProposal,
     selectAll,

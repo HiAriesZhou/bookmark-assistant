@@ -1,0 +1,50 @@
+{
+  "schema": "dashbye/lock/v1",
+  "version": "1.5.0",
+  "artifactSha256": "fc87706ee393fd62147a95a3b3b06c576966c95da6d72ea318db5cc95af2613c",
+  "releaseHash": "9d18083b67581320c88cc8cddb81fd658336b6ebc9c2e1da596981f24e49b180",
+  "manifest": {
+    "version": "1.5.0",
+    "name": "__MSG_appName__",
+    "summary": "__MSG_appDesc__",
+    "permissions": [
+      "activeTab",
+      "alarms",
+      "bookmarks",
+      "contextMenus",
+      "favicon",
+      "readingList",
+      "scripting",
+      "storage"
+    ],
+    "optionalPermissions": [],
+    "hostPermissions": [],
+    "optionalHostPermissions": [
+      "https://api.anthropic.com/*",
+      "https://api.deepseek.com/*",
+      "https://api.groq.com/*",
+      "https://api.minimax.io/*",
+      "https://api.openai.com/*",
+      "https://generativelanguage.googleapis.com/*"
+    ],
+    "contentScriptMatches": []
+  },
+  "resourceHashes": {
+    "assets/icon-128.png": "ffd8f5a27f9e0dd812fc3c4c099808d265f91bcf655380be10db7582e08f5d3c",
+    "assets/promo/marquee.png": "bbf76b657d2c8e4037d6ef764d141abc504b93f2ebdd4601c7658af23a94930a",
+    "assets/promo/small-promo.png": "1d30bab384da1f67548483a71f71a0281ff2b473a8abd0e47f1048985e1ace27",
+    "assets/screenshots/en/01-local-library.png": "226bd6b8756ca984d921ba98c61c4eb1c4e37b7de98c1d3eff2390d4b5a327f4",
+    "assets/screenshots/en/02-optional-destination.png": "8b798371d0d1024daf2dc4700cd56e77c316cdf243594c2713cbc4aa6b83299a",
+    "assets/screenshots/en/03-sync-and-ai-ready.png": "5441d12d7849bbb3d8916a7ddbf8b00ad19cdc551feaff497d65fc93869714ec",
+    "assets/screenshots/en/04-ai-summary-tags.png": "c5b678f9b9b4c983fc99d5b0f6d9eba9448f789f5812c65e83db55001b4e475f",
+    "assets/screenshots/en/05-pro-auto-sync.png": "fa9cdc2db2be2372b7906027550ee2ae2a4e98dbafa77c7248f328bb3d26a673",
+    "assets/screenshots/zh-CN/01-local-library.png": "960c79a6928d2f297adfa10f4ef1a49fe0f9a3648f428840ff6284b6a0136080",
+    "assets/screenshots/zh-CN/02-optional-destination.png": "1dcbf3f4fafb01d7619272f1a9f17df998bbb5b49a4cb20b3b77a7068707ae32",
+    "assets/screenshots/zh-CN/03-sync-and-ai-ready.png": "1b4c8e2a1fff020e21264eea057b346cca139f96ba64aa024e1900ccec2e6c08",
+    "assets/screenshots/zh-CN/04-ai-summary-tags.png": "23b75bbf274bf1256acea2cbac602d90ff79ccdbba26556e53ef0e2f51aaa362",
+    "assets/screenshots/zh-CN/05-pro-auto-sync.png": "ac1731f4afd2a69727acbfa74fffc59966a2e67271dfa194fa84f021282951ca",
+    "listing/en/description.txt": "6c566248dd6d59f6b14d4f45b991655b664bfdd4e731c84aa8828e364919c704",
+    "listing/zh-CN/description.txt": "3bb9a6bdd0b1650669b45f4f5c028aecce32719bda7c8a3fbed395bcc0e5c1be"
+  },
+  "recordedAt": "2026-10-30T07:28:07.089Z"
+}

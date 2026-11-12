@@ -27,6 +27,7 @@ let container: HTMLDivElement;
 let root: TestRoot;
 let storage: Record<string, unknown>;
 let parents: Record<string, string>;
+let created: Array<{ id: string; parentId: string; title: string }>;
 let storedKey: { provider: string; last4: string } | null;
 const sendMessage = vi.fn();
 const requestPermission = vi.fn();
@@ -35,6 +36,7 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   storage = {};
   parents = { a: '1', b: '1' };
+  created = [];
   storedKey = null;
   sendMessage.mockReset();
   requestPermission.mockReset().mockResolvedValue(true);
@@ -44,12 +46,15 @@ beforeEach(() => {
       storedKey = { provider: 'openai', last4: '1234' };
       return { success: true, key: storedKey };
     }
-    if (message.type === 'ORGANIZE_PREVIEW_BATCH') {
+    if (message.type === 'ORGANIZE_MAP_FOLDERS') {
+      return { success: true, folderMap: { '10': 'learning' } };
+    }
+    if (message.type === 'ORGANIZE_ASSIGN_BATCH') {
       return {
         success: true,
-        proposals: [
-          { bookmarkId: 'a', fromParentId: '1', toFolderId: '10', reason: 'Design reading' },
-          { bookmarkId: 'b', fromParentId: '1', toFolderId: '10', reason: 'Also design' },
+        assignments: [
+          { bookmarkId: 'a', category: 'learning', confident: true, reason: 'Design reading' },
+          { bookmarkId: 'b', category: 'career', confident: false, reason: 'Maybe a job page' },
         ],
       };
     }
@@ -76,7 +81,20 @@ beforeEach(() => {
       get: vi.fn(async (id: string) => [
         { id, parentId: parents[id], url: 'https://x.example', index: 0, title: id },
       ]),
-      getChildren: vi.fn(async () => []),
+      getTree: vi.fn(async () => [{ id: '0', children: [{ id: '1', title: 'Bar' }] }]),
+      getChildren: vi.fn(async (id: string) =>
+        Object.entries(parents)
+          .filter(([, parentId]) => parentId === id)
+          .map(([childId]) => ({ id: childId, url: 'https://x.example' }))
+      ),
+      create: vi.fn(async (folder: { parentId: string; title: string }) => {
+        const node = { id: `new-${created.length + 1}`, ...folder };
+        created.push(node);
+        return node;
+      }),
+      remove: vi.fn(async (id: string) => {
+        created = created.filter((folder) => folder.id !== id);
+      }),
       move: vi.fn(async (id: string, destination: { parentId: string }) => {
         parents[id] = destination.parentId;
         return { id };
@@ -147,30 +165,61 @@ it('does not save a key when the permission is declined', async () => {
   );
 });
 
-it('previews suggestions, applies only selected moves and can undo them', async () => {
+it('previews category moves, selects only confident ones and applies them', async () => {
   storedKey = { provider: 'openai', last4: '1234' };
   await renderPanel();
 
   await act(async () => button('organize_start')!.click());
   await flush();
-  const batchMessage = sendMessage.mock.calls
-    .map(([message]) => message)
-    .find((message) => message.type === 'ORGANIZE_PREVIEW_BATCH');
-  expect(JSON.stringify(batchMessage)).not.toContain('token=secret');
+  const sent = sendMessage.mock.calls.map(([message]) => message);
+  expect(sent.map((message) => message.type)).toEqual(
+    expect.arrayContaining(['ORGANIZE_MAP_FOLDERS', 'ORGANIZE_ASSIGN_BATCH'])
+  );
+  expect(JSON.stringify(sent)).not.toContain('token=secret');
 
   const checkboxes = document.body.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
-  expect(checkboxes).toHaveLength(2);
-  await act(async () => checkboxes[1].click());
+  expect([...checkboxes].map((box) => box.checked)).toEqual([true, false]);
+  expect(document.body.textContent).toContain('organize_low_confidence');
+  expect(document.body.textContent).toContain('organize_new_folder');
+  // The preview is the changed part of the tree: Design gains "a", a new Career folder
+  // receives the unselected "b", and the bar keeps nothing loose afterwards.
+  const tree = document.body.querySelector('[role="tree"]')!;
+  expect(
+    [...tree.querySelectorAll('[role="treeitem"][aria-expanded]')].map((node) =>
+      node.getAttribute('aria-label')
+    )
+  ).toEqual(['Bar', 'Design', 'Career']);
+  expect(document.body.textContent).toContain('organize_preview_stays:Bar');
   expect(button('organize_apply')?.textContent).toBe('organize_apply:1');
 
   await act(async () => button('organize_apply')!.click());
   await flush();
   expect(parents).toEqual({ a: '10', b: '1' });
+  expect(created).toEqual([]);
   expect(document.body.textContent).toContain('organize_apply_result:1:0');
-  expect(storage[ORGANIZE_UNDO_STORAGE_KEY]).toBeDefined();
 
   await act(async () => button('organize_undo')!.click());
   await flush();
   expect(parents).toEqual({ a: '1', b: '1' });
   expect(document.body.textContent).toContain('organize_undo_result:1:0');
+});
+
+it('creates a missing category folder on the bar and removes it again on undo', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await flush();
+  const checkboxes = document.body.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+  await act(async () => checkboxes[1].click());
+
+  await act(async () => button('organize_apply')!.click());
+  await flush();
+  expect(created).toEqual([{ id: 'new-1', parentId: '1', title: 'Career' }]);
+  expect(parents).toEqual({ a: '10', b: 'new-1' });
+  expect(storage[ORGANIZE_UNDO_STORAGE_KEY]).toMatchObject({ createdFolderIds: ['new-1'] });
+
+  await act(async () => button('organize_undo')!.click());
+  await flush();
+  expect(parents).toEqual({ a: '1', b: '1' });
+  expect(created).toEqual([]);
 });
