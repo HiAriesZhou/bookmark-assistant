@@ -36,6 +36,32 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+it('shows AI inference provenance beside the local description field', async () => {
+  await act(async () => {
+    root.render(
+      <ToastProvider>
+        <BookmarkEditor
+          bookmark={{
+            ...bookmark('Reference', '2026-09-07T00:00:00.000Z'),
+            metadata: {
+              tags: [],
+              updatedAt: '2026-09-07T00:00:00.000Z',
+              description: 'AI inference: A reference.',
+              descriptionSource: 'ai',
+            },
+          }}
+          folders={[]}
+          busy={false}
+          onSave={vi.fn(async () => undefined)}
+          onDelete={vi.fn(async () => undefined)}
+          onDirtyChange={vi.fn()}
+        />
+      </ToastProvider>
+    );
+  });
+  expect(container.textContent).toContain('library_description_source_ai');
+});
+
 it('does not overwrite an in-progress draft when Chrome refreshes the selected bookmark', async () => {
   const render = async (selected: LocalBookmark) => {
     await act(async () => {

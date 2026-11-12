@@ -87,7 +87,7 @@ export type AppState = {
   dashboard?: DashboardSnapshot;
   isDashboardLoading: boolean;
   refreshDashboard: (refreshConnection?: boolean) => Promise<void>;
-  syncNow: () => Promise<{ noChanges: boolean }>;
+  syncNow: () => Promise<{ noChanges: boolean; queued?: boolean }>;
 
   lastSyncSummary?: {
     type: 'success' | 'no_changes' | 'error';
@@ -163,14 +163,20 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!response?.success) throw new Error(response?.error || 'SYNC_FAILED');
 
       await get().refreshDashboard(false);
-      return { noChanges: response.noChanges === true };
+      return {
+        noChanges: response.noChanges === true,
+        ...(response.queued ? { queued: true } : {}),
+      };
     } catch (error) {
       if (isStaleDestinationStateError(error)) throw error;
       // Refresh once on failure so the dashboard shows the stored error state.
       void get().refreshDashboard(false);
       throw error;
     } finally {
-      if (!context || (await isDestinationContextCurrent(context))) set({ isSyncing: false });
+      if (!context || (await isDestinationContextCurrent(context))) {
+        const state = await chrome.storage.local.get('sync_in_progress');
+        set({ isSyncing: state.sync_in_progress === true });
+      }
     }
   },
 

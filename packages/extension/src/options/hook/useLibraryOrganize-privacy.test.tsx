@@ -38,10 +38,12 @@ it('samples only eligible bookmark titles for the provider folder-mapping reques
   const scope = planOrganizeScope(bookmarks, folders);
   expect(scope.excludedCount).toBe(3);
   expect(scope.items.map((item) => item.id)).toEqual(['public']);
-  send
-    .mockReset()
-    .mockResolvedValueOnce({ success: true, key: { provider: 'deepseek', last4: 'test' } })
-    .mockResolvedValueOnce({ success: false, errorCode: 'provider_request_failed' });
+  send.mockReset().mockImplementation(async (message) => {
+    if (message.type === 'ORGANIZE_KEY_GET')
+      return { success: true, key: { provider: 'deepseek', last4: 'test' } };
+    if (message.type === 'ORGANIZE_TASK_GET') return { success: true, task: null };
+    return { success: false, errorCode: 'provider_request_failed' };
+  });
   let organize: ReturnType<typeof useLibraryOrganize>;
   function Harness() {
     organize = useLibraryOrganize(scope, 'en', { bookmarks, folders });
@@ -51,15 +53,15 @@ it('samples only eligible bookmark titles for the provider folder-mapping reques
   try {
     await act(async () => root.render(<Harness />));
     await act(async () => organize.start());
-    const mapping = send.mock.calls.find(([message]) => message.type === 'ORGANIZE_MAP_FOLDERS');
-    expect(mapping?.[0].request.folders).toEqual([
-      {
-        id: '10',
-        path: 'Bar / Reference',
-        bookmarkCount: 1,
-        sampleTitles: ['Public reference'],
-      },
+    const submission = send.mock.calls.find(([message]) => message.type === 'ORGANIZE_TASK_START');
+    expect(submission?.[0].input.scope.items.map((item: { id: string }) => item.id)).toEqual([
+      'public',
     ]);
+    expect(JSON.stringify(submission?.[0])).not.toContain('Private payroll');
+    expect(JSON.stringify(submission?.[0])).not.toContain('Managed reference');
+    expect(send.mock.calls.some(([message]) => message.type === 'ORGANIZE_MAP_FOLDERS')).toBe(
+      false
+    );
   } finally {
     await cleanupTestRoot(root, container);
   }

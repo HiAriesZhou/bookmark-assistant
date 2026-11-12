@@ -14,6 +14,56 @@ import {
 } from './index';
 import type { LinkItem as BookmarkItem } from '@bookmark-assistant/types';
 
+describe('description-safe base properties', () => {
+  it('keeps title and URL fields whose names also look like description labels', () => {
+    const properties = buildBookmarkPropertiesFromNotionSchema(
+      {
+        Summary: { type: 'title' },
+        'Content URL': { type: 'url' },
+        'Sync ID': { type: 'rich_text' },
+      },
+      { title: 'Example', url: 'https://example.com', syncId: 'stable' },
+      { omitDescription: true }
+    );
+    expect(properties.Summary).toEqual({ title: [{ text: { content: 'Example' } }] });
+    expect(properties['Content URL']).toEqual({ url: 'https://example.com' });
+    expect(properties['Sync ID']).toEqual({ rich_text: [{ text: { content: 'stable' } }] });
+  });
+
+  it('excludes a rich text description introduced by the required title fallback', () => {
+    const properties = buildBookmarkPropertiesFromNotionSchema(
+      { Notes: { type: 'rich_text' } },
+      { title: 'Example', url: 'https://example.com' },
+      { omitDescription: true, fallbackTitlePropertyName: 'Notes' }
+    );
+    expect(properties).not.toHaveProperty('Notes');
+  });
+
+  it.each(['Description', 'Summary', 'Notes', 'Content', '描述', '摘要', '简介'])(
+    'never maps folder or sync ID into %s when descriptions are omitted',
+    (name) => {
+      const properties = buildBookmarkPropertiesFromNotionSchema(
+        {
+          Name: { type: 'title' },
+          URL: { type: 'url' },
+          [name]: { type: 'rich_text' },
+          'Sync ID': { type: 'rich_text' },
+        },
+        {
+          title: 'Example',
+          url: 'https://example.com',
+          path: 'Bookmarks',
+          description: 'Must use the guarded writer',
+          syncId: 'stable',
+        },
+        { omitDescription: true }
+      );
+      expect(properties).not.toHaveProperty(name);
+      expect(properties['Sync ID']).toEqual({ rich_text: [{ text: { content: 'stable' } }] });
+    }
+  );
+});
+
 describe('BookmarkItem type definition', () => {
   describe('type field', () => {
     it('should accept type=bookmark', () => {

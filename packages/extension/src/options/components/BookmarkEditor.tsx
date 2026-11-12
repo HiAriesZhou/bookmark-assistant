@@ -197,7 +197,20 @@ export function BookmarkEditor({
             }}
           />
         </EditorField>
-        <EditorField label={t('library_field_description')} hint={t('library_local_only')}>
+        <EditorField
+          label={t('library_field_description')}
+          hint={
+            description || bookmark.metadata.descriptionCleared
+              ? t(
+                  `library_description_source_${
+                    description === (bookmark.metadata.description ?? '')
+                      ? (bookmark.metadata.descriptionSource ?? 'user')
+                      : 'user'
+                  }`
+                )
+              : t('library_local_only')
+          }
+        >
           <textarea
             className="library-input h-16 min-h-16 resize-y py-2"
             maxLength={BOOKMARK_DESCRIPTION_MAX_LENGTH}

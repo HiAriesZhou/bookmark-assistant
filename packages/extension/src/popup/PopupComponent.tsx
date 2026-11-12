@@ -43,10 +43,12 @@ export default function Popup() {
     try {
       const result = await syncNow();
       show({
-        variant: result.noChanges ? 'info' : 'success',
-        title: result.noChanges
-          ? t('dashboard_result_no_changes')
-          : t('dashboard_event_sync_completed'),
+        variant: result.queued || result.noChanges ? 'info' : 'success',
+        title: result.queued
+          ? t('dashboard_event_sync_started')
+          : result.noChanges
+            ? t('dashboard_result_no_changes')
+            : t('dashboard_event_sync_completed'),
       });
     } catch (error) {
       if (isStaleDestinationStateError(error)) return;
@@ -66,7 +68,10 @@ export default function Popup() {
       if (outcome.status === 'failed') {
         show({ variant: 'error', title: t('saveFailed'), description: outcome.error });
       } else {
-        show({ variant: 'success', title: t('saveSuccess') });
+        show({
+          variant: outcome.status === 'queued' ? 'info' : 'success',
+          title: t(outcome.status === 'queued' ? 'saveQueued' : 'saveSuccess'),
+        });
       }
     } catch (error) {
       show({

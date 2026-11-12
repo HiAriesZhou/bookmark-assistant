@@ -12,7 +12,6 @@ provider key. Free and open source; it runs entirely in the browser.
 
 [Chrome Web Store](https://chromewebstore.google.com/detail/khffaaemphidjmhokafmiilkcjpgiije) ·
 [Website](https://bookmarkassistant.com) ·
-[Legacy server](deploy/README.md) ·
 [Contributing](CONTRIBUTING.md)
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue)](LICENSE)
@@ -31,26 +30,33 @@ provider key. Free and open source; it runs entirely in the browser.
 - **Bookmarks and Reading List to Notion** (optional): paste a Notion personal access
   token or internal integration token, then pick a database or let the extension
   create one under a page. Sync on demand or on a schedule (six hours or more); the
-  extension calls the Notion API directly and does not overwrite your Notion edits.
+  extension calls the Notion API directly.
 - **Save the current page** to Notion with its title, URL and meta description.
+- **Optional descriptions**: when Notion and AI are configured, fill untouched
+  descriptions using titles, folder paths and URLs. Inferred text is labeled as AI
+  inference. No page body is fetched. Existing descriptions and recorded clears are
+  protected; Notion does not offer an atomic conditional write, so a simultaneous
+  remote edit can still race with completion.
 - **AI organize** (optional): with your own OpenAI, Anthropic, Gemini, DeepSeek, Groq or
   MiniMax key, get folder suggestions for the bookmarks in view, preview them, apply
   the moves you select and undo the last run. Only titles, folder paths and URLs
   without query strings are sent to the provider.
 
 There is no account, sign-in or server of its own. Notion tokens and AI keys stay in
-`chrome.storage.local`.
+`chrome.storage.local`. Sync and AI organization use a local IndexedDB task queue,
+so closing Options does not cancel them. Saved checkpoints resume when Chrome next
+runs the extension; a sleeping or closed browser cannot process work. An interrupted
+Notion create with an unconfirmed result stops for review instead of being resent.
 
 ## Repository layout
 
-| Package              | Contents                                                          |
-| -------------------- | ----------------------------------------------------------------- |
-| `packages/extension` | Chrome extension (React, Vite, Manifest V3)                       |
-| `packages/server`    | Legacy API for older extension versions; frozen (Express, Prisma) |
-| `packages/website`   | Product website (Next.js)                                         |
-| `packages/types`     | Shared KnowledgeItem, AI and deployment contracts                 |
-| `packages/shared`    | Brand artwork and shared scrollbar styles                         |
-| `packages/marketing` | Localized public copy and headless rendering tools                |
+| Package              | Contents                                           |
+| -------------------- | -------------------------------------------------- |
+| `packages/extension` | Chrome extension (React, Vite, Manifest V3)        |
+| `packages/website`   | Static product website (Next.js)                   |
+| `packages/types`     | Shared KnowledgeItem and AI contracts              |
+| `packages/shared`    | Brand artwork and shared scrollbar styles          |
+| `packages/marketing` | Localized public copy and headless rendering tools |
 
 The root package version is the product version source. Localized copy lives in
 `packages/marketing/content` and brand sources in `packages/shared`. Generated mirrors
@@ -68,9 +74,8 @@ pnpm dev            # extension, loads from packages/extension/dist-dev
 pnpm dev:website
 ```
 
-The extension needs no server. `packages/server` is the frozen legacy API that serves
-only extension versions released before the client-only version; it receives no new
-features. See [deploy/README.md](deploy/README.md) if you need to run it.
+The extension calls Notion and AI providers directly. The product website has no
+integration API or account service.
 
 Production builds are the official extension by default. The output directory is
 `packages/extension/dist`:
@@ -133,7 +138,7 @@ core packages are archival references; current core implementations live here.
 
 ## License and trademarks
 
-The extension, website, legacy server and build tools are licensed under
+The extension, website and build tools are licensed under
 **GPL-3.0-only**; see [LICENSE](LICENSE) and [NOTICE](NOTICE). The Bookmark
 Assistant name and logo are covered by [TRADEMARKS.md](TRADEMARKS.md): forks and
 independent deployments must use their own name and artwork.

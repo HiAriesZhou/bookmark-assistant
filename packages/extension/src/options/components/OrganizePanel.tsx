@@ -54,7 +54,7 @@ export function OrganizePanel({
   const titleId = useId();
   const library = useMemo(() => ({ bookmarks, folders }), [bookmarks, folders]);
   const organize = useLibraryOrganize(scope, locale, library);
-  const busy = organize.phase === 'running' || organize.phase === 'applying' || organize.undoing;
+  const busy = organize.phase === 'applying' || organize.undoing;
   const bookmarksById = useMemo(
     () => new Map(bookmarks.map((bookmark) => [bookmark.id, bookmark])),
     [bookmarks]

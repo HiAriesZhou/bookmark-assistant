@@ -32,6 +32,29 @@ describe('local bookmark metadata', () => {
     expect(metadata['bookmark-2']).toMatchObject({ description: 'Second copy', tags: ['Later'] });
   });
 
+  it('preserves a user-cleared description as a tombstone across reads', async () => {
+    await saveBookmarkMetadata('cleared', { description: 'Before', tags: [] });
+    await saveBookmarkMetadata('cleared', { description: '', tags: [] });
+    expect((await readBookmarkMetadata()).cleared).toMatchObject({
+      descriptionSource: 'user',
+      descriptionCleared: true,
+      tags: [],
+    });
+  });
+
+  it('keeps automatic provenance while only tags change', async () => {
+    await saveBookmarkMetadata('page', {
+      description: 'Page metadata',
+      descriptionSource: 'page',
+      tags: [],
+    });
+    await saveBookmarkMetadata('page', { description: 'Page metadata', tags: ['Read'] });
+    expect((await readBookmarkMetadata()).page).toMatchObject({
+      descriptionSource: 'page',
+      tags: ['Read'],
+    });
+  });
+
   it('normalizes whitespace and case-insensitive duplicate tags', () => {
     expect(normalizeBookmarkTags(['  Product  Design ', 'product design', '', 'AI'])).toEqual([
       'Product Design',

@@ -613,7 +613,9 @@ test.describe('Bookmark Assistant extension', () => {
         stored.destination_revision
       );
       expect(reply.success).toBe(true);
-      expect(notion.createdUrls()).toEqual(['https://example.invalid/notion-sync']);
+      expect(reply.queued).toBe(true);
+      await expect.poll(() => notion.createdUrls(), { timeout: 45_000 }).toEqual(['https://example.invalid/notion-sync']);
+      await expect.poll(() => page.evaluate(async () => (await chrome.storage.local.get('sync_in_progress')).sync_in_progress), { timeout: 45_000 }).toBe(false);
       expect(notion.authorizations()).toEqual([`Bearer ${FIXTURE_TOKEN}`]);
     } finally {
       await notion.dispose();
@@ -623,7 +625,7 @@ test.describe('Bookmark Assistant extension', () => {
   });
 
   test('disconnecting during a sync stops further Notion writes and drops the result', async () => {
-    const notion = await routeNotionFixture(context, { holdPageCreates: 3 });
+    const notion = await routeNotionFixture(context, { holdPageCreates: 1 });
     const page = await openExtensionPage(context, extensionId, 'options.html');
     const revision = 'synthetic-disconnect-race';
     let bookmarkIds: string[] = [];
@@ -664,8 +666,8 @@ test.describe('Bookmark Assistant extension', () => {
       expect(disconnected.success).toBe(true);
       notion.releasePageCreates();
 
-      expect((await syncReply).success).toBe(false);
-      expect(notion.createdUrls()).toHaveLength(3);
+      expect((await syncReply).queued).toBe(true);
+      await expect.poll(() => notion.createdUrls()).toHaveLength(1);
       const stored = await page.evaluate(() =>
         chrome.storage.local.get([
           'notion_token',
