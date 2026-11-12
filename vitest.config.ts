@@ -10,8 +10,6 @@ export default defineConfig({
       'packages/types/src/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'packages/extension/src/**/*.{test,spec}.{js,ts,jsx,tsx}',
       'packages/extension/scripts/**/*.{test,spec}.{js,ts,jsx,tsx}',
-      'packages/server/src/**/*.{test,spec}.{js,ts,jsx,tsx}',
-      'packages/server/scripts/**/*.{test,spec}.{js,mjs}',
       'tests/unit/**/*.{test,spec}.{js,ts,jsx,tsx}',
     ],
     exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'tests/e2e/**'],

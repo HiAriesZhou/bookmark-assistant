@@ -51,33 +51,6 @@ export default tseslint.config([
       'prettier/prettier': 'warn',
     },
   },
-  // Server (Node globals)
-  {
-    files: ['packages/server/**/*.{ts,js}'],
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    plugins: { prettier },
-    languageOptions: {
-      ecmaVersion: 'latest',
-      globals: { ...globals.node },
-      parserOptions: {
-        // Don't use project references - much faster
-        projectService: false,
-      },
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      // Relax rules tripping current code; consider addressing and re-enabling
-      'no-empty': 'off',
-      'prefer-const': 'off',
-      '@typescript-eslint/no-namespace': 'off',
-      'prettier/prettier': 'warn',
-    },
-  },
   // Website (Next.js)
   {
     files: ['packages/website/**/*.{ts,tsx}'],

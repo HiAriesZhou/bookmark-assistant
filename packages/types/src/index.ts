@@ -1,11 +1,4 @@
 export type {
-  DeploymentMode,
-  DeploymentCapabilities,
-  DeploymentProfile,
-  SignInMethod,
-} from './deployment.js';
-
-export type {
   ApiErrorBody,
   ApiResponse,
   ApiSuccessBody,

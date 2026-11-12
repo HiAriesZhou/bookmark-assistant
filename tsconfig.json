@@ -8,9 +8,6 @@
       "path": "packages/extension"
     },
     {
-      "path": "packages/server"
-    },
-    {
       "path": "packages/website"
     }
   ],
