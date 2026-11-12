@@ -4,7 +4,7 @@ import {
   type WebsiteCopy,
   type WebsiteLocale,
 } from '@/lib/marketing-copy.generated';
-import { SITE_URL, ASSET_PREFIX } from '@/lib/product-links';
+import { SITE_URL, ASSET_PREFIX, OFFICIAL_BUILD } from '@/lib/product-links';
 
 export { type WebsiteCopy, type WebsiteLocale };
 
@@ -87,6 +87,7 @@ export function createPageMetadata(
     },
     twitter: {
       card: 'summary_large_image',
+      ...(OFFICIAL_BUILD ? { creator: '@AriesZhou' } : {}),
       title,
       description,
       images: [`${ASSET_PREFIX}/assets/bookmark-assistant-og.png`],

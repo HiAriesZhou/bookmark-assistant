@@ -3,7 +3,7 @@ import { FAQ } from '@/components/sections/FAQ';
 import { FinalCTA } from '@/components/sections/FinalCTA';
 import { Footer } from '@/components/sections/Footer';
 import { getWebsiteCopy, isAiPublished, type WebsiteLocale } from '@/lib/i18n';
-import { CHROME_WEB_STORE_URL, SITE_URL, SOURCE_URL } from '@/lib/product-links';
+import { AUTHOR_URL, CHROME_WEB_STORE_URL, OFFICIAL_BUILD, SITE_URL, SOURCE_URL } from '@/lib/product-links';
 
 export function LandingPage({ locale }: { locale: WebsiteLocale }) {
   const copy = getWebsiteCopy(locale);
@@ -18,7 +18,11 @@ export function LandingPage({ locale }: { locale: WebsiteLocale }) {
     operatingSystem: 'Chrome',
     browserRequirements: 'Requires Google Chrome',
     url: locale === 'en' ? SITE_URL : `${SITE_URL}/zh-CN`,
-    installUrl: CHROME_WEB_STORE_URL,
+    ...(CHROME_WEB_STORE_URL.startsWith('https://') ? { installUrl: CHROME_WEB_STORE_URL } : {}),
+    sameAs: [SOURCE_URL],
+    ...(OFFICIAL_BUILD
+      ? { author: { '@type': 'Person', name: 'AriesZhou', url: AUTHOR_URL } }
+      : {}),
     isAccessibleForFree: true,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   };
@@ -27,7 +31,7 @@ export function LandingPage({ locale }: { locale: WebsiteLocale }) {
     <main id="top">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplication) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplication).replace(/</g, '\\u003c') }}
       />
       <EditorialLanding copy={copy} locale={locale} />
       <section id="source" className="mx-auto max-w-6xl px-6 py-10">

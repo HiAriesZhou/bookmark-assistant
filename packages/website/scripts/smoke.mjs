@@ -264,8 +264,9 @@ try {
         assert.equal(state.jsonLd.isAccessibleForFree, true);
         if (config.officialBuild)
           assert.match(state.jsonLd.installUrl, /khffaaemphidjmhokafmiilkcjpgiije/);
-        else
-          assert.equal(state.jsonLd.installUrl, process.env.NEXT_PUBLIC_INSTALL_URL || '#source');
+        else if (process.env.NEXT_PUBLIC_INSTALL_URL?.startsWith('https://'))
+          assert.equal(state.jsonLd.installUrl, process.env.NEXT_PUBLIC_INSTALL_URL);
+        else assert.equal(state.jsonLd.installUrl, undefined);
         assert.equal(state.hasMetadataPanel, true);
         assert.equal(state.syncTabCount, 2);
         if (config.officialBuild)

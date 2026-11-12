@@ -1,4 +1,5 @@
-const OFFICIAL_BUILD = process.env.NEXT_PUBLIC_OFFICIAL_BUILD === 'true';
+export const OFFICIAL_BUILD = process.env.NEXT_PUBLIC_OFFICIAL_BUILD === 'true';
+export const AUTHOR_URL = 'https://x.com/AriesZhou';
 
 export const CHROME_WEB_STORE_URL =
   process.env.NEXT_PUBLIC_INSTALL_URL ||
@@ -29,10 +30,7 @@ export const ASSET_PREFIX = process.env.NEXT_PUBLIC_ASSET_PREFIX || '/product';
 export const SOURCE_URL =
   process.env.NEXT_PUBLIC_SOURCE_URL || 'https://github.com/HiAriesZhou/bookmark-assistant';
 
-// The maintainer's write-up applies to the official build; other builds point at their source.
-export function projectStoryUrl(locale: 'en' | 'zh-CN'): string {
-  if (!OFFICIAL_BUILD) return SOURCE_URL;
-  return locale === 'zh-CN'
-    ? 'https://www.arieszhou.com/zh/projects/bookmark-assistant'
-    : 'https://www.arieszhou.com/projects/bookmark-assistant';
+// Credit the official author; other builds keep their own source link.
+export function authorOrSourceUrl(): string {
+  return OFFICIAL_BUILD ? AUTHOR_URL : SOURCE_URL;
 }
