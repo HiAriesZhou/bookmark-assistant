@@ -377,3 +377,23 @@ it('discards a restored result and returns to a new suggestion run', async () =>
   );
   expect(button('organize_start')).toBeDefined();
 });
+
+it('waits for the stored task before offering a new suggestion run', async () => {
+  // 迟到的恢复响应曾覆盖刚启动的新任务，界面停止轮询，而后台仍在运行。
+  storedKey = { provider: 'openai', last4: '1234' };
+  let restore!: (response: unknown) => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) =>
+    message.type === 'ORGANIZE_TASK_GET' && !('id' in message && message.id)
+      ? new Promise((resolve) => {
+          restore = resolve;
+        })
+      : respond(message)
+  );
+  await renderPanel();
+  expect(button('organize_start')).toBeUndefined();
+
+  await act(async () => restore({ success: true, task: null }));
+  await flush();
+  expect(button('organize_start')).toBeDefined();
+});

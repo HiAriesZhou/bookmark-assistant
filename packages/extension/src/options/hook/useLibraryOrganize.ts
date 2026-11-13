@@ -155,6 +155,8 @@ export function useLibraryOrganize(
   const [canUndo, setCanUndo] = useState(false);
   const taskId = useRef<string>();
   const taskRevision = useRef<string>();
+  // Bumped whenever the user starts or discards a run; older responses are ignored.
+  const generation = useRef(0);
   const [plan, setPlan] = useState<OrganizePlan>();
 
   const receiveTask = useCallback((task: OrganizeTask) => {
@@ -205,6 +207,7 @@ export function useLibraryOrganize(
 
   useEffect(() => {
     let active = true;
+    const token = generation.current;
     void (async () => {
       const response = await sendMessage({ type: Messages.ORGANIZE_KEY_GET }).catch(
         () => undefined
@@ -212,12 +215,13 @@ export function useLibraryOrganize(
       if (!active) return;
       const stored = response?.success ? (response.key ?? null) : null;
       setKey(stored);
-      setPhase(stored ? 'ready' : 'setup');
+      // Stay in loading until the stored task is known, so a start cannot race the restore.
       const restored = await sendMessage({ type: Messages.ORGANIZE_TASK_GET }).catch(
         () => undefined
       );
-      if (!active) return;
+      if (!active || token !== generation.current) return;
       if (restored?.success && restored.task) receiveTask(restored.task);
+      else setPhase(stored ? 'ready' : 'setup');
       await refreshUndo();
     })();
     return () => {
@@ -300,6 +304,7 @@ export function useLibraryOrganize(
   };
 
   const start = async () => {
+    const token = ++generation.current;
     setErrorCode(undefined);
     setProposals([]);
     setPhase('running');
@@ -317,6 +322,7 @@ export function useLibraryOrganize(
         folderCounts: [...counts],
       },
     }).catch(() => undefined);
+    if (token !== generation.current) return;
     if (response?.success && response.task) {
       receiveTask(response.task);
     } else {
@@ -338,6 +344,7 @@ export function useLibraryOrganize(
         return;
       }
     }
+    generation.current += 1;
     taskId.current = undefined;
     taskRevision.current = undefined;
     setProposals([]);
