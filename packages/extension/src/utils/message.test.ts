@@ -69,8 +69,7 @@ describe('addMessageListener', () => {
     });
     const handler = vi.fn(async () => ({ success: true, task: null }));
     addMessageListener({ [type]: handler });
-    const send = (sender: unknown) =>
-      new Promise((resolve) => listener({ type }, sender, resolve));
+    const send = (sender: unknown) => new Promise((resolve) => listener({ type }, sender, resolve));
 
     for (const page of ['options.html', 'popup.html']) {
       await expect(send({ id: 'ext', url: `chrome-extension://ext/${page}` })).resolves.toEqual({

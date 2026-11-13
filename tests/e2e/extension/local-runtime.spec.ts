@@ -10,6 +10,7 @@ import {
 import path from 'node:path';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { BOOKMARK_METADATA_STORAGE_KEY } from '../../../packages/extension/src/library/bookmark-metadata';
 
 const extensionPath = path.resolve(__dirname, '../../../packages/extension/dist');
 const DATABASE_ID = '1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9';
@@ -381,6 +382,130 @@ test.describe('production local task runtime', () => {
     });
     await testInfo.attach('Restored organize preview', {
       path: testInfo.outputPath('organize-restored-preview.png'),
+      contentType: 'image/png',
+    });
+  });
+
+  test('preserves a background AI description when a dirty editor saves its title', async ({}, testInfo) => {
+    const [bookmarkId] = await seedBookmarks(worker, 1);
+    await providerFixture(context);
+    const notion = await notionFixture(context);
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/options.html#/library`);
+    const { dialog, labels } = await configureKey(page);
+    await dialog.getByRole('button', { name: labels.organize_close, exact: true }).first().click();
+    await page.getByText('Runtime reference 1', { exact: true }).first().click();
+    const titleLabel = (await messages(page, ['library_field_title'])).library_field_title;
+    await page.getByLabel(titleLabel, { exact: true }).fill('Unsaved reference title');
+    const connection = await page.evaluate(
+      async (databaseId) =>
+        chrome.runtime.sendMessage({
+          type: 'NOTION_CONNECT',
+          token: 'synthetic-notion-editor-token',
+          databaseId,
+          destinationRevision: null,
+        }),
+      DATABASE_ID
+    );
+    expect(connection.success).toBe(true);
+    const submitted = await page.evaluate(
+      async (revision) =>
+        chrome.runtime.sendMessage({ type: 'SYNC_ALL_BOOKMARKS', destinationRevision: revision }),
+      connection.destinationRevision
+    );
+    await notion.entered;
+    notion.release();
+    await expect
+      .poll(
+        async () => (await tasks(worker)).find((task) => task.id === submitted.taskId)?.status,
+        { timeout: 60_000 }
+      )
+      .toBe('succeeded');
+    const readMetadata = () =>
+      worker.evaluate(
+        async ({ id, key }) => {
+          const storage = await chrome.storage.local.get(key);
+          return storage[key]?.byBookmarkId[id];
+        },
+        { id: bookmarkId, key: BOOKMARK_METADATA_STORAGE_KEY }
+      );
+    await expect.poll(readMetadata).toMatchObject({ descriptionSource: 'ai' });
+    const description = (await readMetadata()).description;
+    await expect(page.getByLabel(titleLabel, { exact: true })).toHaveValue(
+      'Unsaved reference title'
+    );
+    const saveLabel = (await messages(page, ['library_save_changes'])).library_save_changes;
+    await page.getByRole('button', { name: saveLabel, exact: true }).click();
+    const savedLabel = (await messages(page, ['library_saved_locally'])).library_saved_locally;
+    await expect(page.getByText(savedLabel, { exact: true })).toBeVisible();
+    await expect.poll(readMetadata).toMatchObject({ description, descriptionSource: 'ai' });
+    await expect
+      .poll(
+        async () =>
+          (await worker.evaluate(async (id) => chrome.bookmarks.get(id), bookmarkId))[0].title
+      )
+      .toBe('Unsaved reference title');
+    expect((await readMetadata()).descriptionCleared).not.toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath('dirty-editor-background-description.png'),
+      fullPage: true,
+    });
+    await testInfo.attach('Saved title with background AI description', {
+      path: testInfo.outputPath('dirty-editor-background-description.png'),
+      contentType: 'image/png',
+    });
+  });
+
+  test('cancels persisted work after a 15-second start timeout and temporary message failures', async ({}, testInfo) => {
+    await seedBookmarks(worker, 21);
+    const provider = await providerFixture(context, 1);
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/options.html#/library`);
+    const { dialog, labels } = await configureKey(page);
+    await page.evaluate(() => {
+      const send = chrome.runtime.sendMessage.bind(chrome.runtime);
+      let recoveryAt = 0;
+      Object.defineProperty(chrome.runtime, 'sendMessage', {
+        configurable: true,
+        value: (message: { type: string }) => {
+          if (message.type === 'ORGANIZE_TASK_START') {
+            recoveryAt = Date.now() + 16_000;
+            void send(message);
+            return new Promise(() => undefined);
+          }
+          if (
+            ['ORGANIZE_TASK_GET', 'ORGANIZE_TASK_CANCEL'].includes(message.type) &&
+            Date.now() < recoveryAt
+          )
+            return Promise.reject(new Error('Synthetic temporary transport failure'));
+          return send(message);
+        },
+      });
+    });
+    await dialog.getByRole('button', { name: labels.organize_start, exact: true }).click();
+    await provider.entered;
+    const cancelLabel = (await messages(page, ['action_cancel'])).action_cancel;
+    await dialog.getByRole('button', { name: cancelLabel, exact: true }).click();
+    const job = (await tasks(worker)).find((task) => task.type === 'organize')!;
+    expect(job.status).toBe('running');
+    await expect
+      .poll(async () => (await tasks(worker)).find((task) => task.id === job.id)?.status, {
+        timeout: 25_000,
+      })
+      .toBe('cancelled');
+    provider.release();
+    await expect(
+      dialog.getByRole('button', { name: labels.organize_start, exact: true })
+    ).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: cancelLabel, exact: true })).toHaveCount(0);
+    expect(provider.assignments).toHaveLength(1);
+    expect((await tasks(worker)).filter((task) => task.type === 'organize')).toHaveLength(1);
+    await page.screenshot({
+      path: testInfo.outputPath('organize-cancel-after-timeout.png'),
+      fullPage: true,
+    });
+    await testInfo.attach('Cancelled after start timeout', {
+      path: testInfo.outputPath('organize-cancel-after-timeout.png'),
       contentType: 'image/png',
     });
   });
