@@ -1,10 +1,20 @@
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import {
   createOrganizeTaskHandlers,
   prepareOrganizeTaskInput,
   registerOrganizeTask,
 } from './organize';
 import { createTaskRuntime, type TaskRecord, type TaskStore } from './index';
+import type { MessageResponse } from '../utils/message';
+
+const trustedSender = { id: 'ext', url: 'chrome-extension://ext/options.html' };
+
+beforeEach(() => {
+  Object.assign(chrome.runtime, {
+    id: 'ext',
+    getURL: (path: string) => `chrome-extension://ext/${path}`,
+  });
+});
 
 vi.mock('../background/library-organize', () => ({
   readOrganizeCredentialRevision: vi.fn().mockResolvedValue('revision'),
@@ -105,10 +115,14 @@ it('stops restoring an organize result after it was applied or discarded', async
   const { runtime, submit, handlers } = organizeFixture(10);
   const job = await submit();
   await runtime.runner();
-  const get = (id?: string) => handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET', id });
+  const get = (id?: string) =>
+    handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET', id }, trustedSender);
   expect(await get()).toMatchObject({ success: true, task: { id: job.id, status: 'succeeded' } });
 
-  await handlers.ORGANIZE_TASK_DISMISS({ type: 'ORGANIZE_TASK_DISMISS', id: job.id });
+  await handlers.ORGANIZE_TASK_DISMISS(
+    { type: 'ORGANIZE_TASK_DISMISS', id: job.id },
+    trustedSender
+  );
   expect(await get()).toEqual({ success: true, task: null });
   expect(await get(job.id)).toMatchObject({ success: true, task: { id: job.id } });
 });
@@ -116,8 +130,13 @@ it('stops restoring an organize result after it was applied or discarded', async
 it('keeps restoring a task that is still running even if dismissal is requested', async () => {
   const { submit, handlers } = organizeFixture(10);
   const job = await submit();
-  await handlers.ORGANIZE_TASK_DISMISS({ type: 'ORGANIZE_TASK_DISMISS', id: job.id });
-  expect(await handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET' })).toMatchObject({
+  await handlers.ORGANIZE_TASK_DISMISS(
+    { type: 'ORGANIZE_TASK_DISMISS', id: job.id },
+    trustedSender
+  );
+  expect(
+    await handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET' }, trustedSender)
+  ).toMatchObject({
     success: true,
     task: { id: job.id, status: 'pending' },
   });
@@ -141,15 +160,21 @@ it('cancels by attempt while the submission is waiting to become durable', async
         began();
       })
   );
-  const start = handlers.ORGANIZE_TASK_START({
-    type: 'ORGANIZE_TASK_START',
-    input: { ...input, attemptId: 'delayed-attempt' },
-  });
+  const start = handlers.ORGANIZE_TASK_START(
+    {
+      type: 'ORGANIZE_TASK_START',
+      input: { ...input, attemptId: 'delayed-attempt' },
+    },
+    trustedSender
+  );
   await waiting;
-  const cancel = handlers.ORGANIZE_TASK_CANCEL({
-    type: 'ORGANIZE_TASK_CANCEL',
-    attemptId: 'delayed-attempt',
-  });
+  const cancel = handlers.ORGANIZE_TASK_CANCEL(
+    {
+      type: 'ORGANIZE_TASK_CANCEL',
+      attemptId: 'delayed-attempt',
+    },
+    trustedSender
+  );
   release();
   const started = await start;
   expect(started.success).toBe(true);
@@ -167,23 +192,66 @@ it('finds a deduplicated submission by its attempt after handlers are recreated'
   const job = await submit();
   const input = job.input as Parameters<typeof handlers.ORGANIZE_TASK_START>[0]['input'];
   expect(
-    await handlers.ORGANIZE_TASK_START({
-      type: 'ORGANIZE_TASK_START',
-      input: { ...input, attemptId: 'new-attempt' },
-    })
+    await handlers.ORGANIZE_TASK_START(
+      {
+        type: 'ORGANIZE_TASK_START',
+        input: { ...input, attemptId: 'new-attempt' },
+      },
+      trustedSender
+    )
   ).toMatchObject({ success: true, task: { id: job.id } });
   const restoredHandlers = createOrganizeTaskHandlers(runtime);
   expect(
-    await restoredHandlers.ORGANIZE_TASK_GET({
-      type: 'ORGANIZE_TASK_GET',
-      attemptId: 'new-attempt',
-    })
+    await restoredHandlers.ORGANIZE_TASK_GET(
+      {
+        type: 'ORGANIZE_TASK_GET',
+        attemptId: 'new-attempt',
+      },
+      trustedSender
+    )
   ).toMatchObject({ success: true, task: { id: job.id } });
   expect(
-    await restoredHandlers.ORGANIZE_TASK_CANCEL({
-      type: 'ORGANIZE_TASK_CANCEL',
-      attemptId: 'new-attempt',
-    })
+    await restoredHandlers.ORGANIZE_TASK_CANCEL(
+      {
+        type: 'ORGANIZE_TASK_CANCEL',
+        attemptId: 'new-attempt',
+      },
+      trustedSender
+    )
   ).toMatchObject({ success: true, task: { id: job.id, status: 'cancelled' } });
   expect(await runtime.list()).toHaveLength(1);
+});
+
+it.each([
+  'ORGANIZE_TASK_START',
+  'ORGANIZE_TASK_GET',
+  'ORGANIZE_TASK_CANCEL',
+  'ORGANIZE_TASK_DISMISS',
+  'ORGANIZE_TASK_RETRY',
+] as const)('rejects unsupported senders before %s can access tasks', async (type) => {
+  const runtime = Object.fromEntries(
+    ['submit', 'get', 'list', 'cancel', 'dismiss', 'retry'].map((name) => [
+      name,
+      vi.fn().mockRejectedValue(new Error('Unexpected task access')),
+    ])
+  ) as unknown as ReturnType<typeof createTaskRuntime>;
+  const handlers = createOrganizeTaskHandlers(runtime);
+  const handler = handlers[type] as (
+    request: unknown,
+    sender: chrome.runtime.MessageSender
+  ) => Promise<MessageResponse<typeof type>>;
+  for (const sender of [
+    { id: 'ext', url: 'https://example.com', tab: { id: 1 } },
+    { id: 'other', url: trustedSender.url },
+    { id: 'ext', url: 'chrome-extension://other/options.html' },
+    { id: 'ext' },
+  ]) {
+    expect(await handler({ type, id: 'existing', input: {} }, sender)).toEqual({
+      success: false,
+      errorCode: 'invalid_request',
+    });
+  }
+  for (const operation of Object.values(runtime)) {
+    expect(operation).not.toHaveBeenCalled();
+  }
 });

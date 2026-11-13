@@ -19,7 +19,7 @@ import {
   runFolderMap,
   type OrganizeErrorCode,
 } from '../background/library-organize';
-import type { MessageRequest, MessageResponse } from '../utils/message';
+import { isExtensionPageSender, type MessageRequest, type MessageResponse } from '../utils/message';
 import { type TaskRuntime, type TaskRecord } from './index';
 import { startRuntime } from './chrome';
 
@@ -197,8 +197,11 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
     void startRuntime(runtime).catch(() => undefined);
   };
   async function respond(
+    sender: chrome.runtime.MessageSender,
     action: () => Promise<TaskRecord | undefined | null>
   ): Promise<OrganizeTaskResponse> {
+    if (!sender || !isExtensionPageSender(sender))
+      return { success: false, errorCode: 'invalid_request' };
     try {
       return { success: true, task: ((await action()) ?? null) as OrganizeTask | null };
     } catch (error) {
@@ -230,9 +233,10 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
   }
   return {
     ORGANIZE_TASK_START: (
-      request: MessageRequest<'ORGANIZE_TASK_START'>
+      request: MessageRequest<'ORGANIZE_TASK_START'>,
+      sender: chrome.runtime.MessageSender
     ): Promise<MessageResponse<'ORGANIZE_TASK_START'>> => {
-      const response = respond(async () => {
+      const response = respond(sender, async () => {
         const input = prepareOrganizeTaskInput(request.input);
         const revision = await readOrganizeCredentialRevision();
         if (!revision) throw new OrganizeError('not_configured');
@@ -255,8 +259,11 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
       }
       return response;
     },
-    ORGANIZE_TASK_GET: (request: MessageRequest<'ORGANIZE_TASK_GET'>) =>
-      respond(async () => {
+    ORGANIZE_TASK_GET: (
+      request: MessageRequest<'ORGANIZE_TASK_GET'>,
+      sender: chrome.runtime.MessageSender
+    ) =>
+      respond(sender, async () => {
         const job = request.id
           ? await own(request.id)
           : request.attemptId !== undefined
@@ -277,18 +284,27 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
         }
         return job;
       }),
-    ORGANIZE_TASK_CANCEL: (request: MessageRequest<'ORGANIZE_TASK_CANCEL'>) =>
-      respond(async () => {
+    ORGANIZE_TASK_CANCEL: (
+      request: MessageRequest<'ORGANIZE_TASK_CANCEL'>,
+      sender: chrome.runtime.MessageSender
+    ) =>
+      respond(sender, async () => {
         const job = request.id ? await own(request.id) : await byAttempt(request.attemptId);
         return job ? runtime.cancel(job.id) : null;
       }),
-    ORGANIZE_TASK_DISMISS: (request: MessageRequest<'ORGANIZE_TASK_DISMISS'>) =>
-      respond(async () => {
+    ORGANIZE_TASK_DISMISS: (
+      request: MessageRequest<'ORGANIZE_TASK_DISMISS'>,
+      sender: chrome.runtime.MessageSender
+    ) =>
+      respond(sender, async () => {
         await own(request.id);
         return runtime.dismiss(request.id);
       }),
-    ORGANIZE_TASK_RETRY: (request: MessageRequest<'ORGANIZE_TASK_RETRY'>) =>
-      respond(async () => {
+    ORGANIZE_TASK_RETRY: (
+      request: MessageRequest<'ORGANIZE_TASK_RETRY'>,
+      sender: chrome.runtime.MessageSender
+    ) =>
+      respond(sender, async () => {
         await own(request.id);
         const job = await runtime.retry(request.id);
         wake();

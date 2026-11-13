@@ -51,4 +51,41 @@ describe('addMessageListener', () => {
     ).resolves.toMatchObject({ success: false });
     expect(handler).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    Messages.ORGANIZE_TASK_START,
+    Messages.ORGANIZE_TASK_GET,
+    Messages.ORGANIZE_TASK_CANCEL,
+    Messages.ORGANIZE_TASK_DISMISS,
+    Messages.ORGANIZE_TASK_RETRY,
+  ])('checks the sender at the dispatch boundary for %s', async (type) => {
+    let listener: (msg: unknown, sender: unknown, respond: (value: unknown) => void) => unknown;
+    vi.stubGlobal('chrome', {
+      runtime: {
+        id: 'ext',
+        getURL: (path: string) => `chrome-extension://ext/${path}`,
+        onMessage: { addListener: (fn: typeof listener) => (listener = fn) },
+      },
+    });
+    const handler = vi.fn(async () => ({ success: true, task: null }));
+    addMessageListener({ [type]: handler });
+    const send = (sender: unknown) =>
+      new Promise((resolve) => listener({ type }, sender, resolve));
+
+    for (const page of ['options.html', 'popup.html']) {
+      await expect(send({ id: 'ext', url: `chrome-extension://ext/${page}` })).resolves.toEqual({
+        success: true,
+        task: null,
+      });
+    }
+    for (const sender of [
+      { id: 'ext', url: 'https://example.com/page', tab: { id: 1 } },
+      { id: 'other', url: 'chrome-extension://ext/options.html' },
+      { id: 'ext', url: 'chrome-extension://ext.evil/options.html' },
+      { id: 'ext' },
+    ]) {
+      await expect(send(sender)).resolves.toMatchObject({ success: false });
+    }
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
 });
