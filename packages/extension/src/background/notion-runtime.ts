@@ -186,6 +186,30 @@ async function settleNotionSync(job: NotionSyncTask, runtime: TaskRuntime) {
   );
 }
 
+/**
+ * 启动时校正同步标记：升级前的同步或未完成的结算可能留下 sync_in_progress=true，
+ * 但任务库里没有对应的进行中任务，界面会一直禁用同步。只在确实没有任务时清除。
+ */
+export function reconcileSyncProgress(runtime: TaskRuntime): Promise<void> {
+  return withSyncTaskLock(runtime, async () => {
+    const stored = await chrome.storage.local.get('sync_in_progress');
+    if (stored.sync_in_progress !== true) return;
+    const context = await readDestinationContext();
+    if (context.token && context.databaseId) {
+      const tasks = await connectionTasks(runtime, context);
+      // 已结束但尚未结算的任务由 runner 结算时写回进度。
+      if (tasks.some((job) => isTaskActive(job) || job.settled === false)) return;
+    }
+    await withCurrentDestination(context, () =>
+      chrome.storage.local.set({
+        sync_in_progress: false,
+        sync_started_at: null,
+        sync_trigger: null,
+      })
+    );
+  });
+}
+
 /** 单次提交确认已保存任务；实际完成由 storage 状态通知界面。 */
 export function submitNotionSync(
   runtime: TaskRuntime,

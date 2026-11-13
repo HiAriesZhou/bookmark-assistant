@@ -29,7 +29,7 @@ import { notionApi } from '../destinations/notion/notion-api';
 import { createTaskRuntime } from '../runtime';
 import { registerOrganizeTask, createOrganizeTaskHandlers } from '../runtime/organize';
 import { startRuntime, wireTaskRuntime } from '../runtime/chrome';
-import { registerNotionSyncTask, submitNotionSync } from './notion-runtime';
+import { reconcileSyncProgress, registerNotionSyncTask, submitNotionSync } from './notion-runtime';
 import {
   fillBookmarkDescriptionIfUnchanged,
   readBookmarkMetadata,
@@ -82,7 +82,11 @@ const taskRuntime = createTaskRuntime();
 registerOrganizeTask(taskRuntime);
 registerNotionSyncTask(taskRuntime);
 wireTaskRuntime(taskRuntime);
-const backgroundInitialization = startRuntime(taskRuntime)
+const backgroundInitialization = reconcileSyncProgress(taskRuntime)
+  .catch((error) => {
+    console.warn('[Background] Could not reconcile the sync progress marker:', error);
+  })
+  .then(() => startRuntime(taskRuntime))
   .then(() => cleanupStorage())
   .catch((error) => {
     console.warn('[Background] Initialization failed; continuing with sync available:', error);

@@ -5,7 +5,12 @@ import {
   type TaskRecord,
   type TaskStore,
 } from '../runtime';
-import { NOTION_SYNC_TASK_KEY, registerNotionSyncTask, submitNotionSync } from './notion-runtime';
+import {
+  NOTION_SYNC_TASK_KEY,
+  reconcileSyncProgress,
+  registerNotionSyncTask,
+  submitNotionSync,
+} from './notion-runtime';
 
 const storage = new Map<string, unknown>();
 const api = vi.hoisted(() => ({ createPage: vi.fn(), assertCurrent: vi.fn() }));
@@ -83,6 +88,25 @@ describe('durable Notion task submission', () => {
     await replacement.runner();
     expect(first.records.get(id)?.status).toBe('succeeded');
     expect(storage.get('sync_in_progress')).toBe(false);
+  });
+
+  it('clears an in-progress marker that has no durable sync task behind it', async () => {
+    // 升级前的同步留下 sync_in_progress=true，而新任务库为空；不清理会永久禁用同步按钮。
+    const { runtime } = fixture();
+    storage.set('sync_in_progress', true);
+    storage.set('sync_started_at', 1);
+    storage.set('sync_trigger', 'auto');
+    await reconcileSyncProgress(runtime);
+    expect(storage.get('sync_in_progress')).toBe(false);
+    expect(storage.get('sync_started_at')).toBeNull();
+    expect(storage.get('sync_trigger')).toBeNull();
+  });
+
+  it('keeps the in-progress marker while a sync task is still pending', async () => {
+    const { runtime } = fixture();
+    await submitNotionSync(runtime, context, { links: [link('a')], trigger: 'manual' });
+    await reconcileSyncProgress(runtime);
+    expect(storage.get('sync_in_progress')).toBe(true);
   });
 
   it('replans definitely rejected writes with the newly collected bookmarks', async () => {
