@@ -358,6 +358,64 @@ it('preserves a background description when saving a dirty editor through the st
   expect((await readBookmarkMetadata())[opened.id]).not.toHaveProperty('descriptionCleared');
 });
 
+it('saves a clear typed while the previous description save was still pending', async () => {
+  const storage: Record<string, unknown> = {};
+  Object.assign(chrome, {
+    storage: {
+      local: {
+        get: async (key: string) => ({ [key]: storage[key] }),
+        set: async (values: Record<string, unknown>) => Object.assign(storage, values),
+      },
+    },
+  });
+  const selected = bookmark('Reference', '2026-09-07T00:00:00.000Z');
+  selected.metadata = await saveBookmarkMetadata(selected.id, { description: '', tags: [] });
+  let finishSave!: () => void;
+  const onSave = vi.fn(async (changes: Parameters<typeof saveBookmarkChanges>[1]) => {
+    await saveBookmarkChanges(selected, changes);
+    if (onSave.mock.calls.length === 1)
+      await new Promise<void>((resolve) => {
+        finishSave = resolve;
+      });
+  });
+  await act(async () => {
+    root.render(
+      <ToastProvider>
+        <BookmarkEditor
+          bookmark={selected}
+          folders={[]}
+          busy={false}
+          onSave={onSave}
+          onDelete={vi.fn()}
+          onDirtyChange={vi.fn()}
+        />
+      </ToastProvider>
+    );
+  });
+  const textarea = container.querySelector('textarea')!;
+  const setDescription = (value: string) =>
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+        textarea,
+        value
+      );
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  const save = () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="library_save_changes"]')!.click();
+  setDescription('First saved description');
+  await act(async () => save());
+  expect((await readBookmarkMetadata())[selected.id].description).toBe('First saved description');
+  setDescription('');
+  await act(async () => finishSave());
+  await act(async () => save());
+  expect((await readBookmarkMetadata())[selected.id]).toMatchObject({
+    descriptionCleared: true,
+    descriptionSource: 'user',
+  });
+  expect((await readBookmarkMetadata())[selected.id].description).toBeUndefined();
+});
+
 function changeInput(input: HTMLInputElement | null, value: string) {
   act(() => {
     if (!input) return;

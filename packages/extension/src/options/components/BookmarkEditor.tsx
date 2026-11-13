@@ -138,6 +138,7 @@ export function BookmarkEditor({
         parentId,
         descriptionBaseline: descriptionBaseline.current,
       });
+      descriptionBaseline.current = { ...descriptionBaseline.current, description };
       if (draftRevision.current === savedRevision) {
         setDirty(false);
         show({
