@@ -21,10 +21,16 @@ interface LocalBookmarkMetadataStoreV1 {
   byBookmarkId: Record<string, LocalBookmarkMetadataV1>;
 }
 
+export interface DescriptionBaseline {
+  revision?: string;
+  description?: string;
+}
+
 export interface LocalBookmarkMetadataInput {
   description?: string;
   descriptionSource?: DescriptionSource;
   tags: string[];
+  descriptionBaseline?: DescriptionBaseline;
 }
 
 let writeQueue: Promise<void> = Promise.resolve();
@@ -78,10 +84,23 @@ export function saveBookmarkMetadata(
   input: LocalBookmarkMetadataInput,
   now: Date = new Date()
 ): Promise<LocalBookmarkMetadataV1> {
-  const normalized = normalizeBookmarkMetadata(input, now);
   return enqueueWrite(async () => {
     const byBookmarkId = await readBookmarkMetadata();
     const previous = byBookmarkId[bookmarkId];
+    const baseline = input.descriptionBaseline;
+    const submittedDescription = input.description?.trim() || undefined;
+    const baselineDescription = baseline?.description?.trim() || undefined;
+    const descriptionStale =
+      baseline !== undefined &&
+      (previous?.revision !== baseline.revision || previous?.description !== baselineDescription) &&
+      submittedDescription === baselineDescription;
+    const normalized = normalizeBookmarkMetadata(
+      {
+        description: descriptionStale ? previous?.description : input.description,
+        tags: input.tags,
+      },
+      now
+    );
     const source =
       input.descriptionSource ??
       (normalized.description && normalized.description === previous?.description
@@ -89,7 +108,10 @@ export function saveBookmarkMetadata(
         : 'user');
     // 只有把已有描述改为空才算用户清空；原本为空时再次提交空值（例如只改标签）不留记录。
     const clearsDescription =
-      input.description !== undefined && !!previous?.description && !normalized.description;
+      !descriptionStale &&
+      input.description !== undefined &&
+      !!previous?.description &&
+      !normalized.description;
     const cleared =
       !normalized.description && (clearsDescription || !!previous?.descriptionCleared);
     const metadata: LocalBookmarkMetadataV1 = {

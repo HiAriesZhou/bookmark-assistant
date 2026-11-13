@@ -59,6 +59,51 @@ describe('local bookmark metadata', () => {
     expect(filled).toMatchObject({ description: 'Synthetic summary', tags: ['Research'] });
   });
 
+  it('does not let a stale empty form clear a description written after it opened', async () => {
+    const opened = await saveBookmarkMetadata('bookmark-1', { description: '', tags: [] });
+    const filled = await fillBookmarkDescriptionIfUnchanged(
+      'bookmark-1',
+      'AI inference: A reference.',
+      'ai',
+      opened,
+      async () => true
+    );
+    const saved = await saveBookmarkMetadata('bookmark-1', {
+      description: '',
+      tags: ['Research'],
+      descriptionBaseline: { revision: opened.revision, description: '' },
+    });
+
+    expect(filled?.description).toBe('AI inference: A reference.');
+    expect(saved).toMatchObject({
+      description: 'AI inference: A reference.',
+      descriptionSource: 'ai',
+      tags: ['Research'],
+    });
+    expect(saved).not.toHaveProperty('descriptionCleared');
+  });
+
+  it('keeps an intentional description edit when background metadata changed', async () => {
+    const opened = await saveBookmarkMetadata('bookmark-1', {
+      description: 'Before',
+      tags: [],
+    });
+    await saveBookmarkMetadata('bookmark-1', {
+      description: 'AI inference: A reference.',
+      descriptionSource: 'ai',
+      tags: [],
+    });
+
+    const saved = await saveBookmarkMetadata('bookmark-1', {
+      description: '',
+      tags: [],
+      descriptionBaseline: { revision: opened.revision, description: 'Before' },
+    });
+
+    expect(saved).toMatchObject({ descriptionCleared: true, descriptionSource: 'user' });
+    expect(saved).not.toHaveProperty('description');
+  });
+
   it('keeps an earlier clear when later saves leave the description empty', async () => {
     await saveBookmarkMetadata('cleared', { description: 'Before', tags: [] });
     await saveBookmarkMetadata('cleared', { description: '', tags: [] });

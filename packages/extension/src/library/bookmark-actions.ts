@@ -27,7 +27,9 @@ export async function saveBookmarkChanges(
   }
   await saveBookmarkMetadata(bookmark.id, {
     description: changes.description,
+    descriptionSource: changes.descriptionSource,
     tags: changes.tags,
+    descriptionBaseline: changes.descriptionBaseline,
   });
 }
 
