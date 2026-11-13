@@ -155,6 +155,9 @@ export function useLibraryOrganize(
   const [canUndo, setCanUndo] = useState(false);
   const taskId = useRef<string>();
   const taskRevision = useRef<string>();
+  const attemptId = useRef<string>();
+  const startPending = useRef(false);
+  const cancelling = useRef<number>();
   // Bumped whenever the user starts or discards a run; older responses are ignored.
   const generation = useRef(0);
   // Cancel pressed before the background acknowledged the start and returned an id.
@@ -203,6 +206,27 @@ export function useLibraryOrganize(
     setPhase(active ? 'running' : 'preview');
   }, []);
 
+  const sendCancellation = useCallback(async () => {
+    const token = generation.current;
+    if (cancelling.current === token || (!taskId.current && !attemptId.current)) return;
+    cancelling.current = token;
+    try {
+      const response = await sendMessage({
+        type: Messages.ORGANIZE_TASK_CANCEL,
+        ...(taskId.current ? { id: taskId.current } : { attemptId: attemptId.current! }),
+      }).catch(() => undefined);
+      if (token !== generation.current) return;
+      if (response?.success && response.task) {
+        cancelRequested.current = false;
+        receiveTask(response.task);
+      } else if (!response?.success) {
+        setErrorCode('service_unavailable');
+      }
+    } finally {
+      if (cancelling.current === token) cancelling.current = undefined;
+    }
+  }, [receiveTask]);
+
   const refreshUndo = useCallback(async () => {
     setCanUndo(Boolean((await readOrganizeUndo())?.entries.length));
   }, []);
@@ -236,11 +260,27 @@ export function useLibraryOrganize(
     let active = true;
     let polling = false;
     const timer = setInterval(() => {
-      if (polling || !taskId.current) return;
+      if (polling || (!taskId.current && !attemptId.current)) return;
       polling = true;
-      void sendMessage({ type: Messages.ORGANIZE_TASK_GET, id: taskId.current })
+      void sendMessage({
+        type: Messages.ORGANIZE_TASK_GET,
+        ...(taskId.current ? { id: taskId.current } : { attemptId: attemptId.current }),
+      })
         .then((response) => {
-          if (active && response.success && response.task) receiveTask(response.task);
+          if (!active || !response.success) return;
+          if (response.task) {
+            if (cancelRequested.current) {
+              taskId.current = response.task.id;
+              taskRevision.current = response.task.revision;
+              void sendCancellation();
+            } else {
+              receiveTask(response.task);
+            }
+          } else if (!startPending.current && !taskId.current) {
+            cancelRequested.current = false;
+            setErrorCode('service_unavailable');
+            setPhase('ready');
+          }
         })
         .catch(() => {
           if (active) setErrorCode('service_unavailable');
@@ -254,7 +294,7 @@ export function useLibraryOrganize(
       active = false;
       clearInterval(timer);
     };
-  }, [phase, receiveTask]);
+  }, [phase, receiveTask, sendCancellation]);
 
   /** Must be called synchronously from the click so Chrome can show its permission prompt. */
   const saveKey = (provider: string, apiKey: string) => {
@@ -308,6 +348,8 @@ export function useLibraryOrganize(
   const start = async () => {
     const token = ++generation.current;
     cancelRequested.current = false;
+    attemptId.current = crypto.randomUUID();
+    startPending.current = true;
     taskId.current = undefined;
     taskRevision.current = undefined;
     setErrorCode(undefined);
@@ -321,6 +363,7 @@ export function useLibraryOrganize(
     const response = await sendMessage({
       type: Messages.ORGANIZE_TASK_START,
       input: {
+        attemptId: attemptId.current,
         scope,
         uiLanguage,
         parents: library.folders.map((folder) => [folder.id, folder.parentId]),
@@ -328,13 +371,22 @@ export function useLibraryOrganize(
       },
     }).catch(() => undefined);
     if (token !== generation.current) return;
+    startPending.current = false;
+    if (taskId.current) return;
     if (response?.success && response.task) {
-      receiveTask(response.task);
-      if (cancelRequested.current) await cancel();
-    } else {
+      if (cancelRequested.current) {
+        taskId.current = response.task.id;
+        taskRevision.current = response.task.revision;
+        await sendCancellation();
+      } else {
+        receiveTask(response.task);
+      }
+    } else if (response && !response.success) {
       cancelRequested.current = false;
-      setErrorCode(response && !response.success ? response.errorCode : 'service_unavailable');
+      setErrorCode(response.errorCode);
       setPhase('ready');
+    } else {
+      setErrorCode('service_unavailable');
     }
   };
 
@@ -413,18 +465,8 @@ export function useLibraryOrganize(
   };
 
   const cancel = async () => {
-    if (!taskId.current) {
-      // start() sends the cancellation as soon as the task id arrives.
-      cancelRequested.current = true;
-      return;
-    }
-    cancelRequested.current = false;
-    const response = await sendMessage({
-      type: Messages.ORGANIZE_TASK_CANCEL,
-      id: taskId.current,
-    }).catch(() => undefined);
-    if (response?.success && response.task) receiveTask(response.task);
-    else setErrorCode('service_unavailable');
+    cancelRequested.current = true;
+    await sendCancellation();
   };
 
   const updateProposal = (bookmarkId: string, changes: Partial<ReviewedProposal>) => {

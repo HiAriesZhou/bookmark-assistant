@@ -398,6 +398,41 @@ it('waits for the stored task before offering a new suggestion run', async () =>
   expect(button('organize_start')).toBeDefined();
 });
 
+it('cancels a task created before a timed-out start response returns', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  let rejectStart!: (error: Error) => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string; attemptId?: string; id?: string }) => {
+    if (message.type === 'ORGANIZE_TASK_START') {
+      return new Promise((_resolve, reject) => {
+        rejectStart = reject;
+      });
+    }
+    if (message.type === 'ORGANIZE_TASK_CANCEL' && message.attemptId && !message.id) {
+      latestTask = {
+        ...completedTask(),
+        status: 'cancelled',
+        createdAt: Date.now(),
+        input: { ...completedTask().input, attemptId: message.attemptId },
+      };
+      return { success: true, task: latestTask };
+    }
+    return respond(message);
+  });
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await act(async () => button('action_cancel')!.click());
+  await flush();
+
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', attemptId: expect.any(String) })
+  );
+  rejectStart(new Error('REQUEST_TIMEOUT'));
+  await flush();
+  expect(latestTask?.status).toBe('cancelled');
+  expect(button('organize_start')).toBeUndefined();
+});
+
 it('cancels a task whose start was still being acknowledged', async () => {
   // 拿到任务编号前点取消，取消意图曾被丢弃，后台继续调用 AI。
   storedKey = { provider: 'openai', last4: '1234' };
@@ -416,8 +451,8 @@ it('cancels a task whose start was still being acknowledged', async () => {
   await renderPanel();
   await act(async () => button('organize_start')!.click());
   await act(async () => button('action_cancel')!.click());
-  expect(sendMessage).not.toHaveBeenCalledWith(
-    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL' })
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', attemptId: expect.any(String) })
   );
 
   await act(async () => acknowledge());
@@ -426,4 +461,38 @@ it('cancels a task whose start was still being acknowledged', async () => {
     expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', id: 'organize-task' })
   );
   expect(latestTask?.status).toBe('cancelled');
+});
+
+it('retains cancel intent across the real 15-second start timeout and a failed cancel reply', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  await renderPanel();
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) => {
+    if (message.type === 'ORGANIZE_TASK_START') {
+      latestTask = { ...completedTask(), status: 'pending' };
+      return new Promise(() => undefined);
+    }
+    if (['ORGANIZE_TASK_GET', 'ORGANIZE_TASK_CANCEL'].includes(message.type) && Date.now() < 16_000)
+      return Promise.reject(new Error('Temporary transport failure'));
+    return respond(message);
+  });
+  try {
+    await act(async () => button('organize_start')!.click());
+    await act(async () => button('action_cancel')!.click());
+    await act(async () => vi.advanceTimersByTimeAsync(15_001));
+    expect(latestTask?.status).toBe('pending');
+    expect(button('action_cancel')).toBeDefined();
+    expect(button('organize_start')).toBeUndefined();
+
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', id: 'organize-task' })
+    );
+    expect(latestTask?.status).toBe('cancelled');
+    expect(button('action_cancel')).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
 });

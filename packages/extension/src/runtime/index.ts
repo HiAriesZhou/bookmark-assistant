@@ -123,21 +123,43 @@ export function createTaskRuntime(
       input,
       revision,
       dedupeKey,
+      submissionId,
     }: {
       type: string;
       input: Input;
       revision: string;
       dedupeKey?: string;
+      submissionId?: string;
     }): Promise<TaskRecord> {
       const operation = submitting.then(async () => {
         const definition = definitions.get(type);
         if (!definition || !revision) throw new Error('invalid_task');
-        const existing = dedupeKey
-          ? (await list(type)).find(
-              (job) => job.dedupeKey === dedupeKey && job.revision === revision && isTaskActive(job)
-            )
-          : undefined;
-        if (existing) return existing;
+        const jobs = await list(type);
+        const existing =
+          (submissionId
+            ? jobs.find(
+                (job) => job.revision === revision && job.submissionIds?.includes(submissionId)
+              )
+            : undefined) ??
+          (dedupeKey
+            ? jobs.find(
+                (job) =>
+                  job.dedupeKey === dedupeKey && job.revision === revision && isTaskActive(job)
+              )
+            : undefined);
+        if (existing) {
+          if (!submissionId || existing.submissionIds?.includes(submissionId)) return existing;
+          return (
+            (await store.update(existing.id, (current) =>
+              current
+                ? {
+                    ...current,
+                    submissionIds: [...(current.submissionIds ?? []), submissionId],
+                  }
+                : current
+            )) ?? existing
+          );
+        }
         const timestamp = now();
         const job: TaskRecord = {
           id: crypto.randomUUID(),
@@ -146,6 +168,7 @@ export function createTaskRuntime(
           state: definition.initialize(input),
           revision,
           dedupeKey,
+          ...(submissionId ? { submissionIds: [submissionId] } : {}),
           status: 'pending',
           attempts: 0,
           nextRunAt: timestamp,

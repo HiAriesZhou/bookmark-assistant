@@ -18,8 +18,11 @@ export type NotionTargetSummary = { id: string; title: string };
 // background can reject them after the connection changed elsewhere.
 export type MessageMap = {
   ORGANIZE_TASK_START: { req: { input: OrganizeTaskInput }; res: OrganizeTaskResponse };
-  ORGANIZE_TASK_GET: { req: { id?: string }; res: OrganizeTaskResponse };
-  ORGANIZE_TASK_CANCEL: { req: { id: string }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_GET: { req: { id?: string; attemptId?: string }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_CANCEL: {
+    req: { id: string; attemptId?: never } | { id?: never; attemptId: string };
+    res: OrganizeTaskResponse;
+  };
   ORGANIZE_TASK_RETRY: { req: { id: string }; res: OrganizeTaskResponse };
   ORGANIZE_TASK_DISMISS: { req: { id: string }; res: OrganizeTaskResponse };
   SYNC_ALL_BOOKMARKS: {

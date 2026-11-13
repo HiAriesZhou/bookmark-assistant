@@ -8,6 +8,7 @@ export interface TaskRecord<Input = unknown, State = unknown> {
   state: State;
   revision: string;
   dedupeKey?: string;
+  submissionIds?: string[];
   status: TaskStatus;
   attempts: number;
   nextRunAt: number;

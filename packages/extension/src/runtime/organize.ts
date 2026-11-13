@@ -24,6 +24,7 @@ import { type TaskRuntime, type TaskRecord } from './index';
 import { startRuntime } from './chrome';
 
 export interface OrganizeTaskInput {
+  attemptId?: string;
   scope: OrganizeScope;
   uiLanguage: string;
   parents: Array<[string, string | undefined]>;
@@ -46,6 +47,11 @@ const text = (value: unknown): value is string => typeof value === 'string' && v
 const invalid = (): never => {
   throw new OrganizeError('invalid_request');
 };
+
+function validateAttemptId(value: unknown): string {
+  if (typeof value !== 'string' || !value.length || value.length > 128) return invalid();
+  return value;
+}
 
 /** Whitelist only shareable fields; credentials and raw URLs never enter the queue. */
 export function prepareOrganizeTaskInput(raw: unknown): OrganizeTaskInput {
@@ -101,6 +107,7 @@ export function prepareOrganizeTaskInput(raw: unknown): OrganizeTaskInput {
     return [entry[0], entry[1]];
   });
   return {
+    ...(value.attemptId !== undefined ? { attemptId: validateAttemptId(value.attemptId) } : {}),
     scope: { items, folders, totalCandidates: items.length, excludedCount: 0 },
     uiLanguage: value.uiLanguage.slice(0, 32),
     parents,
@@ -185,6 +192,7 @@ export function registerOrganizeTask(runtime: TaskRuntime) {
 }
 
 export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
+  const submissions = new Map<string, Promise<OrganizeTaskResponse>>();
   const wake = () => {
     void startRuntime(runtime).catch(() => undefined);
   };
@@ -206,11 +214,25 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
     if (!job || job.type !== 'organize') return invalid();
     return job;
   }
+  async function byAttempt(raw: unknown) {
+    const attemptId = validateAttemptId(raw);
+    const pending = submissions.get(attemptId);
+    if (pending) {
+      const response = await pending;
+      if (!response.success) throw new OrganizeError(response.errorCode);
+      return response.task;
+    }
+    return (await runtime.list('organize')).find(
+      (job) =>
+        job.submissionIds?.includes(attemptId) ||
+        (job.input as OrganizeTaskInput).attemptId === attemptId
+    );
+  }
   return {
     ORGANIZE_TASK_START: (
       request: MessageRequest<'ORGANIZE_TASK_START'>
-    ): Promise<MessageResponse<'ORGANIZE_TASK_START'>> =>
-      respond(async () => {
+    ): Promise<MessageResponse<'ORGANIZE_TASK_START'>> => {
+      const response = respond(async () => {
         const input = prepareOrganizeTaskInput(request.input);
         const revision = await readOrganizeCredentialRevision();
         if (!revision) throw new OrganizeError('not_configured');
@@ -219,15 +241,27 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
           input,
           revision,
           dedupeKey: 'organize',
+          submissionId: input.attemptId,
         });
         wake();
         return job;
-      }),
+      });
+      const attemptId = request.input?.attemptId;
+      if (typeof attemptId === 'string') {
+        submissions.set(attemptId, response);
+        void response.finally(() => {
+          if (submissions.get(attemptId) === response) submissions.delete(attemptId);
+        });
+      }
+      return response;
+    },
     ORGANIZE_TASK_GET: (request: MessageRequest<'ORGANIZE_TASK_GET'>) =>
       respond(async () => {
         const job = request.id
           ? await own(request.id)
-          : (await runtime.list('organize')).sort((a, b) => b.createdAt - a.createdAt)[0];
+          : request.attemptId !== undefined
+            ? await byAttempt(request.attemptId)
+            : (await runtime.list('organize')).sort((a, b) => b.createdAt - a.createdAt)[0];
         // 已应用或放弃的结果只能按编号读取，不再作为“上次的整理”恢复。
         if (!job || (!request.id && job.dismissed)) return null;
         if ((await readOrganizeCredentialRevision()) !== job.revision) {
@@ -245,8 +279,8 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
       }),
     ORGANIZE_TASK_CANCEL: (request: MessageRequest<'ORGANIZE_TASK_CANCEL'>) =>
       respond(async () => {
-        await own(request.id);
-        return runtime.cancel(request.id);
+        const job = request.id ? await own(request.id) : await byAttempt(request.attemptId);
+        return job ? runtime.cancel(job.id) : null;
       }),
     ORGANIZE_TASK_DISMISS: (request: MessageRequest<'ORGANIZE_TASK_DISMISS'>) =>
       respond(async () => {

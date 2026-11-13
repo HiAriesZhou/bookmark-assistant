@@ -122,3 +122,68 @@ it('keeps restoring a task that is still running even if dismissal is requested'
     task: { id: job.id, status: 'pending' },
   });
 });
+
+it('cancels by attempt while the submission is waiting to become durable', async () => {
+  const { runtime, submit, handlers } = organizeFixture(0);
+  const input = (await submit()).input as Parameters<
+    typeof handlers.ORGANIZE_TASK_START
+  >[0]['input'];
+  await runtime.cancel((await runtime.list())[0].id);
+  let release!: () => void;
+  let began!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    began = resolve;
+  });
+  runtime.setWake(
+    () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+        began();
+      })
+  );
+  const start = handlers.ORGANIZE_TASK_START({
+    type: 'ORGANIZE_TASK_START',
+    input: { ...input, attemptId: 'delayed-attempt' },
+  });
+  await waiting;
+  const cancel = handlers.ORGANIZE_TASK_CANCEL({
+    type: 'ORGANIZE_TASK_CANCEL',
+    attemptId: 'delayed-attempt',
+  });
+  release();
+  const started = await start;
+  expect(started.success).toBe(true);
+  const cancelled = await cancel;
+  expect(cancelled).toMatchObject({
+    success: true,
+    task: { status: 'cancelled', input: { attemptId: 'delayed-attempt' } },
+  });
+  const job = (cancelled as Extract<typeof cancelled, { success: true }>).task!;
+  expect((await runtime.get(job.id))?.status).toBe('cancelled');
+});
+
+it('finds a deduplicated submission by its attempt after handlers are recreated', async () => {
+  const { runtime, submit, handlers } = organizeFixture(0);
+  const job = await submit();
+  const input = job.input as Parameters<typeof handlers.ORGANIZE_TASK_START>[0]['input'];
+  expect(
+    await handlers.ORGANIZE_TASK_START({
+      type: 'ORGANIZE_TASK_START',
+      input: { ...input, attemptId: 'new-attempt' },
+    })
+  ).toMatchObject({ success: true, task: { id: job.id } });
+  const restoredHandlers = createOrganizeTaskHandlers(runtime);
+  expect(
+    await restoredHandlers.ORGANIZE_TASK_GET({
+      type: 'ORGANIZE_TASK_GET',
+      attemptId: 'new-attempt',
+    })
+  ).toMatchObject({ success: true, task: { id: job.id } });
+  expect(
+    await restoredHandlers.ORGANIZE_TASK_CANCEL({
+      type: 'ORGANIZE_TASK_CANCEL',
+      attemptId: 'new-attempt',
+    })
+  ).toMatchObject({ success: true, task: { id: job.id, status: 'cancelled' } });
+  expect(await runtime.list()).toHaveLength(1);
+});
