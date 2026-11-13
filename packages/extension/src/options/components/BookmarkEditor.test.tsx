@@ -5,6 +5,12 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { LocalBookmark } from '../../library/bookmark-library';
 import { ToastProvider } from '../hook/ToastProvider';
 import { BookmarkEditor } from './BookmarkEditor';
+import { saveBookmarkChanges } from '../../library/bookmark-actions';
+import {
+  fillBookmarkDescriptionIfUnchanged,
+  readBookmarkMetadata,
+  saveBookmarkMetadata,
+} from '../../library/bookmark-metadata';
 
 const bookmark = (title: string, updatedAt: string): LocalBookmark => ({
   id: 'bookmark-1',
@@ -34,6 +40,32 @@ beforeEach(() => {
 afterEach(async () => {
   await cleanupTestRoot(root, container);
   vi.unstubAllGlobals();
+});
+
+it('shows AI inference provenance beside the local description field', async () => {
+  await act(async () => {
+    root.render(
+      <ToastProvider>
+        <BookmarkEditor
+          bookmark={{
+            ...bookmark('Reference', '2026-09-07T00:00:00.000Z'),
+            metadata: {
+              tags: [],
+              updatedAt: '2026-09-07T00:00:00.000Z',
+              description: 'AI inference: A reference.',
+              descriptionSource: 'ai',
+            },
+          }}
+          folders={[]}
+          busy={false}
+          onSave={vi.fn(async () => undefined)}
+          onDelete={vi.fn(async () => undefined)}
+          onDirtyChange={vi.fn()}
+        />
+      </ToastProvider>
+    );
+  });
+  expect(container.textContent).toContain('library_description_source_ai');
 });
 
 it('does not overwrite an in-progress draft when Chrome refreshes the selected bookmark', async () => {
@@ -221,6 +253,167 @@ it('includes an uncommitted tag draft when save is clicked directly', async () =
   await act(async () => saveButton?.click());
 
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ tags: ['Research'] }));
+});
+
+it('reports the description loaded into a dirty form so a later save can detect it is stale', async () => {
+  const onSave = vi.fn(async () => undefined);
+  const opened = bookmark('Original title', '2026-09-07T00:00:00.000Z');
+  opened.metadata = { ...opened.metadata, revision: 'opened' };
+  const refreshed: typeof opened = {
+    ...opened,
+    metadata: {
+      ...opened.metadata,
+      revision: 'ai-wrote',
+      description: 'AI inference: A reference.',
+      descriptionSource: 'ai',
+    },
+  };
+  const render = async (selected: typeof opened) => {
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <BookmarkEditor
+            bookmark={selected}
+            folders={[{ id: 'folder-1', title: 'Bookmarks bar', path: 'Bookmarks bar', depth: 0 }]}
+            busy={false}
+            onSave={onSave}
+            onDelete={vi.fn()}
+            onDirtyChange={vi.fn()}
+          />
+        </ToastProvider>
+      );
+    });
+  };
+
+  await render(opened);
+  changeInput(container.querySelector('input.library-input'), 'Unsaved title');
+  await render(refreshed);
+  const saveButton = container.querySelector<HTMLButtonElement>(
+    '[aria-label="library_save_changes"]'
+  );
+  await act(async () => saveButton?.click());
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({
+      title: 'Unsaved title',
+      description: '',
+      descriptionBaseline: { revision: 'opened', description: '' },
+    })
+  );
+});
+
+it('preserves a background description when saving a dirty editor through the storage path', async () => {
+  const storage: Record<string, unknown> = {};
+  Object.assign(chrome, {
+    storage: {
+      local: {
+        get: async (key: string) => ({ [key]: storage[key] }),
+        set: async (values: Record<string, unknown>) => Object.assign(storage, values),
+      },
+    },
+    bookmarks: { update: vi.fn(async () => undefined) },
+  });
+  const opened = bookmark('Original title', '2026-09-07T00:00:00.000Z');
+  opened.metadata = await saveBookmarkMetadata(opened.id, { description: '', tags: [] });
+  let current = opened;
+  const onSave = vi.fn(async (changes: Parameters<typeof saveBookmarkChanges>[1]) =>
+    saveBookmarkChanges(current, changes)
+  );
+  const render = async () => {
+    await act(async () => {
+      root.render(
+        <ToastProvider>
+          <BookmarkEditor
+            bookmark={current}
+            folders={[]}
+            busy={false}
+            onSave={onSave}
+            onDelete={vi.fn()}
+            onDirtyChange={vi.fn()}
+          />
+        </ToastProvider>
+      );
+    });
+  };
+  await render();
+  changeInput(container.querySelector('input.library-input'), 'Unsaved title');
+  const filled = await fillBookmarkDescriptionIfUnchanged(
+    opened.id,
+    'AI inference: A reference.',
+    'ai',
+    opened.metadata,
+    async () => true
+  );
+  expect(filled).not.toBeNull();
+  current = { ...opened, metadata: filled! };
+  await render();
+  await act(async () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="library_save_changes"]')!.click()
+  );
+  expect((await readBookmarkMetadata())[opened.id]).toMatchObject({
+    description: 'AI inference: A reference.',
+    descriptionSource: 'ai',
+    tags: [],
+  });
+  expect((await readBookmarkMetadata())[opened.id]).not.toHaveProperty('descriptionCleared');
+});
+
+it('saves a clear typed while the previous description save was still pending', async () => {
+  const storage: Record<string, unknown> = {};
+  Object.assign(chrome, {
+    storage: {
+      local: {
+        get: async (key: string) => ({ [key]: storage[key] }),
+        set: async (values: Record<string, unknown>) => Object.assign(storage, values),
+      },
+    },
+  });
+  const selected = bookmark('Reference', '2026-09-07T00:00:00.000Z');
+  selected.metadata = await saveBookmarkMetadata(selected.id, { description: '', tags: [] });
+  let finishSave!: () => void;
+  const onSave = vi.fn(async (changes: Parameters<typeof saveBookmarkChanges>[1]) => {
+    await saveBookmarkChanges(selected, changes);
+    if (onSave.mock.calls.length === 1)
+      await new Promise<void>((resolve) => {
+        finishSave = resolve;
+      });
+  });
+  await act(async () => {
+    root.render(
+      <ToastProvider>
+        <BookmarkEditor
+          bookmark={selected}
+          folders={[]}
+          busy={false}
+          onSave={onSave}
+          onDelete={vi.fn()}
+          onDirtyChange={vi.fn()}
+        />
+      </ToastProvider>
+    );
+  });
+  const textarea = container.querySelector('textarea')!;
+  const setDescription = (value: string) =>
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(
+        textarea,
+        value
+      );
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  const save = () =>
+    container.querySelector<HTMLButtonElement>('[aria-label="library_save_changes"]')!.click();
+  setDescription('First saved description');
+  await act(async () => save());
+  expect((await readBookmarkMetadata())[selected.id].description).toBe('First saved description');
+  setDescription('');
+  await act(async () => finishSave());
+  await act(async () => save());
+  expect((await readBookmarkMetadata())[selected.id]).toMatchObject({
+    descriptionCleared: true,
+    descriptionSource: 'user',
+  });
+  expect((await readBookmarkMetadata())[selected.id].description).toBeUndefined();
 });
 
 function changeInput(input: HTMLInputElement | null, value: string) {

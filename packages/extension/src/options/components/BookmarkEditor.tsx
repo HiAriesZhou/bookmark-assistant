@@ -5,6 +5,7 @@ import {
   BOOKMARK_TAG_LIMIT,
   BOOKMARK_TAG_MAX_LENGTH,
   normalizeBookmarkTags,
+  type DescriptionBaseline,
 } from '../../library/bookmark-metadata';
 import type { BookmarkChanges } from '../../library/bookmark-actions';
 import {
@@ -44,11 +45,19 @@ export function BookmarkEditor({
   const [parentId, setParentId] = useState(bookmark?.parentId ?? '');
   const [dirty, setDirty] = useState(false);
   const draftRevision = useRef(0);
+  const descriptionBaseline = useRef<DescriptionBaseline>({
+    revision: bookmark?.metadata.revision,
+    description: bookmark?.metadata.description ?? '',
+  });
   const titleInputRef = useRef<HTMLInputElement>(null);
   const bookmarkId = bookmark?.id;
 
   useEffect(() => {
     if (!bookmark || dirty) return;
+    descriptionBaseline.current = {
+      revision: bookmark.metadata.revision,
+      description: bookmark.metadata.description ?? '',
+    };
     setTitle(bookmark.title);
     setUrl(bookmark.url);
     setDescription(bookmark.metadata.description ?? '');
@@ -121,7 +130,15 @@ export function BookmarkEditor({
     if (tagDraft) setTagDraft('');
     const savedRevision = draftRevision.current;
     try {
-      await onSave({ title, url, description, tags: tagsToSave, parentId });
+      await onSave({
+        title,
+        url,
+        description,
+        tags: tagsToSave,
+        parentId,
+        descriptionBaseline: descriptionBaseline.current,
+      });
+      descriptionBaseline.current = { ...descriptionBaseline.current, description };
       if (draftRevision.current === savedRevision) {
         setDirty(false);
         show({
@@ -197,7 +214,20 @@ export function BookmarkEditor({
             }}
           />
         </EditorField>
-        <EditorField label={t('library_field_description')} hint={t('library_local_only')}>
+        <EditorField
+          label={t('library_field_description')}
+          hint={
+            description || bookmark.metadata.descriptionCleared
+              ? t(
+                  `library_description_source_${
+                    description === (bookmark.metadata.description ?? '')
+                      ? (bookmark.metadata.descriptionSource ?? 'user')
+                      : 'user'
+                  }`
+                )
+              : t('library_local_only')
+          }
+        >
           <textarea
             className="library-input h-16 min-h-16 resize-y py-2"
             maxLength={BOOKMARK_DESCRIPTION_MAX_LENGTH}

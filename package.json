@@ -9,7 +9,6 @@
   ],
   "scripts": {
     "dev": "pnpm -F @bookmark-assistant/extension dev",
-    "dev:server": "pnpm -F @bookmark-assistant/server dev",
     "dev:website": "pnpm -F @bookmark-assistant/website dev",
     "build": "pnpm -F @bookmark-assistant/extension build",
     "package": "pnpm -F @bookmark-assistant/extension build:zip",
@@ -20,7 +19,6 @@
     "brand:check": "node scripts/sync-brand-assets.mjs --check",
     "resources:sync": "pnpm version:sync && pnpm marketing:copy:sync && pnpm brand:sync",
     "resources:check": "pnpm version:check && pnpm brand:check && pnpm marketing:copy:check && node scripts/check-public-resources.mjs",
-    "build:server": "pnpm -F @bookmark-assistant/server build",
     "build:website": "pnpm -F @bookmark-assistant/website build",
     "build:all": "pnpm -r build",
     "test": "vitest run",
@@ -35,7 +33,6 @@
     "lint": "pnpm -r lint",
     "clean": "pnpm -r clean",
     "prepare": "husky",
-    "start:server": "pnpm -F @bookmark-assistant/server start",
     "start:website": "pnpm -F @bookmark-assistant/website start",
     "check:i18n": "node scripts/check-i18n.js",
     "marketing:copy:sync": "pnpm -F @bookmark-assistant/marketing copy:sync",

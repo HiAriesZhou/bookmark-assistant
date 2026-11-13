@@ -9,14 +9,14 @@
 #   build, ci, chore, revert
 #
 # Common scopes:
-#   extension, server, repo, ui, sync, auth, api, build, deps, release, ci, docs
+#   extension, repo, ui, sync, ai, build, deps, release, ci, docs
 #
 # Examples:
 #   feat(extension): add typed messaging bus for content/background
-#   fix(server): handle invalid OAuth redirect edge-case
+#   fix(sync): reject results after a destination disconnect
 #   refactor(ui): split options page into sections
 #   chore(repo)!: remove deprecated shared package
-#   docs: add setup instructions for Notion OAuth
+#   docs: add setup instructions for a Notion token
 #
 # Breaking changes:
 #   Include a line starting with "BREAKING CHANGE:" in the body

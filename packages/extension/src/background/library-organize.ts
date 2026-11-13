@@ -39,6 +39,7 @@ interface StoredOrganizeKey {
   provider: AiProvider;
   apiKey: string;
   savedAt: string;
+  revision: string;
 }
 
 export interface OrganizeKeySummary {
@@ -106,14 +107,19 @@ export async function saveOrganizeKey(
     provider,
     apiKey: trimmedKey,
     savedAt: new Date().toISOString(),
+    revision: crypto.randomUUID(),
   };
-  await chrome.storage.local.set({ [LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]: stored });
+  await withCredentialLock(() =>
+    chrome.storage.local.set({ [LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]: stored })
+  );
   await releaseProviderPermissions(AI_PROVIDERS.filter((candidate) => candidate !== provider));
   return summarize(stored);
 }
 
 export async function deleteOrganizeKey(): Promise<void> {
-  await chrome.storage.local.remove(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY);
+  await withCredentialLock(() =>
+    chrome.storage.local.remove(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY)
+  );
   await releaseProviderPermissions(AI_PROVIDERS);
 }
 
@@ -127,10 +133,17 @@ async function releaseProviderPermissions(providers: readonly AiProvider[]): Pro
 /** Step 1: which existing folders already serve a category. */
 export async function runFolderMap(
   request: OrganizeFolderMapRequest,
-  fetcher: FetchLike = fetch
+  fetcher: FetchLike = fetch,
+  expectedRevision?: string
 ): Promise<{ folderMap: OrganizeFolderMap }> {
   if (!isValidFolderMapRequest(request)) throw new OrganizeError('invalid_request');
-  const text = await generate(buildFolderMapPrompt(request), FOLDER_MAP_MAX_OUTPUT_TOKENS, fetcher);
+  const text = await generateWithOrganizeKey(
+    buildFolderMapPrompt(request),
+    FOLDER_MAP_MAX_OUTPUT_TOKENS,
+    async () => true,
+    fetcher,
+    expectedRevision
+  );
   return { folderMap: parseOrThrow(() => parseFolderMapResponse(text, request)) };
 }
 
@@ -138,33 +151,50 @@ export async function runFolderMap(
 export async function runAssignBatch(
   items: OrganizeItem[],
   uiLanguage: string,
-  fetcher: FetchLike = fetch
+  fetcher: FetchLike = fetch,
+  expectedRevision?: string
 ): Promise<{ assignments: OrganizeAssignment[] }> {
   if (!isValidItems(items)) throw new OrganizeError('invalid_request');
-  const text = await generate(
+  const text = await generateWithOrganizeKey(
     buildAssignPrompt(items, uiLanguage),
     ASSIGN_MAX_OUTPUT_TOKENS,
-    fetcher
+    async () => true,
+    fetcher,
+    expectedRevision
   );
   return { assignments: parseOrThrow(() => parseAssignResponse(text, items)) };
 }
 
-async function generate(prompt: string, maxOutputTokens: number, fetcher: FetchLike) {
+export async function generateWithOrganizeKey(
+  prompt: string,
+  maxOutputTokens: number,
+  contextGuard: () => Promise<boolean>,
+  fetcher: FetchLike = fetch,
+  expectedRevision?: string
+): Promise<string> {
   const stored = await readStoredKey();
-  if (!stored) throw new OrganizeError('not_configured');
-  await assertProviderPermission(stored.provider);
+  if (!stored || (expectedRevision !== undefined && stored.revision !== expectedRevision)) {
+    throw new OrganizeError('not_configured');
+  }
+  const assertCurrent = async () => {
+    await assertProviderPermission(stored.provider);
+    if (!(await contextGuard()) || (await readOrganizeCredentialRevision()) !== stored.revision) {
+      throw new OrganizeError('not_configured');
+    }
+  };
+  await assertCurrent();
   const adapter = createAiProviderAdapter(stored.provider, fetcher, undefined, undefined, {
     browserClient: true,
   });
   try {
     // Classification needs no long reasoning, and the worker cannot wait for it.
-    return (
-      await adapter.generate(stored.apiKey, prompt, {
-        maxOutputTokens,
-        lowLatency: true,
-        deterministic: true,
-      })
-    ).text;
+    const result = await adapter.generate(stored.apiKey, prompt, {
+      maxOutputTokens,
+      lowLatency: true,
+      deterministic: true,
+    });
+    await assertCurrent();
+    return result.text;
   } catch (error) {
     if (error instanceof AiProviderGenerationError) {
       throw new OrganizeError(error.code, error.retryAfterMs);
@@ -189,13 +219,49 @@ async function assertProviderPermission(provider: AiProvider): Promise<void> {
   if (!granted) throw new OrganizeError('permission_required');
 }
 
+export async function readOrganizeCredentialRevision(): Promise<string | null> {
+  return (await readStoredKey())?.revision ?? null;
+}
+
+let credentialQueue: Promise<unknown> = Promise.resolve();
+function withCredentialLock<T>(operation: () => Promise<T>): Promise<T> {
+  const locked = () =>
+    typeof navigator !== 'undefined' && navigator.locks
+      ? navigator.locks
+          .request<Promise<T>>('library-organize-credential', operation)
+          .then((result) => result)
+      : operation();
+  const next = credentialQueue.then(locked, locked);
+  credentialQueue = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
+}
+
 async function readStoredKey(): Promise<StoredOrganizeKey | undefined> {
-  const value = (await chrome.storage.local.get(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY))[
-    LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY
-  ] as Partial<StoredOrganizeKey> | undefined;
-  if (!value || !isAiProvider(value.provider) || typeof value.apiKey !== 'string') return undefined;
-  if (!value.apiKey) return undefined;
-  return { provider: value.provider, apiKey: value.apiKey, savedAt: String(value.savedAt ?? '') };
+  return withCredentialLock(async () => {
+    const value = (
+      await chrome.storage.local.get(LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY)
+    )[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY] as Partial<StoredOrganizeKey> | undefined;
+    if (!value || !isAiProvider(value.provider) || typeof value.apiKey !== 'string')
+      return undefined;
+    if (!value.apiKey) return undefined;
+    const stored = {
+      provider: value.provider,
+      apiKey: value.apiKey,
+      savedAt: String(value.savedAt ?? ''),
+      revision:
+        typeof value.revision === 'string' && value.revision ? value.revision : crypto.randomUUID(),
+    };
+    // Migrate old keys once. The opaque revision is random and never derives from a secret.
+    if (stored.revision !== value.revision) {
+      await chrome.storage.local.set({
+        [LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY]: stored,
+      });
+    }
+    return stored;
+  });
 }
 
 function summarize(stored: StoredOrganizeKey): OrganizeKeySummary {

@@ -7,7 +7,7 @@ description: Prepare and verify Bookmark Assistant extension releases with corre
 
 Use the same source tree for official and unofficial builds. Follow the
 maintainer's current operator release checklist when available; public contributors
-can use README, deploy/README.md and the checks below without private documents.
+can use README and the checks below without private documents.
 
 ## Preparation
 

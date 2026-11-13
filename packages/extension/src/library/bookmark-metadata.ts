@@ -5,8 +5,13 @@ export const BOOKMARK_DESCRIPTION_MAX_LENGTH = 2_000;
 export const BOOKMARK_TAG_MAX_LENGTH = 40;
 export const BOOKMARK_TAG_LIMIT = 20;
 
+export type DescriptionSource = 'user' | 'page' | 'ai';
+
 export interface LocalBookmarkMetadataV1 {
   description?: string;
+  descriptionSource?: DescriptionSource;
+  descriptionCleared?: boolean;
+  revision?: string;
   tags: string[];
   updatedAt: string;
 }
@@ -16,9 +21,16 @@ interface LocalBookmarkMetadataStoreV1 {
   byBookmarkId: Record<string, LocalBookmarkMetadataV1>;
 }
 
+export interface DescriptionBaseline {
+  revision?: string;
+  description?: string;
+}
+
 export interface LocalBookmarkMetadataInput {
   description?: string;
+  descriptionSource?: DescriptionSource;
   tags: string[];
+  descriptionBaseline?: DescriptionBaseline;
 }
 
 let writeQueue: Promise<void> = Promise.resolve();
@@ -72,12 +84,69 @@ export function saveBookmarkMetadata(
   input: LocalBookmarkMetadataInput,
   now: Date = new Date()
 ): Promise<LocalBookmarkMetadataV1> {
-  const metadata = normalizeBookmarkMetadata(input, now);
   return enqueueWrite(async () => {
     const byBookmarkId = await readBookmarkMetadata();
-    if (!metadata.description && metadata.tags.length === 0) delete byBookmarkId[bookmarkId];
-    else byBookmarkId[bookmarkId] = metadata;
-    await writeMetadata(byBookmarkId);
+    const previous = byBookmarkId[bookmarkId];
+    const baseline = input.descriptionBaseline;
+    const submittedDescription = input.description?.trim() || undefined;
+    const baselineDescription = baseline?.description?.trim() || undefined;
+    const descriptionStale =
+      baseline !== undefined &&
+      (previous?.revision !== baseline.revision || previous?.description !== baselineDescription) &&
+      submittedDescription === baselineDescription;
+    const normalized = normalizeBookmarkMetadata(
+      {
+        description: descriptionStale ? previous?.description : input.description,
+        tags: input.tags,
+      },
+      now
+    );
+    const source =
+      input.descriptionSource ??
+      (normalized.description && normalized.description === previous?.description
+        ? (previous.descriptionSource ?? 'user')
+        : 'user');
+    // 只有把已有描述改为空才算用户清空；原本为空时再次提交空值（例如只改标签）不留记录。
+    const clearsDescription =
+      !descriptionStale &&
+      input.description !== undefined &&
+      !!previous?.description &&
+      !normalized.description;
+    const cleared =
+      !normalized.description && (clearsDescription || !!previous?.descriptionCleared);
+    const metadata: LocalBookmarkMetadataV1 = {
+      ...normalized,
+      ...(normalized.description || cleared ? { descriptionSource: source } : {}),
+      ...(cleared ? { descriptionCleared: true } : {}),
+      revision: crypto.randomUUID(),
+    };
+    await writeMetadata({ ...byBookmarkId, [bookmarkId]: metadata });
+    return metadata;
+  });
+}
+
+export function hasDescriptionHistory(metadata: LocalBookmarkMetadataV1 | undefined): boolean {
+  return !!(metadata?.description || metadata?.descriptionSource || metadata?.descriptionCleared);
+}
+
+/** Compare and write under the same cross-page lock as user edits. */
+export function fillBookmarkDescriptionIfUnchanged(
+  bookmarkId: string,
+  description: string,
+  descriptionSource: 'page' | 'ai',
+  expected: LocalBookmarkMetadataV1 | undefined,
+  contextGuard: () => Promise<boolean>
+): Promise<LocalBookmarkMetadataV1 | null> {
+  return enqueueWrite(async () => {
+    const all = await readBookmarkMetadata();
+    const current = all[bookmarkId];
+    if (hasDescriptionHistory(current) || JSON.stringify(current) !== JSON.stringify(expected))
+      return null;
+    if (!(await contextGuard())) return null;
+    const normalized = normalizeBookmarkMetadata({ description, tags: current?.tags ?? [] });
+    if (!normalized.description) return null;
+    const metadata = { ...normalized, descriptionSource, revision: crypto.randomUUID() };
+    await writeMetadata({ ...all, [bookmarkId]: metadata });
     return metadata;
   });
 }
@@ -128,10 +197,20 @@ function parseMetadataStore(value: unknown): LocalBookmarkMetadataStoreV1 {
       continue;
     }
     try {
-      byBookmarkId[bookmarkId] = normalizeBookmarkMetadata(
+      const metadata = normalizeBookmarkMetadata(
         { description: candidate.description, tags: candidate.tags },
         new Date(candidate.updatedAt)
       );
+      byBookmarkId[bookmarkId] = {
+        ...metadata,
+        ...(['user', 'page', 'ai'].includes(String(candidate.descriptionSource))
+          ? { descriptionSource: candidate.descriptionSource as DescriptionSource }
+          : {}),
+        ...(!metadata.description && candidate.descriptionCleared === true
+          ? { descriptionCleared: true }
+          : {}),
+        ...(typeof candidate.revision === 'string' ? { revision: candidate.revision } : {}),
+      };
     } catch {
       // Ignore only the malformed entry; the rest of the local library remains usable.
     }

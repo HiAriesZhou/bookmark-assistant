@@ -1,9 +1,8 @@
 # Bookmark Assistant repository rules
 
 Bookmark Assistant is an open-source Chrome extension with a GPL-3.0-only source
-tree. Local use remains free and works without an account. Optional self-hosted and
-official hosted services share the open-source server. Paid entitlements apply only
-to the official service; self-hosting requires no official billing or license server.
+tree. It runs locally without an account, subscription or product server. Notion
+sync and AI are optional direct integrations using the user's own credentials.
 Keep AI classification, new destinations and LiteContext expansion out of unrelated
 changes.
 
@@ -16,15 +15,13 @@ changes.
   The Bookmark Assistant name and logo are protected by TRADEMARKS.md, not by
   hiding files. Preserve third-party licenses and trademark ownership; keep
   third-party logos out of the tree. Do not add commercial-use restrictions.
-- Public copy names the product Bookmark Assistant. Distinguish free local use and
-  self-hosting from optional paid official hosting. Never gate existing local
-  features behind a service account or imply that AI provider usage is included.
-  Announce a hosted capability only after its runtime path has been verified.
-- Product versions and runtime public copy have one source; profile-specific build
-  resources go into ignored output directories. Never edit generated mirrors.
+- Public copy names the product Bookmark Assistant. Local features are free and
+  require no service account. Never imply that AI provider usage is included.
+- Product versions and runtime public copy have one source; build resources go into
+  ignored output directories. Never edit generated mirrors.
 - Keep README as an entry point. Product planning, strategy, architecture decisions
   and operational runbooks remain in the maintainer's Obsidian vault. Do not create
-  a docs directory. Public deployment and legal entry files are appropriate here.
+  a docs directory. Public legal entry files are appropriate here.
 - Shared KnowledgeItem/ContextItem contracts stay compatible. Data format
   compatibility does not grant permission to copy GPL implementation code into an
   incompatible downstream project.
@@ -34,31 +31,28 @@ changes.
 - Extension: React/Vite/MV3. Popup and Options communicate with the service worker
   through runtime messages; the background owns destination and AI requests. Chrome
   bookmarks remain the local library's source of truth.
+- Sync and AI organization run as checkpointed IndexedDB tasks in the background.
+  Chrome alarms and worker startup resume bounded steps. Closing Options is not
+  cancellation; do not add keepalive loops or persist credentials in task records.
+- Descriptions use user input, meta tags read after an explicit current-page save,
+  or labeled AI inference from title, folder and sanitized URL. Never fetch page
+  bodies. Preserve existing descriptions and recorded clears. An unconfirmed
+  Notion create must be reconciled before any resend.
 - Notion is an optional destination. The user pastes a personal access token or an
   internal integration token, and the background calls `api.notion.com` directly.
   New destinations, such as Obsidian, are separate changes.
 - AI is optional and uses the user's own provider key, called directly from the
   extension. Provider adapters live in `packages/extension/src/ai` and use the shared
-  provider types; the server currently keeps its own copy. Provider hosts are optional
-  host permissions requested when needed.
-- Direct-mode Notion tokens and AI keys stay in `chrome.storage.local`. Hosted
-  credentials require explicit connection consent and encryption at rest. Never
-  put credentials in `chrome.storage.sync`, logs, diagnostics or error reports.
-  Service sessions are scoped to server origin and account; switching servers
-  must never forward credentials or accept results from the previous connection.
-- Server (`packages/server`, Express/Prisma/PostgreSQL): shared by self-hosted and
-  official deployments. Preserve old client contracts during the rollout. Merges
-  to `main` can redeploy production: do not merge deployment-triggering changes
-  before the user's final release confirmation.
-- Billing is server-authoritative. Verify Paddle signatures against the exact raw
-  body before parsing events, deduplicate deliveries and reject stale state changes.
-  Self-hosted deployments never require Paddle. Keep existing subscriptions valid
-  when adding purchase options.
+  provider types. Provider hosts are optional host permissions requested when needed.
+- Notion tokens and AI keys stay in `chrome.storage.local`. Never put credentials in
+  `chrome.storage.sync`, logs, diagnostics or error reports. Local storage does not
+  encrypt credentials on the device.
 - Debug entry points and synthetic scenarios belong only in development builds;
   production artifacts must not contain mock credentials or entitlement bypasses.
-- Types hold the shared KnowledgeItem, AI and deployment contracts. Shared holds
-  brand artwork and scrollbar styles. Website: Next.js. Marketing: public copy and
-  headless rendering/validation tools.
+- Types hold the shared KnowledgeItem and AI contracts. Shared holds brand artwork
+  and scrollbar styles. Website: a static product site built with Next.js, with no
+  API proxy or billing integration. Marketing: public copy and headless
+  rendering/validation tools.
 - Pure core transforms must not depend on Chrome APIs, storage or network calls.
 
 ## Verification
@@ -85,7 +79,8 @@ Prepare an audited source snapshot without private Git history. Do not publish,
 rename repositories, submit store packages, deploy production or announce releases
 without the corresponding user direction. Each binary release needs corresponding
 source, build instructions, license notices and recorded checksums. No public CI job
-may access official deployment or asset credentials.
+may access official deployment or asset credentials. Removing legacy server code
+from this tree does not authorize changing or shutting down a running service.
 
 The former public npm core packages are historical; current runtime packages use
 workspace dependencies. Do not publish personal npm packages incidentally. If a

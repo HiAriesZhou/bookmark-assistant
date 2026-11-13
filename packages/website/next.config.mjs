@@ -26,17 +26,5 @@ export default async function nextConfig(phase) {
         },
       ],
     },
-    // The extension no longer uses a server. This rewrite serves only extension
-    // versions released before the client-only version until the legacy server shuts down.
-    async rewrites() {
-      return [
-        {
-          source: '/api/:path*',
-          destination: process.env.API_URL
-            ? `${process.env.API_URL}/api/:path*`
-            : 'http://localhost:3333/api/:path*',
-        },
-      ];
-    },
   };
 }

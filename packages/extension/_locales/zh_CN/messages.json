@@ -159,7 +159,7 @@
     "description": "Auto sync label"
   },
   "confirm_disconnect_message": {
-    "message": "这会移除 Notion 工作区连接及其同步状态。套餐保留在你的账户上，已写入 Notion 的页面也会保留。",
+    "message": "这会移除 Notion 工作区连接及其同步状态。已写入 Notion 的页面会保留。",
     "description": "Confirm disconnect message"
   },
   "confirm_disconnect_title": {
@@ -175,7 +175,7 @@
     "description": "Connection success description"
   },
   "disconnected_desc": {
-    "message": "Notion 连接已移除，套餐保持不变。",
+    "message": "Notion 连接已移除。",
     "description": "Disconnected description"
   },
   "disconnected_title": {
@@ -245,6 +245,12 @@
   "saveFailed": {
     "message": "保存页面失败",
     "description": "Error message when save fails"
+  },
+  "dashboard_event_sync_started": {
+    "message": "已加入同步队列，可以关闭此页面。"
+  },
+  "saveQueued": {
+    "message": "已加入保存队列，可在同步状态中查看结果。"
   },
   "saveSuccess": {
     "message": "页面已保存到 Notion",
@@ -389,6 +395,15 @@
   },
   "library_field_url": {
     "message": "网址"
+  },
+  "library_description_source_user": {
+    "message": "用户输入"
+  },
+  "library_description_source_page": {
+    "message": "网页元信息"
+  },
+  "library_description_source_ai": {
+    "message": "AI 推断 · 非正文摘要"
   },
   "library_field_description": {
     "message": "描述"
@@ -593,6 +608,9 @@
   },
   "organize_target_other": {
     "message": "其他文件夹"
+  },
+  "organize_discard": {
+    "message": "放弃这些建议"
   },
   "organize_retry_failed": {
     "message": "重试 $1 个未完成的批次"

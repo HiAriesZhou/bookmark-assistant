@@ -20,16 +20,15 @@ lawful uses and third-party trademark rights are unaffected.
 These branding terms do not restrict modification, redistribution or commercial
 use of the GPL code or artwork.
 
-## Personal self-hosting and official services
+## Private copies and independent products
 
 Running a copy privately for yourself, including private modifications, does not
-require rebranding or permission. A connection from the official extension does
-not make an independently operated server an official service.
+require rebranding or permission.
 
-For a public fork or independently operated service, choose a distinct product
-name, logo, favicon and promotional identity. Do not use official artwork or store
-screenshots to suggest endorsement, and do not describe your service as the
-official Bookmark Assistant service. Truthful attribution, compatibility statements
+For a public fork or independent distribution, choose a distinct product name,
+logo, favicon and promotional identity. Do not use official artwork or store
+screenshots to suggest endorsement, and do not describe your product as the
+official Bookmark Assistant product. Truthful attribution, compatibility statements
 and lawful descriptive use remain permitted.
 
 ## Design and resource licenses

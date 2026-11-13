@@ -13,11 +13,13 @@ Git authorship inspection is provenance evidence, not a substitute for resolving
 any third-party copyright claims before the first public release.
 
 Dependencies retain their respective licenses; the project's license does not
-relicense React, Next.js, Vite, Prisma, Lucide, Radix, Motion, Paddle or other
+relicense React, Next.js, Vite, Lucide, Radix, Motion or other
 third-party components. Lucide-derived icons require the Lucide ISC notice.
 Run scripts/audit-dependencies.mjs to produce the installed dependency license
 inventory and include relevant upstream notices in binary release source bundles.
-The @vercel/gatsby-plugin-vercel-builder package omits its license metadata;
+Historical releases included Prisma, Paddle and Vercel tooling; their third-party
+licenses and previously granted rights remain unchanged. The historical
+@vercel/gatsby-plugin-vercel-builder package omitted its license metadata;
 the corresponding Vercel CLI 48.4.1 source is Apache-2.0:
 https://github.com/vercel/vercel/blob/vercel%4048.4.1/LICENSE
 

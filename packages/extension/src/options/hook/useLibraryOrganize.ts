@@ -4,14 +4,10 @@ import { AI_PROVIDER_HOST_PERMISSIONS } from '../../ai/providers';
 import type { OrganizeErrorCode, OrganizeKeySummary } from '../../background/library-organize';
 import {
   ORGANIZE_CATEGORY_IDS,
-  categoryOfFolder,
   categoryOfNewFolderId,
   chunkOrganizeItems,
   newCategoryFolderId,
   organizeCategoryName,
-  planCategoryMoves,
-  resolveCategoryTargets,
-  sampleOrganizeFolders,
   type OrganizeBatch,
   type OrganizeCategoryId,
   type OrganizeCategoryProposal,
@@ -23,6 +19,7 @@ import {
   readOrganizeUndo,
   undoOrganizeMoves,
 } from '../../library/organize-apply';
+import type { OrganizeTask } from '../../runtime/organize';
 import { Messages, ORGANIZE_MESSAGE_TIMEOUT_MS, sendMessage } from '../../utils/message';
 
 export type OrganizePhase =
@@ -141,13 +138,6 @@ export async function runOrganizeBatches(
   return { proposals, failedBatches };
 }
 
-/** Root containers such as the bookmarks bar are never mapped to a category. */
-function rootFolderIds(folders: OrganizeLibrary['folders']) {
-  return new Set(
-    folders.filter((folder) => !folder.parentId || folder.parentId === '0').map((f) => f.id)
-  );
-}
-
 export function useLibraryOrganize(
   scope: OrganizeScope,
   uiLanguage: string,
@@ -163,8 +153,79 @@ export function useLibraryOrganize(
   const [result, setResult] = useState<{ moved: number; skipped: number }>();
   const [undoResult, setUndoResult] = useState<{ restored: number; skipped: number }>();
   const [canUndo, setCanUndo] = useState(false);
-  const cancelled = useRef(false);
+  const taskId = useRef<string>();
+  const taskRevision = useRef<string>();
+  const attemptId = useRef<string>();
+  const startPending = useRef(false);
+  const cancelling = useRef<number>();
+  // Bumped whenever the user starts or discards a run; older responses are ignored.
+  const generation = useRef(0);
+  // Cancel pressed before the background acknowledged the start and returned an id.
+  const cancelRequested = useRef(false);
   const [plan, setPlan] = useState<OrganizePlan>();
+
+  const receiveTask = useCallback((task: OrganizeTask) => {
+    taskId.current = task.id;
+    taskRevision.current = task.revision;
+    const state = task.state;
+    setProgress({ completed: state.completed, total: state.total });
+    if (task.status === 'stale') {
+      setProposals([]);
+      setFailedBatches([]);
+      setErrorCode('not_configured');
+      setPhase('ready');
+      return;
+    }
+    if (state.folderMap && state.targets)
+      setPlan({
+        folderMap: state.folderMap,
+        targets: state.targets,
+        parentOf: new Map(task.input.parents),
+      });
+    setProposals((previous) =>
+      state.proposals.map((proposal) => {
+        const reviewed = previous.find((item) => item.bookmarkId === proposal.bookmarkId);
+        return reviewed ?? { ...proposal, selected: proposal.confident };
+      })
+    );
+    const active = task.status === 'pending' || task.status === 'running';
+    setFailedBatches(
+      active || task.status === 'succeeded'
+        ? []
+        : chunkOrganizeItems(task.input.scope.items)
+            .slice(state.cursor)
+            .map((items) => ({ items }))
+    );
+    setErrorCode(
+      task.errorCode
+        ? task.errorCode === 'interrupted' || task.errorCode === 'task_failed'
+          ? 'provider_request_failed'
+          : (task.errorCode as OrganizeErrorCode)
+        : undefined
+    );
+    setPhase(active ? 'running' : 'preview');
+  }, []);
+
+  const sendCancellation = useCallback(async () => {
+    const token = generation.current;
+    if (cancelling.current === token || (!taskId.current && !attemptId.current)) return;
+    cancelling.current = token;
+    try {
+      const response = await sendMessage({
+        type: Messages.ORGANIZE_TASK_CANCEL,
+        ...(taskId.current ? { id: taskId.current } : { attemptId: attemptId.current! }),
+      }).catch(() => undefined);
+      if (token !== generation.current) return;
+      if (response?.success && response.task) {
+        cancelRequested.current = false;
+        receiveTask(response.task);
+      } else if (!response?.success) {
+        setErrorCode('service_unavailable');
+      }
+    } finally {
+      if (cancelling.current === token) cancelling.current = undefined;
+    }
+  }, [receiveTask]);
 
   const refreshUndo = useCallback(async () => {
     setCanUndo(Boolean((await readOrganizeUndo())?.entries.length));
@@ -172,6 +233,7 @@ export function useLibraryOrganize(
 
   useEffect(() => {
     let active = true;
+    const token = generation.current;
     void (async () => {
       const response = await sendMessage({ type: Messages.ORGANIZE_KEY_GET }).catch(
         () => undefined
@@ -179,14 +241,60 @@ export function useLibraryOrganize(
       if (!active) return;
       const stored = response?.success ? (response.key ?? null) : null;
       setKey(stored);
-      setPhase(stored ? 'ready' : 'setup');
+      // Stay in loading until the stored task is known, so a start cannot race the restore.
+      const restored = await sendMessage({ type: Messages.ORGANIZE_TASK_GET }).catch(
+        () => undefined
+      );
+      if (!active || token !== generation.current) return;
+      if (restored?.success && restored.task) receiveTask(restored.task);
+      else setPhase(stored ? 'ready' : 'setup');
       await refreshUndo();
     })();
     return () => {
       active = false;
-      cancelled.current = true;
     };
-  }, [refreshUndo]);
+  }, [refreshUndo, receiveTask]);
+
+  useEffect(() => {
+    if (phase !== 'running') return;
+    let active = true;
+    let polling = false;
+    const timer = setInterval(() => {
+      if (polling || (!taskId.current && !attemptId.current)) return;
+      polling = true;
+      void sendMessage({
+        type: Messages.ORGANIZE_TASK_GET,
+        ...(taskId.current ? { id: taskId.current } : { attemptId: attemptId.current }),
+      })
+        .then((response) => {
+          if (!active || !response.success) return;
+          if (response.task) {
+            if (cancelRequested.current) {
+              taskId.current = response.task.id;
+              taskRevision.current = response.task.revision;
+              void sendCancellation();
+            } else {
+              receiveTask(response.task);
+            }
+          } else if (!startPending.current && !taskId.current) {
+            cancelRequested.current = false;
+            setErrorCode('service_unavailable');
+            setPhase('ready');
+          }
+        })
+        .catch(() => {
+          if (active) setErrorCode('service_unavailable');
+        })
+        .finally(() => {
+          polling = false;
+        });
+    }, 1_000);
+    // Unmount stops observation only. The background owns task cancellation.
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [phase, receiveTask, sendCancellation]);
 
   /** Must be called synchronously from the click so Chrome can show its permission prompt. */
   const saveKey = (provider: string, apiKey: string) => {
@@ -237,114 +345,82 @@ export function useLibraryOrganize(
     setPhase('ready');
   };
 
-  const buildPlan = (folderMap: OrganizeFolderMap): OrganizePlan => {
-    const directCounts = new Map<string, number>();
+  const start = async () => {
+    const token = ++generation.current;
+    cancelRequested.current = false;
+    attemptId.current = crypto.randomUUID();
+    startPending.current = true;
+    taskId.current = undefined;
+    taskRevision.current = undefined;
+    setErrorCode(undefined);
+    setProposals([]);
+    setPhase('running');
+    const counts = new Map<string, number>();
     for (const bookmark of library.bookmarks) {
       if (bookmark.parentId)
-        directCounts.set(bookmark.parentId, (directCounts.get(bookmark.parentId) ?? 0) + 1);
+        counts.set(bookmark.parentId, (counts.get(bookmark.parentId) ?? 0) + 1);
     }
-    return {
-      folderMap,
-      targets: resolveCategoryTargets(folderMap, scope.folders, directCounts),
-      parentOf: new Map(library.folders.map((folder) => [folder.id, folder.parentId])),
-    };
-  };
-
-  const runBatches = async (
-    batches: OrganizeBatch[],
-    previous: ReviewedProposal[],
-    current: OrganizePlan,
-    stepsDone = 0
-  ) => {
-    const total = stepsDone + batches.length;
-    const outcome = await runOrganizeBatches(
-      batches,
-      async (batch) => {
-        const response = await sendMessage(
-          {
-            type: Messages.ORGANIZE_ASSIGN_BATCH,
-            items: batch.items.map((item) => ({
-              ...item,
-              currentCategory: categoryOfFolder(item.parentId, current.folderMap, current.parentOf),
-            })),
-            uiLanguage,
-          },
-          { timeoutMs: ORGANIZE_MESSAGE_TIMEOUT_MS }
-        );
-        if (!response.success) return response;
-        return {
-          success: true,
-          proposals: planCategoryMoves(
-            response.assignments ?? [],
-            batch.items,
-            current.folderMap,
-            current.targets,
-            current.parentOf
-          ),
-        };
+    const response = await sendMessage({
+      type: Messages.ORGANIZE_TASK_START,
+      input: {
+        attemptId: attemptId.current,
+        scope,
+        uiLanguage,
+        parents: library.folders.map((folder) => [folder.id, folder.parentId]),
+        folderCounts: [...counts],
       },
-      {
-        isCancelled: () => cancelled.current,
-        onProgress: (completed) => setProgress({ completed: stepsDone + completed, total }),
+    }).catch(() => undefined);
+    if (token !== generation.current) return;
+    startPending.current = false;
+    if (taskId.current) return;
+    if (response?.success && response.task) {
+      if (cancelRequested.current) {
+        taskId.current = response.task.id;
+        taskRevision.current = response.task.revision;
+        await sendCancellation();
+      } else {
+        receiveTask(response.task);
       }
-    );
-    const reviewed = [
-      ...previous,
-      // Uncertain suggestions are shown but left unselected.
-      ...outcome.proposals.map((proposal) => ({ ...proposal, selected: proposal.confident })),
-    ];
-    setProposals(reviewed);
-    setFailedBatches(outcome.failedBatches);
-    setErrorCode(outcome.fatalError);
-    if (outcome.fatalError && !reviewed.length) {
-      setPhase(outcome.fatalError === 'not_configured' ? 'setup' : 'ready');
-      return;
+    } else if (response && !response.success) {
+      cancelRequested.current = false;
+      setErrorCode(response.errorCode);
+      setPhase('ready');
+    } else {
+      setErrorCode('service_unavailable');
     }
-    setPhase('preview');
   };
 
-  const start = async () => {
-    cancelled.current = false;
+  /** Drops a finished result so it is not restored again, and returns to a new run. */
+  const discard = async () => {
     setErrorCode(undefined);
-    const batches = chunkOrganizeItems(scope.items).map((items) => ({ items }));
-    // Mapping existing folders is the first step of the progress bar.
-    setProgress({ completed: 0, total: batches.length + 1 });
-    setPhase('running');
-    const request = {
-      folders: sampleOrganizeFolders(
-        scope.folders,
-        // Folder examples cross the same provider boundary as classification items.
-        scope.items,
-        rootFolderIds(library.folders)
-      ),
-    };
-    const mapped = await sendMessage(
-      { type: Messages.ORGANIZE_MAP_FOLDERS, request },
-      { timeoutMs: ORGANIZE_MESSAGE_TIMEOUT_MS }
-    ).catch(() => ({ success: false, errorCode: 'provider_request_failed' as const }));
-    if (!mapped.success || !('folderMap' in mapped) || !mapped.folderMap) {
-      const code = mapped.errorCode ?? 'provider_request_failed';
-      setErrorCode(code);
-      setPhase(code === 'not_configured' ? 'setup' : 'ready');
-      return;
+    const id = taskId.current;
+    if (id) {
+      const response = await sendMessage({ type: Messages.ORGANIZE_TASK_DISMISS, id }).catch(
+        () => undefined
+      );
+      if (!response?.success) {
+        setErrorCode(response?.errorCode ?? 'service_unavailable');
+        return;
+      }
     }
-    if (cancelled.current) {
-      setPhase('ready');
-      return;
-    }
-    const current = buildPlan(mapped.folderMap);
-    setPlan(current);
-    setProgress({ completed: 1, total: batches.length + 1 });
-    await runBatches(batches, [], current, 1);
+    generation.current += 1;
+    taskId.current = undefined;
+    taskRevision.current = undefined;
+    setProposals([]);
+    setFailedBatches([]);
+    setPlan(undefined);
+    setProgress({ completed: 0, total: 0 });
+    setPhase(key ? 'ready' : 'setup');
   };
 
   const retryFailed = async () => {
-    if (!plan) return;
-    cancelled.current = false;
-    setErrorCode(undefined);
-    setProgress({ completed: 0, total: failedBatches.length });
-    setPhase('running');
-    await runBatches(failedBatches, proposals, plan);
+    if (!taskId.current) return;
+    const response = await sendMessage({
+      type: Messages.ORGANIZE_TASK_RETRY,
+      id: taskId.current,
+    }).catch(() => undefined);
+    if (response?.success && response.task) receiveTask(response.task);
+    else setErrorCode(response && !response.success ? response.errorCode : 'service_unavailable');
   };
 
   const newFolderTitles = useMemo<Record<string, string>>(
@@ -388,8 +464,9 @@ export function useLibraryOrganize(
     return options;
   };
 
-  const cancel = () => {
-    cancelled.current = true;
+  const cancel = async () => {
+    cancelRequested.current = true;
+    await sendCancellation();
   };
 
   const updateProposal = (bookmarkId: string, changes: Partial<ReviewedProposal>) => {
@@ -405,10 +482,33 @@ export function useLibraryOrganize(
   };
 
   const apply = async () => {
-    if (undoing) return;
+    if (undoing || phase === 'applying') return;
     setErrorCode(undefined);
     setUndoResult(undefined);
     setPhase('applying');
+    const id = taskId.current;
+    const revision = taskRevision.current;
+    const response = id
+      ? await sendMessage({ type: Messages.ORGANIZE_TASK_GET, id }).catch(() => undefined)
+      : undefined;
+    if (!response?.success) {
+      setErrorCode(response?.errorCode ?? 'service_unavailable');
+      setPhase('preview');
+      return;
+    }
+    const task = response.task;
+    if (
+      !task ||
+      task.id !== id ||
+      task.revision !== revision ||
+      !['succeeded', 'failed', 'cancelled'].includes(task.status)
+    ) {
+      setProposals([]);
+      setFailedBatches([]);
+      setErrorCode('not_configured');
+      setPhase('ready');
+      return;
+    }
     const moves = proposals
       .filter((proposal) => proposal.selected && proposal.toFolderId !== proposal.fromParentId)
       .map(({ bookmarkId, fromParentId, toFolderId }) => ({
@@ -418,6 +518,11 @@ export function useLibraryOrganize(
       }));
     try {
       setResult(await applyOrganizeMoves(moves, { newFolderTitles }));
+      // The moves are done and journaled for Undo. Dismissing only stops this result from
+      // being restored; if it fails, the next opening shows it again with Discard available.
+      await sendMessage({ type: Messages.ORGANIZE_TASK_DISMISS, id: task.id }).catch(
+        () => undefined
+      );
       setPhase('done');
     } catch {
       // Moves already made are journaled, so Undo still covers them.
@@ -458,6 +563,7 @@ export function useLibraryOrganize(
     changeKey,
     backToReady,
     start,
+    discard,
     retryFailed,
     targetOptions,
     newFolderTitles,

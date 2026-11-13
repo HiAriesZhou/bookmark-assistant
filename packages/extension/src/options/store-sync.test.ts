@@ -12,6 +12,7 @@ const originalRefreshDashboard = useAppStore.getState().refreshDashboard;
 
 describe('manual sync store action', () => {
   beforeEach(() => {
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({});
     vi.mocked(sendMessage).mockReset();
     useAppStore.setState({
       isSyncing: false,
@@ -49,6 +50,18 @@ describe('manual sync store action', () => {
     await expect(syncPromise).resolves.toEqual({ noChanges: true });
     expect(useAppStore.getState().refreshDashboard).toHaveBeenCalledWith(false);
     expect(useAppStore.getState().isSyncing).toBe(false);
+  });
+
+  it('keeps queued work busy until the durable background task finishes', async () => {
+    vi.mocked(sendMessage).mockResolvedValue({ success: true, queued: true, taskId: 'task-1' });
+    vi.mocked(chrome.storage.local.get).mockImplementation(async (key) =>
+      key === 'sync_in_progress' ? { sync_in_progress: true } : {}
+    );
+    await expect(useAppStore.getState().syncNow()).resolves.toEqual({
+      noChanges: false,
+      queued: true,
+    });
+    expect(useAppStore.getState().isSyncing).toBe(true);
   });
 
   it('surfaces a background failure and still resets state', async () => {

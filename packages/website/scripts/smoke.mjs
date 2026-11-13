@@ -95,6 +95,10 @@ if (!externalBaseUrl) {
 await waitForServer();
 let browser;
 try {
+  for (const path of ['/api/health', '/api/pricing', '/api/paddle/checkout-url']) {
+    const response = await fetch(`${baseUrl}${path}`, { redirect: 'manual' });
+    assert.equal(response.status, 404, `Removed integration endpoint ${path} must return 404`);
+  }
   browser = await launchBrowser();
   const routes = [
     {
@@ -149,6 +153,16 @@ try {
         viewport,
         colorScheme: 'light',
         reducedMotion: 'reduce',
+      });
+      const integrationRequests = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (
+          (siteOrigins.has(url.origin) && url.pathname.startsWith('/api/')) ||
+          (!siteOrigins.has(url.origin) &&
+            ['fetch', 'xhr', 'script'].includes(request.resourceType()))
+        )
+          integrationRequests.push(`${request.method()} ${url.origin}${url.pathname}`);
       });
       await page.route('**/*', async (route) => {
         if (route.request().url().startsWith('https://api.producthunt.com/widgets/')) {
@@ -276,6 +290,7 @@ try {
         assert.equal(await page.locator('#pricing').count(), 0);
         assert.ok(contrast(state.primaryForeground, state.primaryBackground) >= 4.5);
       }
+      assert.deepEqual(integrationRequests, [], `${routeInfo.path} makes integration requests`);
       await page.close();
     }
   }

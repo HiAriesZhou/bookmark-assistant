@@ -48,6 +48,8 @@ export function checkSource(files = sourceFiles()) {
     /\bAKIA[A-Z0-9]{16}\b/,
   ];
   for (const file of files) {
+    if (/^(?:packages\/server|deploy)(?:\/|$)/.test(file))
+      violations.push({ file, reason: 'removed server integration path' });
     if (
       forbidden.test(file) ||
       (/(^|\/)\.env(?:\.|$)/.test(file) && !file.endsWith('.env.example'))
@@ -64,8 +66,21 @@ export function checkSource(files = sourceFiles()) {
     'package.json',
     ...files.filter((file) => /^packages\/[^/]+\/package\.json$/.test(file)),
   ]) {
-    if (JSON.parse(readFileSync(join(ROOT, file), 'utf8')).license !== 'GPL-3.0-only')
+    const manifest = JSON.parse(readFileSync(join(ROOT, file), 'utf8'));
+    if (manifest.license !== 'GPL-3.0-only')
       throw new Error(`Inconsistent project license: ${file}`);
+    const dependencies = {
+      ...manifest.dependencies,
+      ...manifest.devDependencies,
+      ...manifest.optionalDependencies,
+    };
+    const retiredIntegrations = Object.keys(dependencies).filter((name) =>
+      /^(?:@bookmark-assistant\/server|@paddle\/.*|@prisma\/.*|prisma|express|express-rate-limit|jsonwebtoken)$/.test(
+        name
+      )
+    );
+    if (retiredIntegrations.length)
+      throw new Error(`Removed server dependencies in ${file}: ${retiredIntegrations.join(', ')}`);
   }
   console.log(
     `Public source guard passed for ${files.length} files. Run the independent secret and provenance audit before publication.`

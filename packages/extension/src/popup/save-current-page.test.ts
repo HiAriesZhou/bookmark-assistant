@@ -18,6 +18,11 @@ describe('saveCurrentPage', () => {
     expect(sendMessage).toHaveBeenCalledWith({ type: 'SAVE_CURRENT_PAGE' });
   });
 
+  it('reports a queued save without claiming the remote write completed', async () => {
+    stubSendMessage({ success: true, queued: true });
+    await expect(saveCurrentPage()).resolves.toEqual({ status: 'queued' });
+  });
+
   it('passes the background error through', async () => {
     stubSendMessage({ success: false, error: 'Not connected' });
     await expect(saveCurrentPage()).resolves.toEqual({ status: 'failed', error: 'Not connected' });

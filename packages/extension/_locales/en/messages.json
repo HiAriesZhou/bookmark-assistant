@@ -103,7 +103,7 @@
     "description": "Disconnected title"
   },
   "disconnected_desc": {
-    "message": "Your Notion connection has been removed. Your plan is unchanged.",
+    "message": "Your Notion connection has been removed.",
     "description": "Disconnected description"
   },
   "auto_sync_label": {
@@ -123,7 +123,7 @@
     "description": "Confirm disconnect title"
   },
   "confirm_disconnect_message": {
-    "message": "This removes the Notion workspace connection and its sync state. Your plan stays with your account; pages already in Notion are kept.",
+    "message": "This removes the Notion workspace connection and its sync state. Pages already in Notion are kept.",
     "description": "Confirm disconnect message"
   },
   "loading": {
@@ -185,6 +185,12 @@
   "saveToNotion": {
     "message": "Save to Notion",
     "description": "Context menu item to save page to Notion"
+  },
+  "dashboard_event_sync_started": {
+    "message": "Sync queued. You can close this page."
+  },
+  "saveQueued": {
+    "message": "Save queued. Check sync status for completion."
   },
   "saveSuccess": {
     "message": "Page saved to Notion",
@@ -390,6 +396,15 @@
   "library_field_url": {
     "message": "URL"
   },
+  "library_description_source_user": {
+    "message": "User input"
+  },
+  "library_description_source_page": {
+    "message": "Page metadata"
+  },
+  "library_description_source_ai": {
+    "message": "AI inference · not a page summary"
+  },
   "library_field_description": {
     "message": "Description"
   },
@@ -593,6 +608,9 @@
   },
   "organize_target_other": {
     "message": "Other folders"
+  },
+  "organize_discard": {
+    "message": "Discard suggestions"
   },
   "organize_retry_failed": {
     "message": "Retry $1 unfinished batches"

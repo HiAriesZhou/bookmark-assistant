@@ -7,73 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  self-hosted-container:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Start a disposable self-hosted deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs = require('fs');
-          const crypto = require('crypto');
-          const password = crypto.randomBytes(24).toString('hex');
-          const env = {
-            POSTGRES_PASSWORD: password,
-            DATABASE_URL: `postgresql://bookmark:${password}@database:5432/bookmark`,
-            JWT_SECRET: crypto.randomBytes(32).toString('base64url'),
-            NOTION_CLIENT_ID: 'fixture-client',
-            NOTION_CLIENT_SECRET: 'fixture-client-secret',
-            ALLOWED_EXTENSION_IDS: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-          };
-          fs.writeFileSync('deploy/.env', Object.entries(env).map(([key, value]) => `${key}=${value}`).join('\n'));
-          NODE
-          docker compose --env-file deploy/.env -f deploy/compose.yml up --build -d
-          for attempt in $(seq 1 60); do
-            if docker compose --env-file deploy/.env -f deploy/compose.yml exec -T server node -e "fetch('http://127.0.0.1:3333/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then break; fi
-            if [ "$attempt" = 60 ]; then exit 1; fi
-            sleep 2
-          done
-          docker compose --env-file deploy/.env -f deploy/compose.yml exec -T -e BOOKMARK_ASSISTANT_SMOKE=1 server node /workspace/deploy/smoke.mjs
-      - name: Stop disposable containers
-        if: always()
-        run: docker compose --env-file deploy/.env -f deploy/compose.yml down
-  migration-drift:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-bookworm
-        env:
-          POSTGRES_PASSWORD: shadow
-          POSTGRES_DB: shadow
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d shadow"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Fail when migrations and schema.prisma diverge
-        env:
-          SHADOW_DATABASE_URL: postgresql://postgres:shadow@localhost:5432/shadow
-        run: pnpm -F @bookmark-assistant/server prisma:check-drift
-
   lint-and-test:
     runs-on: ubuntu-latest
 
@@ -116,10 +49,7 @@ jobs:
         run: pnpm lint
 
       - name: Unit Tests
-        run: pnpm vitest run --exclude='packages/server/**'
-
-      - name: Server Tests
-        run: pnpm -F @bookmark-assistant/server test
+        run: pnpm test
 
       - name: i18n Check
         run: pnpm check:i18n

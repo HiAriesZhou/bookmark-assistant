@@ -62,6 +62,12 @@ export interface ExtractNotionPageTimestampsResult {
 export interface BuildBookmarkPropertiesOptions {
   defaultDate?: string | (() => string);
   fallbackTitlePropertyName?: string;
+  /** Durable sync writes descriptions only through the ownership-checked writer. */
+  omitDescription?: boolean;
+}
+
+export function isNotionDescriptionPropertyName(name: string): boolean {
+  return /(desc|summary|note|content|描述|摘要|简介)/i.test(name);
 }
 
 interface PropertyMatcher {
@@ -191,6 +197,12 @@ export function isReadOnlyNotionPropertyType(type: unknown): boolean {
   return typeof type === 'string' && READ_ONLY_PROPERTY_TYPES.has(type);
 }
 
+/** 读取与创建使用同一个网址列选择规则，避免多网址列导致重复建页。 */
+export function findNotionUrlPropertyName(schema: NotionPropertySchema): string | undefined {
+  const matcher = PROPERTY_MAPPING_CONFIG.find((entry) => entry.bookmarkField === 'url')!;
+  return findPropertyName(matcher, Object.entries(schema), {});
+}
+
 export function extractNotionPageLinkKeys(
   page: NotionPageLike | null | undefined
 ): ExtractNotionPageLinkKeysResult {
@@ -225,7 +237,13 @@ export function buildBookmarkPropertiesFromNotionSchema(
   options: BuildBookmarkPropertiesOptions = {}
 ): Record<string, unknown> {
   const writableEntries = Object.entries(schema).filter(
-    ([, propDef]) => !isReadOnlyNotionPropertyType(propDef?.type)
+    ([name, propDef]) =>
+      !isReadOnlyNotionPropertyType(propDef?.type) &&
+      !(
+        options.omitDescription &&
+        propDef?.type === 'rich_text' &&
+        isNotionDescriptionPropertyName(name)
+      )
   );
   const properties: Record<string, unknown> = {};
 
@@ -251,7 +269,13 @@ export function buildBookmarkPropertiesFromNotionSchema(
     }
   }
 
-  return properties;
+  return options.omitDescription
+    ? Object.fromEntries(
+        Object.entries(properties).filter(
+          ([name]) => schema[name]?.type !== 'rich_text' || !isNotionDescriptionPropertyName(name)
+        )
+      )
+    : properties;
 }
 
 function findPropertyName(
@@ -268,7 +292,9 @@ function findPropertyName(
     }
   }
 
-  const allowTypeFallback = matcher.allowTypeFallback !== false;
+  const allowTypeFallback =
+    matcher.allowTypeFallback !== false &&
+    !(options.omitDescription && matcher.bookmarkField === 'path');
   const typeMatch = allowTypeFallback
     ? writableEntries.find(([, propDef]) => propertyTypeMatches(propDef?.type, matcher.type))?.[0]
     : undefined;
@@ -288,6 +314,7 @@ function shouldBuildProperty(
   value: unknown,
   options: BuildBookmarkPropertiesOptions
 ): boolean {
+  if (options.omitDescription && matcher.bookmarkField === 'description') return false;
   if (matcher.required) {
     return true;
   }
@@ -333,6 +360,14 @@ function normalizePageProperties(properties: unknown): NotionPagePropertiesLike 
 }
 
 function extractNotionPageUrl(properties: NotionPagePropertiesLike): string | undefined {
+  const schema = Object.fromEntries(
+    Object.entries(properties).map(([name, value]) => [
+      name,
+      { type: typeof value?.type === 'string' ? value.type : undefined },
+    ])
+  );
+  const preferred = properties[findNotionUrlPropertyName(schema) ?? ''];
+  if (typeof preferred?.url === 'string' && preferred.url) return preferred.url;
   for (const propDef of Object.values(properties)) {
     if (propDef?.type === 'url' && typeof propDef.url === 'string' && propDef.url.length > 0) {
       return propDef.url;

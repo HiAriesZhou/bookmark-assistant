@@ -14,5 +14,4 @@ code you have the right to submit; preserve notices for third-party material.
 
 Official artwork is included under GPL-3.0-only; the name and logo are governed by
 TRADEMARKS.md. The extension runs without a server. Contributors can configure
-their own Notion token and AI provider key to verify the optional integrations;
-`deploy/README.md` covers the frozen server for older extension versions.
+their own Notion token and AI provider key to verify the optional integrations.

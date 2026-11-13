@@ -8,16 +8,9 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..');
 const checkOnly = process.argv.includes('--check');
 
-const jsonTargets = [
-  'packages/extension/package.json',
-  'packages/server/package.json',
-  'packages/extension/public/manifest.json',
-];
+const jsonTargets = ['packages/extension/package.json', 'packages/extension/public/manifest.json'];
 
-const generatedTargets = [
-  'packages/extension/src/product-version.generated.ts',
-  'packages/server/src/product-version.generated.ts',
-];
+const generatedTargets = ['packages/extension/src/product-version.generated.ts'];
 
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'));

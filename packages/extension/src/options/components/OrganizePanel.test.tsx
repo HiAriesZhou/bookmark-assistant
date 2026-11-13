@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { planOrganizeScope } from '../../core';
+import { planCategoryMoves, planOrganizeScope, resolveCategoryTargets } from '../../core';
+import type { OrganizeTask } from '../../runtime/organize';
 import type { LocalBookmark, LocalBookmarkFolder } from '../../library/bookmark-library';
 import { ORGANIZE_UNDO_STORAGE_KEY } from '../../library/organize-apply';
 import { cleanupTestRoot, createTestRoot, type TestRoot } from '../../testing/react-root';
@@ -29,8 +30,48 @@ let storage: Record<string, unknown>;
 let parents: Record<string, string>;
 let created: Array<{ id: string; parentId: string; title: string }>;
 let storedKey: { provider: string; last4: string } | null;
+let latestTask: OrganizeTask | null;
 const sendMessage = vi.fn();
 const requestPermission = vi.fn();
+
+function completedTask(): OrganizeTask {
+  const scope = planOrganizeScope(bookmarks, folders);
+  const folderMap = { '10': 'learning' } as const;
+  const targets = resolveCategoryTargets(folderMap, scope.folders, new Map());
+  const parents = folders.map((folder): [string, string | undefined] => [
+    folder.id,
+    folder.parentId,
+  ]);
+  return {
+    id: 'organize-task',
+    type: 'organize',
+    revision: 'credential-revision',
+    status: 'succeeded',
+    attempts: 0,
+    nextRunAt: 0,
+    createdAt: 1,
+    updatedAt: 1,
+    version: 1,
+    input: { scope, uiLanguage: 'en', parents, folderCounts: [] },
+    state: {
+      folderMap,
+      targets,
+      cursor: 1,
+      completed: 2,
+      total: 2,
+      proposals: planCategoryMoves(
+        [
+          { bookmarkId: 'a', category: 'learning', confident: true, reason: 'Design reading' },
+          { bookmarkId: 'b', category: 'career', confident: false, reason: 'Maybe a job page' },
+        ],
+        scope.items,
+        folderMap,
+        targets,
+        new Map(parents)
+      ),
+    },
+  };
+}
 
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -38,6 +79,7 @@ beforeEach(() => {
   parents = { a: '1', b: '1' };
   created = [];
   storedKey = null;
+  latestTask = null;
   sendMessage.mockReset();
   requestPermission.mockReset().mockResolvedValue(true);
   sendMessage.mockImplementation(async (message: { type: string; batch?: unknown }) => {
@@ -46,17 +88,22 @@ beforeEach(() => {
       storedKey = { provider: 'openai', last4: '1234' };
       return { success: true, key: storedKey };
     }
-    if (message.type === 'ORGANIZE_MAP_FOLDERS') {
-      return { success: true, folderMap: { '10': 'learning' } };
+    if (message.type === 'ORGANIZE_TASK_GET') {
+      // Mirrors the background: a handled result is only readable by its id.
+      const id = (message as { id?: string }).id;
+      return { success: true, task: !id && latestTask?.dismissed ? null : latestTask };
     }
-    if (message.type === 'ORGANIZE_ASSIGN_BATCH') {
-      return {
-        success: true,
-        assignments: [
-          { bookmarkId: 'a', category: 'learning', confident: true, reason: 'Design reading' },
-          { bookmarkId: 'b', category: 'career', confident: false, reason: 'Maybe a job page' },
-        ],
-      };
+    if (message.type === 'ORGANIZE_TASK_DISMISS') {
+      latestTask = latestTask ? { ...latestTask, dismissed: true } : null;
+      return { success: true, task: latestTask };
+    }
+    if (message.type === 'ORGANIZE_TASK_START') {
+      latestTask = completedTask();
+      return { success: true, task: latestTask };
+    }
+    if (message.type === 'ORGANIZE_TASK_CANCEL') {
+      latestTask = latestTask ? { ...latestTask, status: 'cancelled' } : null;
+      return { success: true, task: latestTask };
     }
     return { success: true };
   });
@@ -115,11 +162,11 @@ const button = (label: string) =>
     candidate.textContent?.startsWith(label)
   );
 
-async function renderPanel() {
+async function renderPanel(onClose = vi.fn()) {
   const scope = planOrganizeScope(bookmarks, folders);
   await act(async () => {
     root.render(
-      <OrganizePanel scope={scope} bookmarks={bookmarks} folders={folders} onClose={vi.fn()} />
+      <OrganizePanel scope={scope} bookmarks={bookmarks} folders={folders} onClose={onClose} />
     );
   });
   await flush();
@@ -173,7 +220,7 @@ it('previews category moves, selects only confident ones and applies them', asyn
   await flush();
   const sent = sendMessage.mock.calls.map(([message]) => message);
   expect(sent.map((message) => message.type)).toEqual(
-    expect.arrayContaining(['ORGANIZE_MAP_FOLDERS', 'ORGANIZE_ASSIGN_BATCH'])
+    expect.arrayContaining(['ORGANIZE_TASK_GET', 'ORGANIZE_TASK_START'])
   );
   expect(JSON.stringify(sent)).not.toContain('token=secret');
 
@@ -222,4 +269,230 @@ it('creates a missing category folder on the bar and removes it again on undo', 
   await flush();
   expect(parents).toEqual({ a: '1', b: '1' });
   expect(created).toEqual([]);
+});
+
+it.each(['stale', 'changed-revision', 'missing', 'unavailable'] as const)(
+  'refuses apply when the persisted task is %s',
+  async (condition) => {
+    storedKey = { provider: 'openai', last4: '1234' };
+    latestTask = completedTask();
+    await renderPanel();
+    if (condition === 'stale') latestTask = { ...latestTask, status: 'stale' };
+    if (condition === 'changed-revision') latestTask = { ...latestTask, revision: 'replacement' };
+    if (condition === 'missing') latestTask = null;
+    if (condition === 'unavailable') sendMessage.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => button('organize_apply')!.click());
+    expect(chrome.bookmarks.move).not.toHaveBeenCalled();
+    expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+    expect(document.body.querySelector('[role="alert"]')).not.toBeNull();
+  }
+);
+
+it('restores a running task and allows closing without cancelling it', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  latestTask = { ...completedTask(), status: 'pending' };
+  const onClose = vi.fn();
+  await renderPanel(onClose);
+  expect(document.body.textContent).toContain('organize_progress:2:2');
+  const close = document.body.querySelector<HTMLButtonElement>('[aria-label="organize_close"]')!;
+  expect(close.disabled).toBe(false);
+  await act(async () => close.click());
+  expect(onClose).toHaveBeenCalledOnce();
+  await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+  expect(onClose).toHaveBeenCalledTimes(2);
+  await act(async () => root.render(null));
+  expect(sendMessage).not.toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL' })
+  );
+  latestTask = completedTask();
+  await renderPanel();
+  expect(document.body.textContent).toContain('Design reading');
+  expect(sendMessage).not.toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_START' })
+  );
+});
+
+it('keeps close disabled while apply is checking the task and while undo writes', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  latestTask = completedTask();
+  const onClose = vi.fn();
+  await renderPanel(onClose);
+  let finishCheck!: (response: unknown) => void;
+  sendMessage.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishCheck = resolve;
+      })
+  );
+  await act(async () => button('organize_apply')!.click());
+  const close = document.body.querySelector<HTMLButtonElement>('[aria-label="organize_close"]')!;
+  expect(close.disabled).toBe(true);
+  await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () => finishCheck({ success: true, task: latestTask }));
+  let finishMove!: () => void;
+  vi.mocked(chrome.bookmarks.move).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishMove = () => resolve({ id: 'a' } as chrome.bookmarks.BookmarkTreeNode);
+      })
+  );
+  await act(async () => button('organize_undo')!.click());
+  expect(close.disabled).toBe(true);
+  await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () => finishMove());
+  expect(close.disabled).toBe(false);
+});
+
+it('offers a new suggestion run after an applied result is reopened', async () => {
+  // 应用后的结果若仍被恢复，面板会一直停在旧预览，没有“生成建议”入口。
+  storedKey = { provider: 'openai', last4: '1234' };
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await flush();
+  await act(async () => button('organize_apply')!.click());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_DISMISS', id: 'organize-task' })
+  );
+
+  await act(async () => root.render(null));
+  await renderPanel();
+  expect(button('organize_start')).toBeDefined();
+  expect(document.body.textContent).not.toContain('Design reading');
+});
+
+it('discards a restored result and returns to a new suggestion run', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  latestTask = { ...completedTask(), state: { ...completedTask().state, proposals: [] } };
+  await renderPanel();
+  expect(document.body.textContent).toContain('organize_preview_empty');
+  expect(button('organize_start')).toBeUndefined();
+
+  await act(async () => button('organize_discard')!.click());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_DISMISS', id: 'organize-task' })
+  );
+  expect(button('organize_start')).toBeDefined();
+});
+
+it('waits for the stored task before offering a new suggestion run', async () => {
+  // 迟到的恢复响应曾覆盖刚启动的新任务，界面停止轮询，而后台仍在运行。
+  storedKey = { provider: 'openai', last4: '1234' };
+  let restore!: (response: unknown) => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) =>
+    message.type === 'ORGANIZE_TASK_GET' && !('id' in message && message.id)
+      ? new Promise((resolve) => {
+          restore = resolve;
+        })
+      : respond(message)
+  );
+  await renderPanel();
+  expect(button('organize_start')).toBeUndefined();
+
+  await act(async () => restore({ success: true, task: null }));
+  await flush();
+  expect(button('organize_start')).toBeDefined();
+});
+
+it('cancels a task created before a timed-out start response returns', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  let rejectStart!: (error: Error) => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string; attemptId?: string; id?: string }) => {
+    if (message.type === 'ORGANIZE_TASK_START') {
+      return new Promise((_resolve, reject) => {
+        rejectStart = reject;
+      });
+    }
+    if (message.type === 'ORGANIZE_TASK_CANCEL' && message.attemptId && !message.id) {
+      latestTask = {
+        ...completedTask(),
+        status: 'cancelled',
+        createdAt: Date.now(),
+        input: { ...completedTask().input, attemptId: message.attemptId },
+      };
+      return { success: true, task: latestTask };
+    }
+    return respond(message);
+  });
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await act(async () => button('action_cancel')!.click());
+  await flush();
+
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', attemptId: expect.any(String) })
+  );
+  rejectStart(new Error('REQUEST_TIMEOUT'));
+  await flush();
+  expect(latestTask?.status).toBe('cancelled');
+  expect(button('organize_start')).toBeUndefined();
+});
+
+it('cancels a task whose start was still being acknowledged', async () => {
+  // 拿到任务编号前点取消，取消意图曾被丢弃，后台继续调用 AI。
+  storedKey = { provider: 'openai', last4: '1234' };
+  let acknowledge!: () => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) =>
+    message.type === 'ORGANIZE_TASK_START'
+      ? new Promise((resolve) => {
+          acknowledge = () => {
+            latestTask = { ...completedTask(), status: 'pending' };
+            resolve({ success: true, task: latestTask });
+          };
+        })
+      : respond(message)
+  );
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await act(async () => button('action_cancel')!.click());
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', attemptId: expect.any(String) })
+  );
+
+  await act(async () => acknowledge());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', id: 'organize-task' })
+  );
+  expect(latestTask?.status).toBe('cancelled');
+});
+
+it('retains cancel intent across the real 15-second start timeout and a failed cancel reply', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  await renderPanel();
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) => {
+    if (message.type === 'ORGANIZE_TASK_START') {
+      latestTask = { ...completedTask(), status: 'pending' };
+      return new Promise(() => undefined);
+    }
+    if (['ORGANIZE_TASK_GET', 'ORGANIZE_TASK_CANCEL'].includes(message.type) && Date.now() < 16_000)
+      return Promise.reject(new Error('Temporary transport failure'));
+    return respond(message);
+  });
+  try {
+    await act(async () => button('organize_start')!.click());
+    await act(async () => button('action_cancel')!.click());
+    await act(async () => vi.advanceTimersByTimeAsync(15_001));
+    expect(latestTask?.status).toBe('pending');
+    expect(button('action_cancel')).toBeDefined();
+    expect(button('organize_start')).toBeUndefined();
+
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', id: 'organize-task' })
+    );
+    expect(latestTask?.status).toBe('cancelled');
+    expect(button('action_cancel')).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
 });

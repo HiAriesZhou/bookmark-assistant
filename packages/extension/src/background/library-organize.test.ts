@@ -7,6 +7,7 @@ import {
   deleteOrganizeKey,
   isOrganizeSenderAllowed,
   readOrganizeKeySummary,
+  readOrganizeCredentialRevision,
   runAssignBatch,
   runFolderMap,
   saveOrganizeKey,
@@ -136,6 +137,19 @@ describe('organize key storage', () => {
     await expect(readOrganizeKeySummary()).resolves.toBeNull();
   });
 
+  it('changes opaque revision on every saved key and clears it on deletion', async () => {
+    grantedOrigins.add('https://api.openai.com/*');
+    await saveOrganizeKey('openai', 'synthetic-key', respond(200));
+    const first = await readOrganizeCredentialRevision();
+    expect(first).toBeTruthy();
+    expect(first).not.toContain('synthetic-key');
+    await expect(readOrganizeCredentialRevision()).resolves.toBe(first);
+    await saveOrganizeKey('openai', 'synthetic-key', respond(200));
+    expect(await readOrganizeCredentialRevision()).not.toBe(first);
+    await deleteOrganizeKey();
+    await expect(readOrganizeCredentialRevision()).resolves.toBeNull();
+  });
+
   it('ignores a malformed stored key', async () => {
     storage[LIBRARY_ORGANIZE_PROVIDER_CREDENTIAL_STORAGE_KEY] = { provider: 'nope', apiKey: 1 };
     await expect(readOrganizeKeySummary()).resolves.toBeNull();
@@ -146,6 +160,17 @@ describe('organize provider calls', () => {
   beforeEach(async () => {
     grantedOrigins.add('https://api.openai.com/*');
     await saveOrganizeKey('openai', 'sk-test-1234', respond(200));
+  });
+
+  it('drops provider output if its key was replaced during the request', async () => {
+    const revision = await readOrganizeCredentialRevision();
+    const fetcher: FetchLike = vi.fn(async () => {
+      await saveOrganizeKey('openai', 'replacement-key', respond(200));
+      return new Response(JSON.stringify(openAiText('{"folders":[]}')), { status: 200 });
+    });
+    await expect(runFolderMap(folderRequest, fetcher, revision!)).rejects.toMatchObject({
+      code: 'not_configured',
+    });
   });
 
   it('maps existing folders onto categories', async () => {

@@ -9,15 +9,31 @@ import type {
 } from '../core';
 import type { OrganizeErrorCode, OrganizeKeySummary } from '../background/library-organize';
 
+import type { OrganizeTaskInput, OrganizeTaskResponse } from '../runtime/organize';
+
 export type NotionTargetSummary = { id: string; title: string };
 
 // Centralized typed messaging between Options/Popup and Background.
 // Requests that change destination state carry the revision the caller saw, so the
 // background can reject them after the connection changed elsewhere.
 export type MessageMap = {
+  ORGANIZE_TASK_START: { req: { input: OrganizeTaskInput }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_GET: { req: { id?: string; attemptId?: string }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_CANCEL: {
+    req: { id: string; attemptId?: never } | { id?: never; attemptId: string };
+    res: OrganizeTaskResponse;
+  };
+  ORGANIZE_TASK_RETRY: { req: { id: string }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_DISMISS: { req: { id: string }; res: OrganizeTaskResponse };
   SYNC_ALL_BOOKMARKS: {
     req: { destinationRevision?: string | null };
-    res: { success: boolean; error?: string; noChanges?: boolean };
+    res: {
+      success: boolean;
+      error?: string;
+      noChanges?: boolean;
+      queued?: boolean;
+      taskId?: string;
+    };
   };
   NOTION_LIST_TARGETS: {
     req: { token: string };
@@ -53,7 +69,7 @@ export type MessageMap = {
   };
   SAVE_CURRENT_PAGE: {
     req: {};
-    res: { success: boolean; error?: string };
+    res: { success: boolean; error?: string; queued?: boolean; taskId?: string };
   };
   GET_DASHBOARD_STATE: {
     req: { refreshConnection?: boolean };
@@ -98,6 +114,11 @@ export type MessageResponse<T extends MessageType> = MessageMap[T]['res'];
 
 // Optional convenience constant for autocomplete and ref safety
 export const Messages: { [K in MessageType]: K } = {
+  ORGANIZE_TASK_START: 'ORGANIZE_TASK_START',
+  ORGANIZE_TASK_GET: 'ORGANIZE_TASK_GET',
+  ORGANIZE_TASK_CANCEL: 'ORGANIZE_TASK_CANCEL',
+  ORGANIZE_TASK_RETRY: 'ORGANIZE_TASK_RETRY',
+  ORGANIZE_TASK_DISMISS: 'ORGANIZE_TASK_DISMISS',
   SYNC_ALL_BOOKMARKS: 'SYNC_ALL_BOOKMARKS',
   NOTION_LIST_TARGETS: 'NOTION_LIST_TARGETS',
   NOTION_CONNECT: 'NOTION_CONNECT',

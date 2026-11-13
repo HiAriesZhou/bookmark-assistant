@@ -54,7 +54,7 @@ export function OrganizePanel({
   const titleId = useId();
   const library = useMemo(() => ({ bookmarks, folders }), [bookmarks, folders]);
   const organize = useLibraryOrganize(scope, locale, library);
-  const busy = organize.phase === 'running' || organize.phase === 'applying' || organize.undoing;
+  const busy = organize.phase === 'applying' || organize.undoing;
   const bookmarksById = useMemo(
     () => new Map(bookmarks.map((bookmark) => [bookmark.id, bookmark])),
     [bookmarks]
@@ -363,6 +363,16 @@ function Footer({
         >
           <Sparkles aria-hidden="true" className="h-4 w-4" />
           {t('organize_start')}
+        </button>
+      ) : null}
+      {organize.phase === 'preview' ? (
+        <button
+          type="button"
+          className="library-secondary-button"
+          disabled={organize.undoing}
+          onClick={() => void organize.discard()}
+        >
+          {t('organize_discard')}
         </button>
       ) : null}
       {organize.phase === 'preview' && organize.failedBatches.length ? (

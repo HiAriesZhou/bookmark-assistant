@@ -10,6 +10,11 @@ import {
   type ExistingLinkRecord,
 } from './core';
 import type { NotionLinkWriter } from './types';
+import {
+  findNotionUrlPropertyName,
+  isNotionDescriptionPropertyName,
+  type BuildBookmarkPropertiesOptions,
+} from './core/notion-properties';
 import type { LinkItem } from '@bookmark-assistant/types';
 
 export const NOTION_API_VERSION = '2025-09-03';
@@ -66,6 +71,29 @@ export interface ExistingLinks {
   urls: string[];
   syncIds: string[];
   records: ExistingLinkRecord[];
+}
+
+export interface ExistingLinksPage extends ExistingLinks {
+  cursor?: string;
+  describedPageIds: string[];
+}
+
+function descriptionProperty(page: unknown): { property: string; text: string } | undefined {
+  if (!page || typeof page !== 'object') return undefined;
+  const properties = (page as { properties?: Record<string, unknown> }).properties;
+  for (const [name, raw] of Object.entries(properties ?? {})) {
+    if (!isNotionDescriptionPropertyName(name)) continue;
+    const value = raw as {
+      type?: string;
+      rich_text?: Array<{ plain_text?: string; text?: { content?: string } }>;
+    } | null;
+    if (value?.type !== 'rich_text' || !Array.isArray(value.rich_text)) continue;
+    return {
+      property: name,
+      text: value.rich_text.map((part) => part.plain_text ?? part.text?.content ?? '').join(''),
+    };
+  }
+  return undefined;
 }
 
 /**
@@ -255,7 +283,8 @@ export class NotionApi implements NotionLinkWriter {
   async buildPropertiesFromDataSource(
     dataSourceId: string,
     token: string,
-    item: LinkItem
+    item: LinkItem,
+    options: Pick<BuildBookmarkPropertiesOptions, 'omitDescription'> = {}
   ): Promise<Record<string, unknown>> {
     const dataSource = await this.getDataSourceSchema(dataSourceId, token);
     const schema = dataSource?.properties || {};
@@ -267,6 +296,7 @@ export class NotionApi implements NotionLinkWriter {
       ? undefined
       : Object.entries<any>(schema).find(([, definition]) => definition?.type === 'title')?.[0];
     return buildBookmarkPropertiesFromNotionSchema(schema, item, {
+      ...options,
       fallbackTitlePropertyName,
     }) as Record<string, unknown>;
   }
@@ -326,6 +356,104 @@ export class NotionApi implements NotionLinkWriter {
     );
     const pageId = response?.results?.[0]?.id;
     return typeof pageId === 'string' ? pageId : undefined;
+  }
+
+  /** Recheck after planning: another queued task may have saved the same typed URL. */
+  async findPageByUrlAndType(
+    dataSourceId: string,
+    token: string,
+    url: string,
+    type: LinkItem['type'] = 'bookmark'
+  ): Promise<string | undefined> {
+    const schema = await this.getDataSourceSchema(dataSourceId, token);
+    const urlProperty = findNotionUrlPropertyName(schema?.properties || {});
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_EXISTING_PAGES; page++) {
+      const response: any = await this.withRetry(() =>
+        this.client(token).dataSources.query({
+          data_source_id: dataSourceId,
+          ...(urlProperty ? { filter: { property: urlProperty, url: { equals: url } } } : {}),
+          page_size: 100,
+          start_cursor: cursor,
+        } as any)
+      );
+      if (!Array.isArray(response?.results)) throw new Error('Invalid Notion query response');
+      for (const row of response.results) {
+        const keys = extractNotionPageLinkKeys(row);
+        if (keys.url === url && (keys.type ?? 'bookmark') === type) {
+          if (typeof row.id !== 'string' || !row.id) throw new Error('NOTION_PAGE_ID_MISSING');
+          return row.id;
+        }
+      }
+      const next = typeof response.next_cursor === 'string' ? response.next_cursor : undefined;
+      if (response.has_more === true && (!next || next === cursor))
+        throw new Error('Invalid Notion pagination cursor');
+      if (!next) return undefined;
+      cursor = next;
+    }
+    throw new Error('NOTION_SCAN_LIMIT');
+  }
+
+  /** 每次只读取一页；游标和索引由本地任务保存。 */
+  async existingLinksPage(
+    dataSourceId: string,
+    token: string,
+    cursor?: string
+  ): Promise<ExistingLinksPage> {
+    const response: any = await this.withRetry(() =>
+      this.client(token).dataSources.query({
+        data_source_id: dataSourceId,
+        page_size: 100,
+        start_cursor: cursor,
+      } as any)
+    );
+    if (!Array.isArray(response?.results)) throw new Error('Invalid Notion query response');
+    const records = response.results
+      .map((row: any) => ({
+        ...extractNotionPageLinkKeys(row),
+        pageId: typeof row.id === 'string' ? row.id : undefined,
+        hasDescription: Boolean(descriptionProperty(row)?.text.trim()),
+      }))
+      .filter((row: ExistingLinkRecord) => row.url || row.syncId);
+    const next = typeof response.next_cursor === 'string' ? response.next_cursor : undefined;
+    if (response.has_more === true && (!next || next === cursor))
+      throw new Error('Invalid Notion pagination cursor');
+    return {
+      records,
+      urls: records.flatMap((row: ExistingLinkRecord) => (row.url ? [row.url] : [])),
+      syncIds: records.flatMap((row: ExistingLinkRecord) => (row.syncId ? [row.syncId] : [])),
+      describedPageIds: records
+        .filter(
+          (row: { hasDescription: boolean; pageId?: string }) => row.hasDescription && row.pageId
+        )
+        .map((row: { pageId: string }) => row.pageId),
+      ...(next ? { cursor: next } : {}),
+    };
+  }
+
+  async readDescription(
+    pageId: string,
+    token: string
+  ): Promise<{ property: string; text: string } | undefined> {
+    const page = await this.withRetry(() => this.client(token).pages.retrieve({ page_id: pageId }));
+    return descriptionProperty(page);
+  }
+
+  /** 简介写入不自动重试；由持久历史保护未知结果。 */
+  async writeDescription(
+    pageId: string,
+    property: string,
+    text: string,
+    token: string
+  ): Promise<void> {
+    await this.withRetry(
+      () =>
+        this.client(token).pages.update({
+          page_id: pageId,
+          properties: { [property]: { rich_text: [{ text: { content: text.slice(0, 2000) } }] } },
+        } as any),
+      0
+    );
   }
 
   /**
