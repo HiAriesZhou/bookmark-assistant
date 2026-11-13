@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BOOKMARK_METADATA_STORAGE_KEY,
+  fillBookmarkDescriptionIfUnchanged,
+  hasDescriptionHistory,
   normalizeBookmarkTags,
   readBookmarkMetadata,
   saveBookmarkMetadata,
@@ -40,6 +42,28 @@ describe('local bookmark metadata', () => {
       descriptionCleared: true,
       tags: [],
     });
+  });
+
+  it('does not record a clear when an empty description is saved unchanged', async () => {
+    // 编辑器每次保存都会提交描述字段；原本为空时只改标签不能变成“用户清空”。
+    const saved = await saveBookmarkMetadata('tags-only', { description: '', tags: ['Research'] });
+    expect(saved).not.toHaveProperty('descriptionCleared');
+    expect(hasDescriptionHistory(saved)).toBe(false);
+    const filled = await fillBookmarkDescriptionIfUnchanged(
+      'tags-only',
+      'Synthetic summary',
+      'ai',
+      saved,
+      async () => true
+    );
+    expect(filled).toMatchObject({ description: 'Synthetic summary', tags: ['Research'] });
+  });
+
+  it('keeps an earlier clear when later saves leave the description empty', async () => {
+    await saveBookmarkMetadata('cleared', { description: 'Before', tags: [] });
+    await saveBookmarkMetadata('cleared', { description: '', tags: [] });
+    const later = await saveBookmarkMetadata('cleared', { description: '', tags: ['Later'] });
+    expect(later).toMatchObject({ descriptionCleared: true, descriptionSource: 'user' });
   });
 
   it('keeps automatic provenance while only tags change', async () => {

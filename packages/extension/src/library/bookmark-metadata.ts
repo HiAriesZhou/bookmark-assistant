@@ -87,11 +87,15 @@ export function saveBookmarkMetadata(
       (normalized.description && normalized.description === previous?.description
         ? (previous.descriptionSource ?? 'user')
         : 'user');
-    const hasDescriptionInput = input.description !== undefined || !!previous?.descriptionCleared;
+    // 只有把已有描述改为空才算用户清空；原本为空时再次提交空值（例如只改标签）不留记录。
+    const clearsDescription =
+      input.description !== undefined && !!previous?.description && !normalized.description;
+    const cleared =
+      !normalized.description && (clearsDescription || !!previous?.descriptionCleared);
     const metadata: LocalBookmarkMetadataV1 = {
       ...normalized,
-      ...(normalized.description || hasDescriptionInput ? { descriptionSource: source } : {}),
-      ...(!normalized.description && hasDescriptionInput ? { descriptionCleared: true } : {}),
+      ...(normalized.description || cleared ? { descriptionSource: source } : {}),
+      ...(cleared ? { descriptionCleared: true } : {}),
       revision: crypto.randomUUID(),
     };
     await writeMetadata({ ...byBookmarkId, [bookmarkId]: metadata });
