@@ -6,6 +6,8 @@ export interface DescriptionHistory {
   get(pageId: string): Promise<DescriptionHistoryEntry | undefined>;
   reserve(pageId: string): Promise<boolean>;
   protect(pageId: string): Promise<void>;
+  /** 删除尚未发出写请求的预留；不影响受保护记录。 */
+  release(pageId: string): Promise<void>;
 }
 
 export interface DescriptionWriter {
@@ -35,9 +37,22 @@ export async function fillMissingDescription(
     return 'skipped';
   }
   if (!(await history.reserve(pageId))) return 'skipped';
-  const current = await api.readDescription(pageId);
-  await assertCurrent();
-  if (!current || current.property !== before.property || current.text.trim()) return 'skipped';
+  let current: Awaited<ReturnType<DescriptionWriter['readDescription']>>;
+  try {
+    current = await api.readDescription(pageId);
+    await assertCurrent();
+  } catch (error) {
+    // 写请求尚未发出，释放预留以便重试；只有写入结果未知时才保留。
+    // 释放失败时保留预留（只会少写，不会重写），并让原始错误决定任务重试。
+    await history.release(pageId).catch(() => undefined);
+    throw error;
+  }
+  // 用户在两次读取之间填写的描述保持预留，等同于受保护。
+  if (current?.text.trim()) return 'skipped';
+  if (!current || current.property !== before.property) {
+    await history.release(pageId);
+    return 'skipped';
+  }
   // Notion 未提供条件写入；再次读取缩小并发修改窗口，但无法消除远端竞态。
   await api.writeDescription(pageId, current.property, text);
   return 'written';

@@ -13,6 +13,9 @@ function fixture(description = '') {
     protect: async (id: string) => {
       entries.set(id, { status: 'protected' });
     },
+    release: async (id: string) => {
+      if (entries.get(id)?.status === 'reserved') entries.delete(id);
+    },
   };
   const api = {
     readDescription: vi.fn(async () => ({ property: 'Description', text: description })),
@@ -49,6 +52,28 @@ describe('fillMissingDescription', () => {
     await expect(fillMissingDescription('page', 'ai', f)).rejects.toThrow('connection lost');
     expect(await fillMissingDescription('page', 'ai', f)).toBe('skipped');
     expect(f.api.writeDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the reservation when no write was sent', async () => {
+    const f = fixture();
+    f.api.readDescription
+      .mockResolvedValueOnce({ property: 'Description', text: '' })
+      .mockRejectedValueOnce(new Error('read failed'));
+    await expect(fillMissingDescription('page', 'ai', f)).rejects.toThrow('read failed');
+    expect(f.entries.has('page')).toBe(false);
+    expect(f.api.writeDescription).not.toHaveBeenCalled();
+
+    expect(await fillMissingDescription('page', 'ai', f)).toBe('written');
+    expect(f.api.writeDescription).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases the reservation when the description property disappears', async () => {
+    const f = fixture();
+    f.api.readDescription
+      .mockResolvedValueOnce({ property: 'Description', text: '' })
+      .mockResolvedValueOnce(undefined);
+    expect(await fillMissingDescription('page', 'ai', f)).toBe('skipped');
+    expect(f.entries.has('page')).toBe(false);
   });
 
   it('rereads before writing and preserves an intervening user edit', async () => {

@@ -1,4 +1,8 @@
-import { withCurrentDestination, type DestinationContext } from '../../utils/destination-state';
+import {
+  mutateDestinationState,
+  withCurrentDestination,
+  type DestinationContext,
+} from '../../utils/destination-state';
 import type { DescriptionHistory, DescriptionHistoryEntry } from './description-write';
 
 export const NOTION_DESCRIPTION_HISTORY_KEY = ['notion', 'description', 'history', 'v1'].join('_');
@@ -39,6 +43,14 @@ export function createDescriptionHistory(context: DestinationContext): Descripti
         await chrome.storage.local.set({
           [NOTION_DESCRIPTION_HISTORY_KEY]: { ...all, [key(pageId)]: { status: 'protected' } },
         });
+      }),
+    // 不要求连接仍是当前连接：连接切换后同一数据库重连时，未发出的预留也不能永久阻止补写。
+    release: (pageId) =>
+      mutateDestinationState(async () => {
+        const all = await readHistory();
+        if (all[key(pageId)]?.status !== 'reserved') return;
+        const { [key(pageId)]: _released, ...rest } = all;
+        await chrome.storage.local.set({ [NOTION_DESCRIPTION_HISTORY_KEY]: rest });
       }),
   };
 }
