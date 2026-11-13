@@ -1,5 +1,9 @@
 import { expect, it, vi } from 'vitest';
-import { prepareOrganizeTaskInput, registerOrganizeTask } from './organize';
+import {
+  createOrganizeTaskHandlers,
+  prepareOrganizeTaskInput,
+  registerOrganizeTask,
+} from './organize';
 import { createTaskRuntime, type TaskRecord, type TaskStore } from './index';
 
 vi.mock('../background/library-organize', () => ({
@@ -51,7 +55,7 @@ it('projects task inputs and excludes private, managed-equivalent or credential-
   expect(JSON.stringify(input)).not.toContain('Private payroll');
 });
 
-it('checkpoints folder mapping independently of classification', async () => {
+function organizeFixture(maxSteps: number) {
   const rows = new Map<string, TaskRecord>();
   const store: TaskStore = {
     get: async (id) => rows.get(id),
@@ -62,28 +66,59 @@ it('checkpoints folder mapping independently of classification', async () => {
       return next;
     },
   };
-  const runtime = createTaskRuntime({ store, maxSteps: 1 });
+  const runtime = createTaskRuntime({ store, maxSteps });
   registerOrganizeTask(runtime);
-  const job = await runtime.submit({
-    type: 'organize',
-    revision: 'revision',
-    input: {
-      scope: {
-        items: [
-          { id: 'a', parentId: '1', title: 'A', url: 'https://example.com/', folderPath: 'Bar' },
-        ],
-        folders: [],
-        totalCandidates: 1,
-        excludedCount: 0,
+  const submit = () =>
+    runtime.submit({
+      type: 'organize',
+      revision: 'revision',
+      dedupeKey: 'organize',
+      input: {
+        scope: {
+          items: [
+            { id: 'a', parentId: '1', title: 'A', url: 'https://example.com/', folderPath: 'Bar' },
+          ],
+          folders: [],
+          totalCandidates: 1,
+          excludedCount: 0,
+        },
+        uiLanguage: 'en',
+        parents: [],
+        folderCounts: [],
       },
-      uiLanguage: 'en',
-      parents: [],
-      folderCounts: [],
-    },
-  });
+    });
+  return { runtime, submit, handlers: createOrganizeTaskHandlers(runtime) };
+}
+
+it('checkpoints folder mapping independently of classification', async () => {
+  const { runtime, submit } = organizeFixture(1);
+  const job = await submit();
   await runtime.runner();
   expect(await runtime.get(job.id)).toMatchObject({
     status: 'pending',
     state: { completed: 1, total: 2, cursor: 0 },
+  });
+});
+
+it('stops restoring an organize result after it was applied or discarded', async () => {
+  // 已处理的结果若仍被恢复，界面会一直停在旧预览，无法开始新的整理。
+  const { runtime, submit, handlers } = organizeFixture(10);
+  const job = await submit();
+  await runtime.runner();
+  const get = (id?: string) => handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET', id });
+  expect(await get()).toMatchObject({ success: true, task: { id: job.id, status: 'succeeded' } });
+
+  await handlers.ORGANIZE_TASK_DISMISS({ type: 'ORGANIZE_TASK_DISMISS', id: job.id });
+  expect(await get()).toEqual({ success: true, task: null });
+  expect(await get(job.id)).toMatchObject({ success: true, task: { id: job.id } });
+});
+
+it('keeps restoring a task that is still running even if dismissal is requested', async () => {
+  const { submit, handlers } = organizeFixture(10);
+  const job = await submit();
+  await handlers.ORGANIZE_TASK_DISMISS({ type: 'ORGANIZE_TASK_DISMISS', id: job.id });
+  expect(await handlers.ORGANIZE_TASK_GET({ type: 'ORGANIZE_TASK_GET' })).toMatchObject({
+    success: true,
+    task: { id: job.id, status: 'pending' },
   });
 });

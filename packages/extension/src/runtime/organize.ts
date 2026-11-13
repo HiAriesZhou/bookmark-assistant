@@ -228,9 +228,12 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
         const job = request.id
           ? await own(request.id)
           : (await runtime.list('organize')).sort((a, b) => b.createdAt - a.createdAt)[0];
-        if (!job) return null;
+        // 已应用或放弃的结果只能按编号读取，不再作为“上次的整理”恢复。
+        if (!job || (!request.id && job.dismissed)) return null;
         if ((await readOrganizeCredentialRevision()) !== job.revision) {
           await runtime.cancel(job.id);
+          // 密钥已更换：只提示一次，之后打开面板直接回到可开始状态。
+          await runtime.dismiss(job.id);
           return {
             ...job,
             status: 'stale',
@@ -244,6 +247,11 @@ export function createOrganizeTaskHandlers(runtime: TaskRuntime) {
       respond(async () => {
         await own(request.id);
         return runtime.cancel(request.id);
+      }),
+    ORGANIZE_TASK_DISMISS: (request: MessageRequest<'ORGANIZE_TASK_DISMISS'>) =>
+      respond(async () => {
+        await own(request.id);
+        return runtime.dismiss(request.id);
       }),
     ORGANIZE_TASK_RETRY: (request: MessageRequest<'ORGANIZE_TASK_RETRY'>) =>
       respond(async () => {

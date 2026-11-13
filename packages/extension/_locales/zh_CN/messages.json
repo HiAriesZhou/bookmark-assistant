@@ -609,6 +609,9 @@
   "organize_target_other": {
     "message": "其他文件夹"
   },
+  "organize_discard": {
+    "message": "放弃这些建议"
+  },
   "organize_retry_failed": {
     "message": "重试 $1 个未完成的批次"
   },

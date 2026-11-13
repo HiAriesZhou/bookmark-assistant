@@ -21,6 +21,7 @@ export type MessageMap = {
   ORGANIZE_TASK_GET: { req: { id?: string }; res: OrganizeTaskResponse };
   ORGANIZE_TASK_CANCEL: { req: { id: string }; res: OrganizeTaskResponse };
   ORGANIZE_TASK_RETRY: { req: { id: string }; res: OrganizeTaskResponse };
+  ORGANIZE_TASK_DISMISS: { req: { id: string }; res: OrganizeTaskResponse };
   SYNC_ALL_BOOKMARKS: {
     req: { destinationRevision?: string | null };
     res: {
@@ -114,6 +115,7 @@ export const Messages: { [K in MessageType]: K } = {
   ORGANIZE_TASK_GET: 'ORGANIZE_TASK_GET',
   ORGANIZE_TASK_CANCEL: 'ORGANIZE_TASK_CANCEL',
   ORGANIZE_TASK_RETRY: 'ORGANIZE_TASK_RETRY',
+  ORGANIZE_TASK_DISMISS: 'ORGANIZE_TASK_DISMISS',
   SYNC_ALL_BOOKMARKS: 'SYNC_ALL_BOOKMARKS',
   NOTION_LIST_TARGETS: 'NOTION_LIST_TARGETS',
   NOTION_CONNECT: 'NOTION_CONNECT',

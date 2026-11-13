@@ -16,6 +16,8 @@ export interface TaskRecord<Input = unknown, State = unknown> {
   version: number;
   errorCode?: string;
   settled?: boolean;
+  /** The user applied or discarded the terminal result; it is no longer restored. */
+  dismissed?: boolean;
 }
 
 export interface TaskStore {

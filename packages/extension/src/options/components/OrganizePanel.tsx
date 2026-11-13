@@ -365,6 +365,16 @@ function Footer({
           {t('organize_start')}
         </button>
       ) : null}
+      {organize.phase === 'preview' ? (
+        <button
+          type="button"
+          className="library-secondary-button"
+          disabled={organize.undoing}
+          onClick={() => void organize.discard()}
+        >
+          {t('organize_discard')}
+        </button>
+      ) : null}
       {organize.phase === 'preview' && organize.failedBatches.length ? (
         <button
           type="button"

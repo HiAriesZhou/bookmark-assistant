@@ -88,7 +88,15 @@ beforeEach(() => {
       storedKey = { provider: 'openai', last4: '1234' };
       return { success: true, key: storedKey };
     }
-    if (message.type === 'ORGANIZE_TASK_GET') return { success: true, task: latestTask };
+    if (message.type === 'ORGANIZE_TASK_GET') {
+      // Mirrors the background: a handled result is only readable by its id.
+      const id = (message as { id?: string }).id;
+      return { success: true, task: !id && latestTask?.dismissed ? null : latestTask };
+    }
+    if (message.type === 'ORGANIZE_TASK_DISMISS') {
+      latestTask = latestTask ? { ...latestTask, dismissed: true } : null;
+      return { success: true, task: latestTask };
+    }
     if (message.type === 'ORGANIZE_TASK_START') {
       latestTask = completedTask();
       return { success: true, task: latestTask };
@@ -335,4 +343,37 @@ it('keeps close disabled while apply is checking the task and while undo writes'
   expect(onClose).not.toHaveBeenCalled();
   await act(async () => finishMove());
   expect(close.disabled).toBe(false);
+});
+
+it('offers a new suggestion run after an applied result is reopened', async () => {
+  // 应用后的结果若仍被恢复，面板会一直停在旧预览，没有“生成建议”入口。
+  storedKey = { provider: 'openai', last4: '1234' };
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await flush();
+  await act(async () => button('organize_apply')!.click());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_DISMISS', id: 'organize-task' })
+  );
+
+  await act(async () => root.render(null));
+  await renderPanel();
+  expect(button('organize_start')).toBeDefined();
+  expect(document.body.textContent).not.toContain('Design reading');
+});
+
+it('discards a restored result and returns to a new suggestion run', async () => {
+  storedKey = { provider: 'openai', last4: '1234' };
+  latestTask = { ...completedTask(), state: { ...completedTask().state, proposals: [] } };
+  await renderPanel();
+  expect(document.body.textContent).toContain('organize_preview_empty');
+  expect(button('organize_start')).toBeUndefined();
+
+  await act(async () => button('organize_discard')!.click());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_DISMISS', id: 'organize-task' })
+  );
+  expect(button('organize_start')).toBeDefined();
 });

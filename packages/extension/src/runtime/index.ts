@@ -175,6 +175,14 @@ export function createTaskRuntime(
           : job
       );
     },
+    /** Marks a finished result as handled. Active tasks are left untouched. */
+    async dismiss(id: string) {
+      return store.update(id, (job) =>
+        job && !isTaskActive(job) && !job.dismissed
+          ? { ...job, dismissed: true, updatedAt: now(), version: job.version + 1 }
+          : job
+      );
+    },
     async retry(id: string) {
       const job = await store.get(id);
       if (!job || !['failed', 'cancelled'].includes(job.status)) return job;
@@ -187,6 +195,7 @@ export function createTaskRuntime(
         attempts: 0,
         errorCode: undefined,
         settled: undefined,
+        dismissed: undefined,
         nextRunAt: now(),
       });
     },

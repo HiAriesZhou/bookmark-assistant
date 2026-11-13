@@ -317,11 +317,34 @@ export function useLibraryOrganize(
         folderCounts: [...counts],
       },
     }).catch(() => undefined);
-    if (response?.success && response.task) receiveTask(response.task);
-    else {
+    if (response?.success && response.task) {
+      receiveTask(response.task);
+    } else {
       setErrorCode(response && !response.success ? response.errorCode : 'service_unavailable');
       setPhase('ready');
     }
+  };
+
+  /** Drops a finished result so it is not restored again, and returns to a new run. */
+  const discard = async () => {
+    setErrorCode(undefined);
+    const id = taskId.current;
+    if (id) {
+      const response = await sendMessage({ type: Messages.ORGANIZE_TASK_DISMISS, id }).catch(
+        () => undefined
+      );
+      if (!response?.success) {
+        setErrorCode(response?.errorCode ?? 'service_unavailable');
+        return;
+      }
+    }
+    taskId.current = undefined;
+    taskRevision.current = undefined;
+    setProposals([]);
+    setFailedBatches([]);
+    setPlan(undefined);
+    setProgress({ completed: 0, total: 0 });
+    setPhase(key ? 'ready' : 'setup');
   };
 
   const retryFailed = async () => {
@@ -434,6 +457,11 @@ export function useLibraryOrganize(
       }));
     try {
       setResult(await applyOrganizeMoves(moves, { newFolderTitles }));
+      // The moves are done and journaled for Undo. Dismissing only stops this result from
+      // being restored; if it fails, the next opening shows it again with Discard available.
+      await sendMessage({ type: Messages.ORGANIZE_TASK_DISMISS, id: task.id }).catch(
+        () => undefined
+      );
       setPhase('done');
     } catch {
       // Moves already made are journaled, so Undo still covers them.
@@ -474,6 +502,7 @@ export function useLibraryOrganize(
     changeKey,
     backToReady,
     start,
+    discard,
     retryFailed,
     targetOptions,
     newFolderTitles,

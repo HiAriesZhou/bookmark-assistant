@@ -609,6 +609,9 @@
   "organize_target_other": {
     "message": "Other folders"
   },
+  "organize_discard": {
+    "message": "Discard suggestions"
+  },
   "organize_retry_failed": {
     "message": "Retry $1 unfinished batches"
   },
