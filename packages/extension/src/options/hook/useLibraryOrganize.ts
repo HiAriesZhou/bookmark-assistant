@@ -157,6 +157,8 @@ export function useLibraryOrganize(
   const taskRevision = useRef<string>();
   // Bumped whenever the user starts or discards a run; older responses are ignored.
   const generation = useRef(0);
+  // Cancel pressed before the background acknowledged the start and returned an id.
+  const cancelRequested = useRef(false);
   const [plan, setPlan] = useState<OrganizePlan>();
 
   const receiveTask = useCallback((task: OrganizeTask) => {
@@ -305,6 +307,9 @@ export function useLibraryOrganize(
 
   const start = async () => {
     const token = ++generation.current;
+    cancelRequested.current = false;
+    taskId.current = undefined;
+    taskRevision.current = undefined;
     setErrorCode(undefined);
     setProposals([]);
     setPhase('running');
@@ -325,7 +330,9 @@ export function useLibraryOrganize(
     if (token !== generation.current) return;
     if (response?.success && response.task) {
       receiveTask(response.task);
+      if (cancelRequested.current) await cancel();
     } else {
+      cancelRequested.current = false;
       setErrorCode(response && !response.success ? response.errorCode : 'service_unavailable');
       setPhase('ready');
     }
@@ -406,7 +413,12 @@ export function useLibraryOrganize(
   };
 
   const cancel = async () => {
-    if (!taskId.current) return;
+    if (!taskId.current) {
+      // start() sends the cancellation as soon as the task id arrives.
+      cancelRequested.current = true;
+      return;
+    }
+    cancelRequested.current = false;
     const response = await sendMessage({
       type: Messages.ORGANIZE_TASK_CANCEL,
       id: taskId.current,

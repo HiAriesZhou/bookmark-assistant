@@ -397,3 +397,33 @@ it('waits for the stored task before offering a new suggestion run', async () =>
   await flush();
   expect(button('organize_start')).toBeDefined();
 });
+
+it('cancels a task whose start was still being acknowledged', async () => {
+  // 拿到任务编号前点取消，取消意图曾被丢弃，后台继续调用 AI。
+  storedKey = { provider: 'openai', last4: '1234' };
+  let acknowledge!: () => void;
+  const respond = sendMessage.getMockImplementation()!;
+  sendMessage.mockImplementation((message: { type: string }) =>
+    message.type === 'ORGANIZE_TASK_START'
+      ? new Promise((resolve) => {
+          acknowledge = () => {
+            latestTask = { ...completedTask(), status: 'pending' };
+            resolve({ success: true, task: latestTask });
+          };
+        })
+      : respond(message)
+  );
+  await renderPanel();
+  await act(async () => button('organize_start')!.click());
+  await act(async () => button('action_cancel')!.click());
+  expect(sendMessage).not.toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL' })
+  );
+
+  await act(async () => acknowledge());
+  await flush();
+  expect(sendMessage).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'ORGANIZE_TASK_CANCEL', id: 'organize-task' })
+  );
+  expect(latestTask?.status).toBe('cancelled');
+});
