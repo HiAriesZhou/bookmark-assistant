@@ -109,6 +109,14 @@ describe('durable Notion task submission', () => {
     expect(storage.get('sync_in_progress')).toBe(true);
   });
 
+  it('leaves the marker to the settlement of a finished but unsettled sync', async () => {
+    const { runtime, records } = fixture();
+    const id = await submitNotionSync(runtime, context, { links: [link('a')], trigger: 'manual' });
+    records.set(id, { ...records.get(id)!, status: 'succeeded', settled: false });
+    await reconcileSyncProgress(runtime);
+    expect(storage.get('sync_in_progress')).toBe(true);
+  });
+
   it('replans definitely rejected writes with the newly collected bookmarks', async () => {
     const { runtime, records } = fixture();
     api.createPage.mockRejectedValueOnce(Object.assign(new Error('validation'), { status: 400 }));
